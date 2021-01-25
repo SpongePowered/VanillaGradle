@@ -1,0 +1,85 @@
+# Build #
+#########
+MANIFEST.MF
+dependency-reduced-pom.xml
+
+# Compiled #
+############
+bin
+build
+dist
+lib
+out
+run
+/target
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Databases #
+#############
+*.db
+*.sql
+*.sqlite
+
+# Packages #
+############
+*.7z
+*.dmg
+*.gz
+*.iso
+*.rar
+*.tar
+*.zip
+
+# Repository #
+##############
+.git
+
+# Logging #
+###########
+/logs
+*.log
+
+# Misc #
+########
+*.bak
+
+# System #
+##########
+.DS_Store
+ehthumbs.db
+Thumbs.db
+
+# Project #
+###########
+.classpath
+.externalToolBuilders
+.gradle
+.idea
+.project
+.settings
+.checkstyle
+.factorypath
+run
+eclipse
+nbproject
+atlassian-ide-plugin.xml
+build.xml
+nb-configuration.xml
+*.iml
+*.ipr
+*.iws
+/.apt_generated/
+*.launch
+/.nb-gradle/
+# We need to exclude the copied files.
+buildSrc/src/api
+
+# This is to optionally enable testplugins in development.
+# the test plugins themselves can be committed as examples.
+testplugins.settings.gradle.kts
+spongeforge.settings.gradle.kts
