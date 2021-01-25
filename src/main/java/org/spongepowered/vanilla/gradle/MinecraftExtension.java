@@ -73,7 +73,7 @@ public abstract class MinecraftExtension {
 
     protected void configure(final Project project) {
         final Path gradleHomeDirectory = project.getGradle().getGradleUserHomeDir().toPath();
-        final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.CACHE);
+        final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.CACHES);
         final Path rootDirectory = cacheDirectory.resolve(Constants.NAME);
         final Path librariesDirectory = rootDirectory.resolve(Constants.LIBRARIES);
         this.librariesDirectory.set(librariesDirectory.toFile());

@@ -1,7 +1,6 @@
 package org.spongepowered.vanilla.gradle.model;
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 
 import java.io.Serializable;
 

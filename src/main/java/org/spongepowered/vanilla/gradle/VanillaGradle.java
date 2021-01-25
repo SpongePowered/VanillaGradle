@@ -1,7 +1,6 @@
 package org.spongepowered.vanilla.gradle;
 
 import de.undercouch.gradle.tasks.download.Download;
-import groovy.lang.Closure;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.spongepowered.vanilla.gradle.model.DownloadClassifier;
