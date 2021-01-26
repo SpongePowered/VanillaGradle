@@ -105,10 +105,12 @@ public final class VanillaGradle implements Plugin<Project> {
             minecraft.downloadManifest();
             minecraft.createMinecraftClasspath(p);
 
-            if (minecraft.platform().get() == MinecraftPlatform.CLIENT) {
-                project.getDependencies().add(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, project.files(mergeClientJarsTask.map(DefaultTask::getOutputs)));
+            if (minecraft.platform().getOrElse(MinecraftPlatform.CLIENT) == MinecraftPlatform.CLIENT) {
+                project.getDependencies().add(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
+                        project.getObjects().fileCollection().from(mergeClientJarsTask.map(DefaultTask::getOutputs)));
             } else {
-                project.getDependencies().add(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, project.files(remapServerJar.get().getOutputJar()));
+                project.getDependencies().add(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
+                        project.getObjects().fileCollection().from(remapServerJar.map(DefaultTask::getOutputs)));
             }
         });
     }
