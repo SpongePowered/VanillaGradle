@@ -32,6 +32,7 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
+import org.spongepowered.vanilla.gradle.task.AccessWidenJarTask;
 import org.spongepowered.vanilla.gradle.task.FilterJarTask;
 import org.spongepowered.vanilla.gradle.task.MergeJarsTask;
 import org.spongepowered.vanilla.gradle.task.RemapJarTask;
@@ -47,8 +48,7 @@ public final class VanillaGradle implements Plugin<Project> {
         // TODO Make this configurable to not add this always
         project.getRepositories().maven(r -> r.setUrl(Constants.LIBRARIES_MAVEN_URL));
 
-        final MinecraftExtension minecraft = project.getExtensions().create("minecraft", MinecraftExtension.class);
-        minecraft.configure(project);
+        final MinecraftExtension minecraft = project.getExtensions().create("minecraft", MinecraftExtension.class, project);
 
         final TaskProvider<RemapJarTask> remapClientJar = this.createSidedTasks(MinecraftSide.CLIENT, project.getTasks(), minecraft);
         final TaskProvider<RemapJarTask> remapServerJar = this.createSidedTasks(MinecraftSide.SERVER, project.getTasks(), minecraft);
@@ -90,9 +90,31 @@ public final class VanillaGradle implements Plugin<Project> {
                     break;
             }
 
+
             if (resultJar != null) {
-                project.getDependencies().add(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
-                        project.getObjects().fileCollection().from(resultJar));
+                final TaskProvider<?> actualDependency;
+                if (project.getTasks().getNames().contains(Constants.ACCESS_WIDENER_TASK_NAME)) { // Using AW
+                    final TaskProvider<AccessWidenJarTask> awTask = project.getTasks().named(
+                            Constants.ACCESS_WIDENER_TASK_NAME,
+                            AccessWidenJarTask.class
+                    );
+                    final TaskProvider<?> finalResultJar = resultJar;
+                    awTask.configure(task -> {
+                        // Configure source
+                        task.getSource().from(finalResultJar);
+                        // Set suffix based on target platform
+                        task.getArchiveClassifier().set("aw-"
+                                + minecraft.platform().get().name().toLowerCase(Locale.ROOT)
+                                + "-" + minecraft.targetVersion().id());
+                    });
+                    actualDependency = awTask;
+                } else {
+                    actualDependency = resultJar;
+                }
+                project.getDependencies().add(
+                        JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
+                        project.getObjects().fileCollection().from(actualDependency)
+                );
             }
         });
     }
@@ -155,7 +177,6 @@ public final class VanillaGradle implements Plugin<Project> {
                         .sha1()).resolve("minecraft-" + sideName + "-" + minecraft.versionDescriptor().id() + "-remapped.jar").toFile());
                 task.getMappingsFile().set(downloadMappings.get().getDest());
             });
-
         }
 
         return remapJar;

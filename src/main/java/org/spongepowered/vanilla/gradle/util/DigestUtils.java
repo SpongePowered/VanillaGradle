@@ -22,39 +22,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.vanilla.gradle.task;
+package org.spongepowered.vanilla.gradle.util;
 
-import net.minecraftforge.mergetool.AnnotationVersion;
-import net.minecraftforge.mergetool.Merger;
-import org.gradle.api.DefaultTask;
-import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.tasks.InputFile;
-import org.gradle.api.tasks.OutputFile;
-import org.gradle.api.tasks.TaskAction;
-import org.spongepowered.vanilla.gradle.Constants;
+public final class DigestUtils {
 
-import java.io.IOException;
+    // From http://stackoverflow.com/questions/9655181/convert-from-byte-array-to-hex-string-in-java
+    private static final char[] hexArray = "0123456789abcdef".toCharArray();
 
-public abstract class MergeJarsTask extends DefaultTask {
-
-    public MergeJarsTask() {
-        this.setGroup(Constants.TASK_GROUP);
+    private DigestUtils() {
     }
 
-    @InputFile
-    public abstract RegularFileProperty getClientJar();
-
-    @InputFile
-    public abstract RegularFileProperty getServerJar();
-
-    @OutputFile
-    public abstract RegularFileProperty getMergedJar();
-
-    @TaskAction
-    public void execute() throws IOException {
-        final Merger merger = new Merger(this.getClientJar().get().getAsFile(), this.getServerJar().get().getAsFile(), this.getMergedJar().get().getAsFile());
-        merger.annotate(AnnotationVersion.API, true);
-        merger.keepData();
-        merger.process();
+    public static String toHexString(final byte[] bytes) {
+        final char[] hexChars = new char[bytes.length * 2];
+        for (int j = 0; j < bytes.length; j++) {
+            final int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = DigestUtils.hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = DigestUtils.hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
     }
+
 }

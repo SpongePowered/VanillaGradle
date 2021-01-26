@@ -24,6 +24,8 @@
  */
 package org.spongepowered.vanilla.gradle;
 
+import org.objectweb.asm.Opcodes;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -36,6 +38,8 @@ public final class Constants {
     public static final String API_V2_ENDPOINT = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
     public static final String LIBRARIES_MAVEN_URL = "https://libraries.minecraft.net";
     public static final String TASK_GROUP = "vanilla gradle";
+    public static final int ASM_VERSION = Opcodes.ASM9;
+    public static final String ACCESS_WIDENER_TASK_NAME = "accessWidenMinecraft";
 
     public static final String CACHES = "caches";
     public static final String LIBRARIES = "libraries";

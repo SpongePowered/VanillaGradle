@@ -9,6 +9,7 @@ version = "0.1"
 
 repositories {
     mavenCentral()
+    maven("https://maven.fabricmc.net/")
     maven {
         setUrl("https://files.minecraftforge.net/maven")
     }
@@ -22,6 +23,7 @@ dependencies {
     implementation("org.cadixdev:lorenz:0.5.6")
     implementation("org.cadixdev:lorenz-asm:0.5.4")
     implementation("org.cadixdev:lorenz-io-proguard:0.5.6")
+    implementation("net.fabricmc:access-widener:1.0.0")
 }
 
 gradlePlugin {

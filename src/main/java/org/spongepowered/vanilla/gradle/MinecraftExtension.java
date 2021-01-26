@@ -24,16 +24,22 @@
  */
 package org.spongepowered.vanilla.gradle;
 
+import org.gradle.api.PathValidation;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.spongepowered.vanilla.gradle.model.Version;
 import org.spongepowered.vanilla.gradle.model.VersionDescriptor;
 import org.spongepowered.vanilla.gradle.model.VersionManifestV2;
+import org.spongepowered.vanilla.gradle.task.AccessWidenJarTask;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -41,6 +47,7 @@ import javax.inject.Inject;
 
 public abstract class MinecraftExtension {
 
+    private final Project project;
     private final Property<String> version;
     private final Property<MinecraftPlatform> platform;
 
@@ -54,13 +61,29 @@ public abstract class MinecraftExtension {
     private final DirectoryProperty remapDirectory;
 
     @Inject
-    public MinecraftExtension(final ObjectFactory factory) {
+    public MinecraftExtension(final Gradle gradle, final ObjectFactory factory, final Project project) {
+        this.project = project;
         this.version = factory.property(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.SERVER);
         this.librariesDirectory = factory.directoryProperty();
         this.minecraftLibrariesDirectory = factory.directoryProperty();
         this.mappingsDirectory = factory.directoryProperty();
         this.remapDirectory = factory.directoryProperty();
+
+        final Path gradleHomeDirectory = gradle.getGradleUserHomeDir().toPath();
+        final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.CACHES);
+        final Path rootDirectory = cacheDirectory.resolve(Constants.NAME);
+        final Path librariesDirectory = rootDirectory.resolve(Constants.LIBRARIES);
+        this.librariesDirectory.set(librariesDirectory.toFile());
+        this.minecraftLibrariesDirectory.set(librariesDirectory.resolve("net").resolve("minecraft").toFile());
+        this.mappingsDirectory.set(rootDirectory.resolve(Constants.MAPPINGS).toFile());
+        this.remapDirectory.set(rootDirectory.resolve(Constants.REMAP).toFile());
+
+        try {
+            this.versionManifest = VersionManifestV2.load();
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void version(final String version) {
@@ -73,6 +96,28 @@ public abstract class MinecraftExtension {
 
     public void platform(final MinecraftPlatform platform) {
         this.platform.set(platform);
+    }
+
+    /**
+     * Apply an access widener to the project.
+     *
+     * @param file any file that can be passed to {@link Project#file(Object)}
+     */
+    public void accessWidener(final Object file) {
+        final TaskProvider<AccessWidenJarTask> awTask;
+        final TaskContainer tasks = this.project.getTasks();
+        if (tasks.getNames().contains(Constants.ACCESS_WIDENER_TASK_NAME)) {
+            awTask = tasks.named(Constants.ACCESS_WIDENER_TASK_NAME, AccessWidenJarTask.class);
+        } else {
+            awTask = tasks.register(Constants.ACCESS_WIDENER_TASK_NAME, AccessWidenJarTask.class, task -> {
+                task.getExpectedNamespace().set("named");
+                task.getDestinationDirectory().set(this.project.getLayout().getProjectDirectory().dir(".gradle").dir(Constants.NAME).dir("aw-minecraft"));
+            });
+        }
+
+        awTask.configure(task -> {
+            task.getAccessWideners().from(file);
+        });
     }
 
     protected DirectoryProperty minecraftLibrariesDirectory() {
@@ -97,23 +142,6 @@ public abstract class MinecraftExtension {
 
     protected Version targetVersion() {
         return this.targetVersion;
-    }
-
-    protected void configure(final Project project) {
-        final Path gradleHomeDirectory = project.getGradle().getGradleUserHomeDir().toPath();
-        final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.CACHES);
-        final Path rootDirectory = cacheDirectory.resolve(Constants.NAME);
-        final Path librariesDirectory = rootDirectory.resolve(Constants.LIBRARIES);
-        this.librariesDirectory.set(librariesDirectory.toFile());
-        this.minecraftLibrariesDirectory.set(librariesDirectory.resolve("net").resolve("minecraft").toFile());
-        this.mappingsDirectory.set(rootDirectory.resolve(Constants.MAPPINGS).toFile());
-        this.remapDirectory.set(rootDirectory.resolve(Constants.REMAP).toFile());
-
-        try {
-            this.versionManifest = VersionManifestV2.load();
-        } catch (final IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     protected void determineVersion() {
