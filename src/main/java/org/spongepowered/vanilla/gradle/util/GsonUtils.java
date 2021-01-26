@@ -43,9 +43,7 @@ public final class GsonUtils {
             .create();
 
     public static <T> T parseFromJson(final URL url, final Class<T> type) throws IOException {
-        Objects.requireNonNull(url, "url");
-
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()))) {
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(url, "url").openStream()))) {
             return GsonUtils.GSON.fromJson(reader, type);
         }
     }

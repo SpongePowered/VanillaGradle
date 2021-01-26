@@ -35,6 +35,7 @@ import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.objectweb.asm.commons.ClassRemapper;
+import org.spongepowered.vanilla.gradle.Constants;
 import org.spongepowered.vanilla.gradle.asm.LocalVariableNamingClassVisitor;
 
 import java.io.BufferedReader;
@@ -53,6 +54,10 @@ public abstract class RemapJarTask extends DefaultTask {
     @OutputFile
     public abstract RegularFileProperty getOutputJar();
 
+    public RemapJarTask() {
+        this.setGroup(Constants.TASK_GROUP);
+    }
+    
     @TaskAction
     public void execute() throws IOException {
         final Atlas atlas = new Atlas();
