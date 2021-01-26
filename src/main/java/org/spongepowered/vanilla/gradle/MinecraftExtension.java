@@ -39,10 +39,6 @@ public abstract class MinecraftExtension {
         this.remapDirectory = factory.directoryProperty();
     }
 
-    protected Property<String> version() {
-        return this.version;
-    }
-
     public void version(final String version) {
         this.version.set(version);
     }
@@ -53,10 +49,6 @@ public abstract class MinecraftExtension {
 
     public void platform(final MinecraftPlatform platform) {
         this.platform.set(platform);
-    }
-
-    protected DirectoryProperty librariesDirectory() {
-        return this.librariesDirectory;
     }
 
     protected DirectoryProperty minecraftLibrariesDirectory() {
@@ -116,8 +108,8 @@ public abstract class MinecraftExtension {
     protected void createMinecraftClasspath(final Project project) {
         final Configuration minecraftClasspath = project.getConfigurations().create("minecraftClasspath");
         minecraftClasspath.withDependencies(a -> {
-            for (final MinecraftSide platform : this.platform.get().activeSides()) {
-                platform.applyLibraries(
+            for (final MinecraftSide side : this.platform.get().activeSides()) {
+                side.applyLibraries(
                     name -> a.add(project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
                     this.targetVersion.libraries()
                 );

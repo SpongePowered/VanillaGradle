@@ -7,79 +7,43 @@ import org.cadixdev.lorenz.asm.LorenzRemapper;
 import org.cadixdev.lorenz.io.proguard.ProGuardReader;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.objectweb.asm.commons.ClassRemapper;
-import org.spongepowered.vanilla.gradle.Constants;
 import org.spongepowered.vanilla.gradle.asm.LocalVariableNamingClassVisitor;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
-import javax.inject.Inject;
-
-public class RemapJarTask extends DefaultTask {
-
-    private final RegularFileProperty inputJar;
-    private final RegularFileProperty mappingsFile;
-    private final RegularFileProperty outputJar;
-
-    @Inject
-    public RemapJarTask(final ObjectFactory factory) {
-        this.setGroup(Constants.TASK_GROUP);
-        this.inputJar = factory.fileProperty();
-        this.mappingsFile = factory.fileProperty();
-        this.outputJar = factory.fileProperty();
-    }
+public abstract class RemapJarTask extends DefaultTask {
 
     @InputFile
-    public RegularFileProperty getInputJar() {
-        return this.inputJar;
-    }
+    public abstract RegularFileProperty getInputJar();
 
     @InputFile
-    public RegularFileProperty getMappingsFile() {
-        return this.mappingsFile;
-    }
+    public abstract RegularFileProperty getMappingsFile();
 
     @OutputFile
-    public RegularFileProperty getOutputJar() {
-        return this.outputJar;
-    }
+    public abstract RegularFileProperty getOutputJar();
 
     @TaskAction
-    public void execute() {
+    public void execute() throws IOException {
         final Atlas atlas = new Atlas();
 
-        final MappingSet mappings;
-        try {
-            mappings = this.loadPgMappings(this.mappingsFile.get().getAsFile()).reverse();
-        } catch (final IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) -> {
-            return new ClassRemapper(new LocalVariableNamingClassVisitor(parent), mapper); // strip snowpeople
-        }));
-
-        try {
-            atlas.run(this.getInputJar().get().getAsFile().toPath(), this.getOutputJar().get().getAsFile().toPath());
-        } catch (final IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private MappingSet loadPgMappings(final File source) throws IOException {
-        final MappingSet set = MappingSet.create();
-        try (final BufferedReader reader = Files.newBufferedReader(source.toPath(), StandardCharsets.UTF_8)) {
+        MappingSet scratchMappings = MappingSet.create();
+        try (final BufferedReader reader = Files.newBufferedReader(this.getMappingsFile().getAsFile().get().toPath(), StandardCharsets.UTF_8)) {
             final ProGuardReader proguard = new ProGuardReader(reader);
-            proguard.read(set);
+            proguard.read(scratchMappings);
         }
-        return set;
+
+        final MappingSet mappings = scratchMappings.reverse();
+
+        atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) ->
+            new ClassRemapper(new LocalVariableNamingClassVisitor(parent), mapper)));
+
+        atlas.run(this.getInputJar().get().getAsFile().toPath(), this.getOutputJar().get().getAsFile().toPath());
     }
 }

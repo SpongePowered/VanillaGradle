@@ -10,6 +10,7 @@ public final class Constants {
     public static final String NAME = "VanillaGradle";
     public static final String VERSION = Constants.version();
     public static final String API_V2_ENDPOINT = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
+    public static final String LIBRARIES_MAVEN_URL = "https://libraries.minecraft.net";
     public static final String TASK_GROUP = "vanilla gradle";
 
     public static final String CACHES = "caches";

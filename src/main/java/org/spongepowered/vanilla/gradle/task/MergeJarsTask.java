@@ -14,43 +14,26 @@ import java.io.IOException;
 
 import javax.inject.Inject;
 
-public class MergeJarsTask extends DefaultTask {
+public abstract class MergeJarsTask extends DefaultTask {
 
-    private final RegularFileProperty clientJar;
-    private final RegularFileProperty serverJar;
-    private final RegularFileProperty mergedJar;
-
-    @Inject
-    public MergeJarsTask(final ObjectFactory factory) {
+    public MergeJarsTask() {
         this.setGroup(Constants.TASK_GROUP);
-        this.clientJar = factory.fileProperty();
-        this.serverJar = factory.fileProperty();
-        this.mergedJar = factory.fileProperty();
     }
 
     @InputFile
-    public RegularFileProperty getClientJar() {
-        return this.clientJar;
-    }
+    public abstract RegularFileProperty getClientJar();
 
     @InputFile
-    public RegularFileProperty getServerJar() {
-        return this.serverJar;
-    }
+    public abstract RegularFileProperty getServerJar();
 
     @OutputFile
-    public RegularFileProperty getMergedJar() {
-        return this.mergedJar;
-    }
+    public abstract RegularFileProperty getMergedJar();
 
     @TaskAction
-    public void execute() {
-        final Merger merger = new Merger(this.clientJar.get().getAsFile(), this.serverJar.get().getAsFile(), this.mergedJar.get().getAsFile());
+    public void execute() throws IOException {
+        final Merger merger = new Merger(this.getClientJar().get().getAsFile(), this.getServerJar().get().getAsFile(), this.getMergedJar().get().getAsFile());
         merger.annotate(AnnotationVersion.API, true);
-        try {
-            merger.process();
-        } catch (final IOException e) {
-            throw new RuntimeException(e);
-        }
+        merger.keepData();
+        merger.process();
     }
 }

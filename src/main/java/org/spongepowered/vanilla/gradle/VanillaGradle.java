@@ -20,6 +20,9 @@ public final class VanillaGradle implements Plugin<Project> {
     public void apply(final Project project) {
         project.getLogger().error(String.format("SpongePowered Vanilla 'GRADLE' Toolset Version '%s'", Constants.VERSION));
 
+        // TODO Make this configurable to not add this always
+        project.getRepositories().maven(r -> r.setUrl(Constants.LIBRARIES_MAVEN_URL));
+
         final MinecraftExtension minecraft = project.getExtensions().create("minecraft", MinecraftExtension.class);
         minecraft.configure(project);
 
