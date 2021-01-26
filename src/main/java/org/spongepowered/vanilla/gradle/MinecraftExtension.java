@@ -4,8 +4,8 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Property;
-import org.spongepowered.vanilla.gradle.model.Library;
 import org.spongepowered.vanilla.gradle.model.Version;
 import org.spongepowered.vanilla.gradle.model.VersionDescriptor;
 import org.spongepowered.vanilla.gradle.model.VersionManifestV2;
@@ -32,7 +32,7 @@ public abstract class MinecraftExtension {
     @Inject
     public MinecraftExtension(final ObjectFactory factory) {
         this.version = factory.property(String.class);
-        this.platform = factory.property(MinecraftPlatform.class);
+        this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.SERVER);
         this.librariesDirectory = factory.directoryProperty();
         this.minecraftLibrariesDirectory = factory.directoryProperty();
         this.mappingsDirectory = factory.directoryProperty();
@@ -116,9 +116,15 @@ public abstract class MinecraftExtension {
     protected void createMinecraftClasspath(final Project project) {
         final Configuration minecraftClasspath = project.getConfigurations().create("minecraftClasspath");
         minecraftClasspath.withDependencies(a -> {
-            for (final Library library : this.targetVersion.libraries()) {
-                a.add(project.getDependencies().create(library.name()));
+            for (final MinecraftSide platform : this.platform.get().activeSides()) {
+                platform.applyLibraries(
+                    name -> a.add(project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
+                    this.targetVersion.libraries()
+                );
             }
         });
+
+        project.getConfigurations().named(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME).configure(path -> path.extendsFrom(minecraftClasspath));
+        project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).configure(path -> path.extendsFrom(minecraftClasspath));
     }
 }

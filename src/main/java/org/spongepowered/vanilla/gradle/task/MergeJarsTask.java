@@ -8,6 +8,7 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.spongepowered.vanilla.gradle.Constants;
 
 import java.io.IOException;
 
@@ -21,6 +22,7 @@ public class MergeJarsTask extends DefaultTask {
 
     @Inject
     public MergeJarsTask(final ObjectFactory factory) {
+        this.setGroup(Constants.TASK_GROUP);
         this.clientJar = factory.fileProperty();
         this.serverJar = factory.fileProperty();
         this.mergedJar = factory.fileProperty();

@@ -9,7 +9,7 @@ import java.util.Map;
 public final class Library implements Serializable {
 
     private LibraryDownloads downloads;
-    private String name;
+    private GroupArtifactVersion name;
     private Map<String, String> natives;
     private List<JsonElement> rules;
 
@@ -17,7 +17,7 @@ public final class Library implements Serializable {
         return this.downloads;
     }
 
-    public String name() {
+    public GroupArtifactVersion name() {
         return this.name;
     }
 

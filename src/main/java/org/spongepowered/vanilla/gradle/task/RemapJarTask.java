@@ -12,8 +12,8 @@ import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.objectweb.asm.commons.ClassRemapper;
+import org.spongepowered.vanilla.gradle.Constants;
 import org.spongepowered.vanilla.gradle.asm.LocalVariableNamingClassVisitor;
-import org.spongepowered.vanilla.gradle.transformer.ExcludingJarEntryTransformer;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -31,6 +31,7 @@ public class RemapJarTask extends DefaultTask {
 
     @Inject
     public RemapJarTask(final ObjectFactory factory) {
+        this.setGroup(Constants.TASK_GROUP);
         this.inputJar = factory.fileProperty();
         this.mappingsFile = factory.fileProperty();
         this.outputJar = factory.fileProperty();
@@ -62,20 +63,9 @@ public class RemapJarTask extends DefaultTask {
             throw new RuntimeException(e);
         }
 
-        atlas.install(ctx -> {
-            final JarEntryRemappingTransformer remapper = new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) -> {
-                return new ClassRemapper(new LocalVariableNamingClassVisitor(parent), mapper); // strip snowpeople
-            });
-            // exclude some big libs to save time
-            return ExcludingJarEntryTransformer.make(remapper, exclusions -> exclusions
-                    .exclude("it.unimi")
-                    .exclude("io.netty")
-                    .exclude("com.google")
-                    .exclude("com.mojang")
-                    .exclude("javax.annotation")
-                    .exclude("org.apache")
-                    .exclude("joptsimple"));
-        });
+        atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) -> {
+            return new ClassRemapper(new LocalVariableNamingClassVisitor(parent), mapper); // strip snowpeople
+        }));
 
         try {
             atlas.run(this.getInputJar().get().getAsFile().toPath(), this.getOutputJar().get().getAsFile().toPath());
