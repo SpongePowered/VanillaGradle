@@ -26,6 +26,8 @@ public abstract class MinecraftExtension {
 
     private final DirectoryProperty librariesDirectory;
     private final DirectoryProperty minecraftLibrariesDirectory;
+    private final DirectoryProperty mappingsDirectory;
+    private final DirectoryProperty remapDirectory;
 
     @Inject
     public MinecraftExtension(final ObjectFactory factory) {
@@ -33,6 +35,8 @@ public abstract class MinecraftExtension {
         this.platform = factory.property(MinecraftPlatform.class);
         this.librariesDirectory = factory.directoryProperty();
         this.minecraftLibrariesDirectory = factory.directoryProperty();
+        this.mappingsDirectory = factory.directoryProperty();
+        this.remapDirectory = factory.directoryProperty();
     }
 
     protected Property<String> version() {
@@ -59,6 +63,14 @@ public abstract class MinecraftExtension {
         return this.minecraftLibrariesDirectory;
     }
 
+    protected DirectoryProperty mappingsDirectory() {
+        return this.mappingsDirectory;
+    }
+
+    protected DirectoryProperty remapDirectory() {
+        return this.remapDirectory;
+    }
+
     protected VersionManifestV2 versionManifest() {
         return this.versionManifest;
     }
@@ -78,6 +90,8 @@ public abstract class MinecraftExtension {
         final Path librariesDirectory = rootDirectory.resolve(Constants.LIBRARIES);
         this.librariesDirectory.set(librariesDirectory.toFile());
         this.minecraftLibrariesDirectory.set(librariesDirectory.resolve("net").resolve("minecraft").toFile());
+        this.mappingsDirectory.set(rootDirectory.resolve(Constants.MAPPINGS).toFile());
+        this.remapDirectory.set(rootDirectory.resolve(Constants.REMAP).toFile());
 
         try {
             this.versionManifest = VersionManifestV2.load();
@@ -88,7 +102,7 @@ public abstract class MinecraftExtension {
 
     protected void determineVersion() {
         this.versionDescriptor = this.versionManifest.findDescriptor(this.version.get()).orElseThrow(() -> new RuntimeException(String.format("No version "
-            + "found for '%s' in the manifest!", this.version.get())));
+                + "found for '%s' in the manifest!", this.version.get())));
     }
 
     protected void downloadManifest() {
