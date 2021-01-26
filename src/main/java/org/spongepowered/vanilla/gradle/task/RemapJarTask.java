@@ -70,7 +70,11 @@ public class RemapJarTask extends DefaultTask {
             return ExcludingJarEntryTransformer.make(remapper, exclusions -> exclusions
                     .exclude("it.unimi")
                     .exclude("io.netty")
-                    .exclude("com.google"));
+                    .exclude("com.google")
+                    .exclude("com.mojang")
+                    .exclude("javax.annotation")
+                    .exclude("org.apache")
+                    .exclude("joptsimple"));
         });
 
         try {
