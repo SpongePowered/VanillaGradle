@@ -16,14 +16,29 @@ repositories {
 }
 
 dependencies {
+    val asmVersion: String by project
+
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("de.undercouch:gradle-download-task:4.1.1")
-    implementation("net.minecraftforge:mergetool:1.1.1")
-    implementation("org.cadixdev:atlas:0.2.0")
+    implementation("net.minecraftforge:mergetool:1.1.1") {
+        exclude("org.ow2.asm") // Use our own ASM
+    }
+    implementation("org.cadixdev:atlas:0.2.0") {
+        exclude("org.ow2.asm") // Use our own ASM
+    }
     implementation("org.cadixdev:lorenz:0.5.6")
-    implementation("org.cadixdev:lorenz-asm:0.5.4")
+    implementation("org.cadixdev:lorenz-asm:0.5.4") {
+        exclude("org.ow2.asm") // Use our own ASM
+    }
+
     implementation("org.cadixdev:lorenz-io-proguard:0.5.6")
-    implementation("net.fabricmc:access-widener:1.0.0")
+    implementation("net.fabricmc:access-widener:1.0.0") {
+        exclude("org.ow2.asm") // Use our own ASM
+    }
+
+    implementation("org.ow2.asm:asm:$asmVersion")
+    implementation("org.ow2.asm:asm-commons:$asmVersion")
+    implementation("org.ow2.asm:asm-util:$asmVersion")
 }
 
 gradlePlugin {
