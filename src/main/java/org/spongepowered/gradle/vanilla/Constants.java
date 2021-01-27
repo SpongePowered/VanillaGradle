@@ -44,7 +44,10 @@ public final class Constants {
 
     public static final class Directories {
         public static final String CACHES = "caches";
-        public static final String LIBRARIES = "libraries";
+        public static final String ASSETS = "assets";
+        public static final String JARS = "jars";
+        public static final String REMAPPED = "remapped";
+        public static final String DECOMPILED = "decompiled";
         public static final String ORIGINAL = "original";
         public static final String MAPPINGS = "mappings";
         public static final String FILTERED = "filtered";

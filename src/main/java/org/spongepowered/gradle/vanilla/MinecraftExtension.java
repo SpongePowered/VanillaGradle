@@ -57,10 +57,13 @@ public abstract class MinecraftExtension {
     private VersionDescriptor versionDescriptor;
     private Version targetVersion;
 
-    private final DirectoryProperty minecraftLibrariesDirectory;
+    private final DirectoryProperty assetsDirectory;
+    private final DirectoryProperty remappedDirectory;
     private final DirectoryProperty originalDirectory;
     private final DirectoryProperty mappingsDirectory;
     private final DirectoryProperty filteredDirectory;
+    private final DirectoryProperty decompiledDirectory;
+
     private final RunConfigurationContainer runConfigurations;
 
     @Inject
@@ -68,20 +71,25 @@ public abstract class MinecraftExtension {
         this.project = project;
         this.version = factory.property(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.SERVER);
-        this.minecraftLibrariesDirectory = factory.directoryProperty();
+        this.assetsDirectory = factory.directoryProperty();
+        this.remappedDirectory = factory.directoryProperty();
         this.originalDirectory = factory.directoryProperty();
         this.mappingsDirectory = factory.directoryProperty();
         this.filteredDirectory = factory.directoryProperty();
+        this.decompiledDirectory = factory.directoryProperty();
+
         this.runConfigurations = factory.newInstance(RunConfigurationContainer.class, factory.domainObjectContainer(RunConfiguration.class), this);
 
         final Path gradleHomeDirectory = gradle.getGradleUserHomeDir().toPath();
         final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.Directories.CACHES);
         final Path rootDirectory = cacheDirectory.resolve(Constants.NAME);
-        final Path librariesDirectory = rootDirectory.resolve(Constants.Directories.LIBRARIES);
-        this.minecraftLibrariesDirectory.set(librariesDirectory.resolve("net").resolve("minecraft").toFile());
-        this.originalDirectory.set(rootDirectory.resolve(Constants.Directories.ORIGINAL).toFile());
+        final Path jarsDirectory = rootDirectory.resolve(Constants.Directories.JARS);
+        this.assetsDirectory.set(rootDirectory.resolve(Constants.Directories.ASSETS).toFile());
+        this.remappedDirectory.set(jarsDirectory.resolve(Constants.Directories.REMAPPED).toFile());
+        this.originalDirectory.set(jarsDirectory.resolve(Constants.Directories.ORIGINAL).toFile());
         this.mappingsDirectory.set(rootDirectory.resolve(Constants.Directories.MAPPINGS).toFile());
-        this.filteredDirectory.set(rootDirectory.resolve(Constants.Directories.FILTERED).toFile());
+        this.filteredDirectory.set(jarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
+        this.decompiledDirectory.set(jarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
 
         this.versionManifest = VersionManifestV2.load();
     }
@@ -111,23 +119,20 @@ public abstract class MinecraftExtension {
         } else {
             awTask = tasks.register(Constants.ACCESS_WIDENER_TASK_NAME, AccessWidenJarTask.class, task -> {
                 task.getExpectedNamespace().set("named");
-                task.getDestinationDirectory().set(this.project.getLayout().getProjectDirectory().dir(".gradle").dir(Constants.NAME).dir("aw-minecraft"));
+                task.getDestinationDirectory()
+                        .set(this.project.getLayout().getProjectDirectory().dir(".gradle").dir(Constants.NAME).dir("aw-minecraft"));
             });
         }
 
         awTask.configure(task -> task.getAccessWideners().from(file));
     }
 
-    public RunConfigurationContainer getRuns() {
-        return this.runConfigurations;
+    protected DirectoryProperty assetsDirectory() {
+        return this.assetsDirectory;
     }
 
-    public void runs(final Action<RunConfigurationContainer> run) {
-        Objects.requireNonNull(run, "run").execute(this.runConfigurations);
-    }
-
-    protected DirectoryProperty minecraftLibrariesDirectory() {
-        return this.minecraftLibrariesDirectory;
+    protected DirectoryProperty remappedDirectory() {
+        return this.remappedDirectory;
     }
 
     protected DirectoryProperty originalDirectory() {
@@ -142,6 +147,18 @@ public abstract class MinecraftExtension {
         return this.filteredDirectory;
     }
 
+    protected DirectoryProperty decompiledDirectory() {
+        return this.decompiledDirectory;
+    }
+
+    public RunConfigurationContainer getRuns() {
+        return this.runConfigurations;
+    }
+
+    public void runs(final Action<RunConfigurationContainer> run) {
+        Objects.requireNonNull(run, "run").execute(this.runConfigurations);
+    }
+
     protected VersionDescriptor versionDescriptor() {
         return this.versionDescriptor;
     }
@@ -151,8 +168,9 @@ public abstract class MinecraftExtension {
     }
 
     protected void determineVersion() {
-        this.versionDescriptor = this.versionManifest.findDescriptor(this.version.get()).orElseThrow(() -> new RuntimeException(String.format("No version "
-                + "found for '%s' in the manifest!", this.version.get())));
+        this.versionDescriptor =
+                this.versionManifest.findDescriptor(this.version.get()).orElseThrow(() -> new RuntimeException(String.format("No version "
+                        + "found for '%s' in the manifest!", this.version.get())));
     }
 
     protected void downloadManifest() {
@@ -168,8 +186,8 @@ public abstract class MinecraftExtension {
         minecraftClasspath.withDependencies(a -> {
             for (final MinecraftSide side : this.platform.get().activeSides()) {
                 side.applyLibraries(
-                    name -> a.add(project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
-                    this.targetVersion.libraries()
+                        name -> a.add(project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
+                        this.targetVersion.libraries()
                 );
             }
         });

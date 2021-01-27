@@ -78,7 +78,7 @@ public final class VanillaGradle implements Plugin<Project> {
             task.getClientJar().set(remapClientJar.get().getOutputJar());
             task.getServerJar().set(remapServerJar.get().getOutputJar());
             task.getMergedJar()
-                    .set(minecraft.minecraftLibrariesDirectory().get().dir(Constants.JOINED).dir(minecraft.versionDescriptor().sha1()).file(
+                    .set(minecraft.remappedDirectory().get().dir(Constants.JOINED).dir(minecraft.versionDescriptor().sha1()).file(
                             "minecraft-joined-" + minecraft.versionDescriptor().id() + ".jar"));
         });
 
@@ -180,7 +180,7 @@ public final class VanillaGradle implements Plugin<Project> {
                 task.dependsOn(downloadMappings);
 
                 task.getInputJar().set(downloadJar.get().getDest());
-                task.getOutputJar().set(minecraft.minecraftLibrariesDirectory().get().getAsFile().toPath().resolve(sideName).resolve(minecraft.versionDescriptor()
+                task.getOutputJar().set(minecraft.remappedDirectory().get().getAsFile().toPath().resolve(sideName).resolve(minecraft.versionDescriptor()
                         .sha1()).resolve("minecraft-" + sideName + "-" + minecraft.versionDescriptor().id() + "-remapped.jar").toFile());
                 task.getMappingsFile().set(downloadMappings.get().getDest());
             });
@@ -202,7 +202,7 @@ public final class VanillaGradle implements Plugin<Project> {
                 task.dependsOn(downloadMappings);
 
                 task.getInputJar().set(filteredJar.flatMap(AbstractArchiveTask::getArchiveFile));
-                task.getOutputJar().set(minecraft.minecraftLibrariesDirectory().get().getAsFile().toPath().resolve(sideName).resolve(minecraft.versionDescriptor()
+                task.getOutputJar().set(minecraft.remappedDirectory().get().getAsFile().toPath().resolve(sideName).resolve(minecraft.versionDescriptor()
                         .sha1()).resolve("minecraft-" + sideName + "-" + minecraft.versionDescriptor().id() + "-remapped.jar").toFile());
                 task.getMappingsFile().set(downloadMappings.get().getDest());
             });
@@ -217,12 +217,12 @@ public final class VanillaGradle implements Plugin<Project> {
         // Download asset index
         final TaskProvider<Download> downloadIndex = tasks.register("downloadAssetIndex", Download.class, task -> {
             task.src(minecraft.targetVersion().assetIndex().url());
-            task.dest(minecraft.minecraftLibrariesDirectory().dir("assets/indexes").get().getAsFile());
+            task.dest(minecraft.assetsDirectory().dir("indexes").get().getAsFile());
             task.overwrite(false);
         });
 
         final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
-            task.getAssetsDirectory().set(minecraft.minecraftLibrariesDirectory().dir("assets/objects"));
+            task.getAssetsDirectory().set(minecraft.assetsDirectory().dir("objects"));
             task.getAssetsIndex().fileProvider(downloadIndex.map(Download::getDest));
         });
 
