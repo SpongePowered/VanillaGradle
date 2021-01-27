@@ -27,11 +27,12 @@ package org.spongepowered.gradle.vanilla.asm;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.spongepowered.gradle.vanilla.Constants;
 
 public final class LocalVariableNamingClassVisitor extends ClassVisitor {
 
     public LocalVariableNamingClassVisitor(final ClassVisitor classVisitor) {
-        super(Opcodes.ASM7, classVisitor);
+        super(Constants.ASM_VERSION, classVisitor);
     }
 
     @Override
