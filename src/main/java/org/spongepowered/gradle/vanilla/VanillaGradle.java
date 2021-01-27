@@ -26,8 +26,10 @@ package org.spongepowered.gradle.vanilla;
 
 import de.undercouch.gradle.tasks.download.Download;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.JavaExec;
@@ -88,6 +90,11 @@ public final class VanillaGradle implements Plugin<Project> {
             task.dependsOn(remapServerJar);
             task.dependsOn(remapClientJar);
             task.dependsOn(mergedJars);
+        });
+
+        final NamedDomainObjectProvider<Configuration> runtimeClasspath = project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
+        minecraft.getRuns().configureEach(run -> {
+            run.classpath().from(runtimeClasspath);
         });
 
         project.afterEvaluate(p -> {
@@ -240,6 +247,7 @@ public final class VanillaGradle implements Plugin<Project> {
         final IdeaModel model = project.getExtensions().getByType(IdeaModel.class);
 
         // Navigate via the extension properties...
+        // https://github.com/JetBrains/gradle-idea-ext-plugin/wiki
         final ProjectSettings ideaProjectSettings = ((ExtensionAware) model.getProject()).getExtensions().getByType(ProjectSettings.class);
         final TaskTriggersConfig taskTriggers = ((ExtensionAware) ideaProjectSettings).getExtensions().getByType(TaskTriggersConfig.class);
         final RunConfigurationContainer runConfigurations =
@@ -280,6 +288,7 @@ public final class VanillaGradle implements Plugin<Project> {
                 exec.getMainClass().set(config.mainClass());
                 exec.getMainModule().set(config.mainModule());
                 exec.classpath(config.classpath());
+                exec.setWorkingDir(config.workingDirectory());
                 exec.getJvmArgumentProviders().addAll(config.allJvmArguments());
                 exec.getArgumentProviders().addAll(config.allArguments());
             });
