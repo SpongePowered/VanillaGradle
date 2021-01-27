@@ -24,44 +24,32 @@
  */
 package org.spongepowered.gradle.vanilla.task;
 
-import net.fabricmc.accesswidener.AccessWidener;
-import net.fabricmc.accesswidener.AccessWidenerReader;
-import net.fabricmc.accesswidener.AccessWidenerVisitor;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
+import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.spongepowered.gradle.vanilla.Constants;
+import org.gradle.workers.WorkerExecutor;
 import org.spongepowered.gradle.vanilla.util.DigestUtils;
+import org.spongepowered.gradle.vanilla.worker.AccessWidenerWorker;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.jar.JarEntry;
-import java.util.jar.JarInputStream;
-import java.util.jar.JarOutputStream;
 
 import javax.inject.Inject;
 
@@ -69,11 +57,27 @@ public abstract class AccessWidenJarTask extends DefaultTask {
 
     private final Property<String> accessWidenerHash;
 
+    /**
+     * Get the classpath used to execute the access widener worker.
+     *
+     * <p>This must contain the {@code net.fabricmc:access-widener} library and
+     * its dependencies.</p>
+     *
+     * @return the classpath.
+     */
+    @Classpath
+    public abstract FileCollection getWorkerClasspath();
+
+    public abstract void setWorkerClasspath(final FileCollection classpath);
+
     @Inject
     protected abstract ObjectFactory getObjectFactory();
 
     @Inject
     protected abstract ProviderFactory getProviderFactory();
+
+    @Inject
+    protected abstract WorkerExecutor getWorkerExecutor();
 
     @InputFiles
     public abstract ConfigurableFileCollection getSource();
@@ -136,59 +140,14 @@ public abstract class AccessWidenJarTask extends DefaultTask {
 
     @TaskAction
     public void execute() {
-        final AccessWidener widener = new AccessWidener();
-        final AccessWidenerReader reader = new AccessWidenerReader(widener);
-
-        for (final File widenerFile : this.getAccessWideners().getAsFileTree()) {
-            try (final BufferedReader fileReader =
-                         new BufferedReader(new InputStreamReader(new FileInputStream(widenerFile), StandardCharsets.UTF_8))) {
-                reader.read(fileReader);
-            } catch (final IOException ex) {
-                this.getLogger().error("Failed to read access widener from file {}", widenerFile, ex);
-                throw new GradleException("Access widening failed");
-            }
-        };
-
-        JarEntry entry = null;
-        try (final InputStream source = new FileInputStream(this.getSource().getSingleFile());
-             final JarInputStream sourceJar = new JarInputStream(source);
-             final OutputStream destination = new FileOutputStream(this.getDestination().get().getAsFile());
-             final JarOutputStream destinationJar = sourceJar.getManifest() == null ? new JarOutputStream(destination) :
-                                                    new JarOutputStream(destination, sourceJar.getManifest())
-             ) {
-
-            while ((entry = sourceJar.getNextJarEntry()) != null) {
-                destinationJar.putNextEntry(entry);
-                if (entry.getName().endsWith(".class")) { // Possible class
-                    this.transformEntry(widener, sourceJar, destinationJar);
-                } else {
-                    this.copyEntry(sourceJar, destinationJar);
-                }
-            }
-
-        } catch (final IOException ex) {
-            this.getLogger().error("Failed to access-transform jar {} (while processing entry {})",
-                    this.getSource().getSingleFile(),
-                    entry == null ? "<unknown>" : entry.getName(), ex);
-            throw new GradleException("Unable to access-transform " + this.getSource().getSingleFile(), ex);
-        }
-    }
-
-    private void transformEntry(final AccessWidener widener, final InputStream source, final OutputStream dest)
-            throws IOException {
-        final ClassReader reader = new ClassReader(source);
-        final ClassWriter writer = new ClassWriter(reader, 0);
-        final ClassVisitor visitor = AccessWidenerVisitor.createClassVisitor(Constants.ASM_VERSION, writer, widener);
-        reader.accept(visitor, 0);
-        dest.write(writer.toByteArray());
-    }
-
-    private void copyEntry(final InputStream source, final OutputStream dest) throws IOException {
-        final byte[] buf = new byte[4096];
-        int read;
-        while ((read = source.read(buf)) != -1) {
-            dest.write(buf, 0, read);
-        }
+        this.getWorkerExecutor()
+                .classLoaderIsolation(spec -> spec.getClasspath().from(this.getWorkerClasspath()))
+                .submit(AccessWidenerWorker.class, params -> {
+                    params.getAccessWideners().from(this.getAccessWideners());
+                    params.getSource().from(this.getSource());
+                    params.getDestination().set(this.getDestination());
+                    params.getExpectedNamespace().set(this.getExpectedNamespace());
+                });
     }
 
 }

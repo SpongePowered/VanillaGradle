@@ -30,6 +30,9 @@ import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.artifacts.repositories.MavenRepositoryContentDescriptor;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.JavaExec;
@@ -59,31 +62,19 @@ import java.util.Locale;
 
 public final class VanillaGradle implements Plugin<Project> {
 
+    private Project project;
+
     @Override
     public void apply(final Project project) {
-        project.getLogger().error(String.format("SpongePowered Vanilla 'GRADLE' Toolset Version '%s'", Constants.VERSION));
-
-        // TODO Make this configurable to not add this always
-        project.getRepositories().maven(r -> r.setUrl(Constants.MINECRAFT_LIBRARIES_MAVEN_URL));
+        this.project = project;
+        project.getLogger().lifecycle(String.format("SpongePowered Vanilla 'GRADLE' Toolset Version '%s'", Constants.VERSION));
 
         final MinecraftExtension minecraft = project.getExtensions().create("minecraft", MinecraftExtension.class, project);
 
         final TaskProvider<RemapJarTask> remapClientJar = this.createSidedTasks(MinecraftSide.CLIENT, project.getTasks(), minecraft);
         final TaskProvider<RemapJarTask> remapServerJar = this.createSidedTasks(MinecraftSide.SERVER, project.getTasks(), minecraft);
 
-        final TaskProvider<MergeJarsTask> mergedJars = project.getTasks().register("mergeJars", MergeJarsTask.class, task -> {
-            task.onlyIf(t -> minecraft.platform().get() == MinecraftPlatform.JOINED);
-
-            task.dependsOn(remapClientJar);
-            task.dependsOn(remapServerJar);
-
-            task.getClientJar().set(remapClientJar.get().getOutputJar());
-            task.getServerJar().set(remapServerJar.get().getOutputJar());
-            task.getMergedJar()
-                    .set(minecraft.remappedDirectory().get().dir(Constants.JOINED).dir(minecraft.versionDescriptor().sha1()).file(
-                            "minecraft-joined-" + minecraft.versionDescriptor().id() + ".jar"));
-        });
-
+        final TaskProvider<MergeJarsTask> mergedJars = this.createJarMerge(minecraft, remapClientJar, remapServerJar);
         final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, project.getTasks());
 
         final TaskProvider<?> prepareWorkspace = project.getTasks().register("prepareWorkspace", DefaultTask.class, task -> {
@@ -98,6 +89,9 @@ public final class VanillaGradle implements Plugin<Project> {
         });
 
         project.afterEvaluate(p -> {
+            // Only add repositories if selected in extension
+            this.configureRepositories(minecraft, project.getRepositories());
+
             minecraft.determineVersion();
             minecraft.downloadManifest();
             minecraft.createMinecraftClasspath(p);
@@ -151,6 +145,45 @@ public final class VanillaGradle implements Plugin<Project> {
                         project.getObjects().fileCollection().from(actualDependency)
                 );
             }
+        });
+    }
+
+    private void configureRepositories(final MinecraftExtension extension, final RepositoryHandler handler) {
+        if (extension.injectRepositories().get()) {
+            handler.maven(repo -> {
+                repo.setUrl(Constants.Repositories.MINECRAFT);
+                repo.mavenContent(MavenRepositoryContentDescriptor::releasesOnly);
+            });
+            handler.maven(repo -> repo.setUrl(Constants.Repositories.FABRIC_MC));
+            handler.maven(repo -> repo.setUrl(Constants.Repositories.MINECRAFT_FORGE));
+        }
+    }
+
+    private TaskProvider<MergeJarsTask> createJarMerge(
+            final MinecraftExtension minecraft,
+            final TaskProvider<RemapJarTask> client,
+            final TaskProvider<RemapJarTask> server
+    ) {
+
+        final Configuration mergetool = this.project.getConfigurations().maybeCreate(Constants.Configurations.MERGETOOL);
+        mergetool.defaultDependencies(deps -> {
+            deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.MERGE_TOOL));
+        });
+        final FileCollection mergetoolClasspath = mergetool.getIncoming().getFiles();
+
+        return this.project.getTasks().register("mergeJars", MergeJarsTask.class, task -> {
+            task.onlyIf(t -> minecraft.platform().get() == MinecraftPlatform.JOINED);
+
+            task.dependsOn(client);
+            task.dependsOn(server);
+            task.setWorkerClasspath(mergetoolClasspath);
+            task.getClientJar().set(client.get().getOutputJar());
+            task.getServerJar().set(server.get().getOutputJar());
+            task.getMergedJar().set(
+                minecraft.remappedDirectory().map(dir -> dir.dir(Constants.JOINED)
+                    .dir(minecraft.versionDescriptor().sha1())
+                    .file("minecraft-joined-" + minecraft.versionDescriptor().id() + ".jar"))
+            );
         });
     }
 

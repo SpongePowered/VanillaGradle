@@ -52,11 +52,43 @@ public final class Constants {
         public static final String ORIGINAL = "original";
         public static final String MAPPINGS = "mappings";
         public static final String FILTERED = "filtered";
+
+        private Directories() {
+        }
     }
 
     public static final class RunConfiguration {
         public static final String SERVER_CONFIG = "server";
         public static final String CLIENT_CONFIG = "client";
+
+        private RunConfiguration() {
+        }
+    }
+
+    public static final class WorkerDependencies {
+        public static final String MERGE_TOOL = "net.minecraftforge:mergetool:1.1.1";
+        public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:1.0.0";
+
+        private WorkerDependencies() {
+        }
+    }
+
+    public static final class Repositories {
+        public static final String MINECRAFT = "https://libraries.minecraft.net/";
+        public static final String MINECRAFT_FORGE = "https://files.minecraftforge.net/maven/";
+        public static final String FABRIC_MC = "https://maven.fabricmc.net/";
+
+        private Repositories() {
+        }
+    }
+
+    public static final class Configurations {
+        public static final String MINECRAFT_CLASSPATH = "minecraftClasspath";
+        public static final String MERGETOOL = "mergetool";
+        public static final String ACCESS_WIDENER = "accessWidener";
+
+        private Configurations() {
+        }
     }
 
     /**

@@ -24,22 +24,37 @@
  */
 package org.spongepowered.gradle.vanilla.task;
 
-import net.minecraftforge.mergetool.AnnotationVersion;
-import net.minecraftforge.mergetool.Merger;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.workers.WorkerExecutor;
 import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.worker.JarMergeWorker;
 
-import java.io.IOException;
+import javax.inject.Inject;
 
 public abstract class MergeJarsTask extends DefaultTask {
 
     public MergeJarsTask() {
         this.setGroup(Constants.TASK_GROUP);
     }
+
+    /**
+     * Get the classpath used to execute the jar merge worker.
+     *
+     * <p>This must contain the {@code net.minecraftforge:mergetool} library and
+     * its dependencies.</p>
+     *
+     * @return the classpath.
+     */
+    @Classpath
+    public abstract FileCollection getWorkerClasspath();
+
+    public abstract void setWorkerClasspath(final FileCollection collection);
 
     @InputFile
     public abstract RegularFileProperty getClientJar();
@@ -50,11 +65,18 @@ public abstract class MergeJarsTask extends DefaultTask {
     @OutputFile
     public abstract RegularFileProperty getMergedJar();
 
+    @Inject
+    public abstract WorkerExecutor getWorkerExecutor();
+
     @TaskAction
-    public void execute() throws IOException {
-        final Merger merger = new Merger(this.getClientJar().get().getAsFile(), this.getServerJar().get().getAsFile(), this.getMergedJar().get().getAsFile());
-        merger.annotate(AnnotationVersion.API, true);
-        merger.keepData();
-        merger.process();
+    public void execute() {
+        // Execute in an isolated class loader that can access our customized classpath
+        this.getWorkerExecutor()
+                .classLoaderIsolation(spec -> spec.getClasspath().from(this.getWorkerClasspath()))
+                .submit(JarMergeWorker.class, parameters -> {
+                    parameters.getClientJar().set(this.getClientJar());
+                    parameters.getServerJar().set(this.getServerJar());
+                    parameters.getMergedJar().set(this.getMergedJar());
+                });
     }
 }

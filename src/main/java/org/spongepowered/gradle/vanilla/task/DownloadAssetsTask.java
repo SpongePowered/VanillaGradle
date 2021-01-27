@@ -38,6 +38,8 @@ import org.gradle.workers.WorkAction;
 import org.gradle.workers.WorkParameters;
 import org.gradle.workers.WorkQueue;
 import org.gradle.workers.WorkerExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.AssetIndex;
 import org.spongepowered.gradle.vanilla.util.GsonUtils;
@@ -117,6 +119,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
     }
 
     public static abstract class DownloadAssetsAction implements WorkAction<DownloadAssetsParameters> {
+        private static final Logger LOGGER = LoggerFactory.getLogger(DownloadAssetsAction.class);
         private static final int TRIES = 3;
 
         @Override
@@ -145,7 +148,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
                         break;
                     } catch (final IOException ex) {
                         ex.printStackTrace();
-                        // this.getLogger().warn("Failed to download asset {} (try ({}/{})", asset.hash(), attempt, TRIES);
+                        DownloadAssetsAction.LOGGER.warn("Failed to download asset {} (try ({}/{})", asset.hash(), attempt, TRIES);
                     }
                 }
             }
