@@ -40,12 +40,17 @@ public final class Constants {
     public static final String TASK_GROUP = "vanilla gradle";
     public static final int ASM_VERSION = Opcodes.ASM9;
     public static final String ACCESS_WIDENER_TASK_NAME = "accessWidenMinecraft";
-
-    public static final String CACHES = "caches";
-    public static final String LIBRARIES = "libraries";
-    public static final String MAPPINGS = "mappings";
-    public static final String REMAP = "remap";
     public static final String JOINED = "joined";
+
+    public static final class Directories {
+        public static final String CACHES = "caches";
+        public static final String LIBRARIES = "libraries";
+        public static final String ORIGINAL = "original";
+        public static final String MAPPINGS = "mappings";
+        public static final String REMAP = "remap";
+        public static final String FILTERED = "filtered";
+    }
+
     /**
      * Group IDs of dependencies that should not be added to a server-only environment
      */
