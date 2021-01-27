@@ -10,9 +10,7 @@ version = "0.1"
 repositories {
     mavenCentral()
     maven("https://maven.fabricmc.net/")
-    maven {
-        setUrl("https://files.minecraftforge.net/maven")
-    }
+    maven("https://files.minecraftforge.net/maven")
 }
 
 dependencies {
@@ -44,17 +42,17 @@ dependencies {
 gradlePlugin {
     plugins {
         create("vanillagradle") {
-            id = "org.spongepowered.vanilla.gradle"
-            implementationClass = "org.spongepowered.vanilla.gradle.VanillaGradle"
+            id = "org.spongepowered.gradle.vanilla"
+            implementationClass = "org.spongepowered.gradle.vanilla.VanillaGradle"
         }
     }
 }
 
-val name: String by project
-val organization: String by project
-val projectUrl: String by project
-
 license {
+    val name: String by project
+    val organization: String by project
+    val projectUrl: String by project
+
     (this as ExtensionAware).extra.apply {
         this["name"] = name
         this["organization"] = organization
