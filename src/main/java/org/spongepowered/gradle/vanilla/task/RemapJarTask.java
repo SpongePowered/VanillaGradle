@@ -37,6 +37,7 @@ import org.gradle.api.tasks.TaskAction;
 import org.objectweb.asm.commons.ClassRemapper;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.asm.LocalVariableNamingClassVisitor;
+import org.spongepowered.gradle.vanilla.transformer.SignatureStripperTransformer;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -62,7 +63,7 @@ public abstract class RemapJarTask extends DefaultTask {
     public void execute() throws IOException {
         final Atlas atlas = new Atlas();
 
-        MappingSet scratchMappings = MappingSet.create();
+        final MappingSet scratchMappings = MappingSet.create();
         try (final BufferedReader reader = Files.newBufferedReader(this.getMappingsFile().getAsFile().get().toPath(), StandardCharsets.UTF_8)) {
             final ProGuardReader proguard = new ProGuardReader(reader);
             proguard.read(scratchMappings);
@@ -70,6 +71,7 @@ public abstract class RemapJarTask extends DefaultTask {
 
         final MappingSet mappings = scratchMappings.reverse();
 
+        atlas.install(ctx -> SignatureStripperTransformer.INSTANCE);
         atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) ->
             new ClassRemapper(new LocalVariableNamingClassVisitor(parent), mapper)));
 
