@@ -25,33 +25,40 @@
 package org.spongepowered.gradle.vanilla.model;
 
 import java.io.Serializable;
-import java.net.URL;
+import java.util.Map;
 
-public final class AssetIndex implements Serializable {
+public class AssetIndex {
 
-    private String id;
-    private String sha1;
-    private int size;
-    private int totalSize;
-    private URL url;
+    private final Map<String, Asset> objects;
 
-    public String id() {
-        return this.id;
+    public AssetIndex(final Map<String, Asset> objects) {
+        this.objects = objects;
     }
 
-    public String sha1() {
-        return this.sha1;
+    public Map<String, Asset> objects() {
+        return this.objects;
     }
 
-    public int size() {
-        return this.size;
+    public static final class Asset implements Serializable {
+        private final String hash;
+        private final int size;
+
+        public Asset(final String hash, final int size) {
+            this.hash = hash;
+            this.size = size;
+        }
+
+        public String hash() {
+            return this.hash;
+        }
+
+        public int size() {
+            return this.size;
+        }
+
+        public String fileName() {
+            return this.hash.substring(0, 2) + "/" + this.hash;
+        }
     }
 
-    public int totalSize() {
-        return this.totalSize;
-    }
-
-    public URL url() {
-        return this.url;
-    }
 }

@@ -32,6 +32,7 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
+import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.task.FilterJarTask;
 import org.spongepowered.gradle.vanilla.task.MergeJarsTask;
 import org.spongepowered.gradle.vanilla.task.RemapJarTask;
@@ -66,7 +67,9 @@ public final class VanillaGradle implements Plugin<Project> {
                             "minecraft-joined-" + minecraft.versionDescriptor().id() + ".jar"));
         });
 
-        project.getTasks().register("prepareWorkspace", DefaultTask.class, task -> {
+        final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, project.getTasks());
+
+        final TaskProvider<?> prepareWorkspace = project.getTasks().register("prepareWorkspace", DefaultTask.class, task -> {
             task.dependsOn(remapServerJar);
             task.dependsOn(remapClientJar);
             task.dependsOn(mergedJars);
@@ -76,6 +79,12 @@ public final class VanillaGradle implements Plugin<Project> {
             minecraft.determineVersion();
             minecraft.downloadManifest();
             minecraft.createMinecraftClasspath(p);
+
+            prepareWorkspace.configure(task -> {
+                if (minecraft.platform().get().activeSides().contains(MinecraftSide.CLIENT)) {
+                    task.dependsOn(assets);
+                }
+            });
 
             TaskProvider<?> resultJar = null;
             switch (minecraft.platform().get()) {
@@ -89,7 +98,6 @@ public final class VanillaGradle implements Plugin<Project> {
                     resultJar = mergedJars;
                     break;
             }
-
 
             if (resultJar != null) {
                 final TaskProvider<?> actualDependency;
@@ -180,5 +188,23 @@ public final class VanillaGradle implements Plugin<Project> {
         }
 
         return remapJar;
+    }
+
+    private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtension minecraft, final TaskContainer tasks) {
+        // TODO: Attempt to link assets to default client, or other common directories
+
+        // Download asset index
+        final TaskProvider<Download> downloadIndex = tasks.register("downloadAssetIndex", Download.class, task -> {
+            task.src(minecraft.targetVersion().assetIndex().url());
+            task.dest(minecraft.minecraftLibrariesDirectory().dir("assets/indexes").get().getAsFile());
+            task.overwrite(false);
+        });
+
+        final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
+            task.getAssetsDirectory().set(minecraft.minecraftLibrariesDirectory().dir("assets/objects"));
+            task.getAssetsIndex().fileProvider(downloadIndex.map(Download::getDest));
+        });
+
+        return downloadAssets;
     }
 }

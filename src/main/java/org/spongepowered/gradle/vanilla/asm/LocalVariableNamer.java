@@ -26,7 +26,7 @@ package org.spongepowered.gradle.vanilla.asm;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
-import org.spongepowered.vanilla.gradle.Constants;
+import org.spongepowered.gradle.vanilla.Constants;
 
 public final class LocalVariableNamer extends MethodVisitor {
 

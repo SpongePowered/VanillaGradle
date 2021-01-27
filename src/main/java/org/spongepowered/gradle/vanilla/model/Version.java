@@ -36,7 +36,7 @@ import java.util.Optional;
 public final class Version implements Serializable {
 
     private Arguments arguments;
-    private AssetIndex assetIndex;
+    private AssetIndexReference assetIndex;
     private String assets;
     private int complianceLevel;
     private Map<DownloadClassifier, Download> downloads;
@@ -53,7 +53,7 @@ public final class Version implements Serializable {
         return this.arguments;
     }
 
-    public AssetIndex assetIndex() {
+    public AssetIndexReference assetIndex() {
         return this.assetIndex;
     }
 
