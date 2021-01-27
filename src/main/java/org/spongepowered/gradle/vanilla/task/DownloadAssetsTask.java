@@ -28,7 +28,6 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.logging.Logger;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Console;
@@ -78,7 +77,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
     }
 
     @TaskAction
-    public void downloadAssets() {
+    public void execute() {
         final AssetIndex index;
         try (final BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(
             this.getAssetsIndex().get().getAsFile()),
@@ -117,9 +116,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
         ListProperty<AssetIndex.Asset> getAssets();
     }
 
-
     public static abstract class DownloadAssetsAction implements WorkAction<DownloadAssetsParameters> {
-        private static final String BASE_URL = "https://resources.download.minecraft.net/";
         private static final int TRIES = 3;
 
         @Override
@@ -136,7 +133,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
                 for (int attempt = 0; attempt < TRIES; attempt++) {
                     try {
                         Files.createDirectories(destinationPath.getParent());
-                        final URLConnection conn = new URL(BASE_URL + asset.fileName()).openConnection();
+                        final URLConnection conn = new URL(Constants.MINECRAFT_RESOURCES_URL + asset.fileName()).openConnection();
                         try (final InputStream is = conn.getInputStream();
                              final OutputStream os = Files.newOutputStream(destinationPath)) {
                             final byte[] buf = new byte[4096];

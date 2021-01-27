@@ -36,7 +36,8 @@ public final class Constants {
     public static final String NAME = "VanillaGradle";
     public static final String VERSION = Constants.version();
     public static final String API_V2_ENDPOINT = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
-    public static final String LIBRARIES_MAVEN_URL = "https://libraries.minecraft.net";
+    public static final String MINECRAFT_LIBRARIES_MAVEN_URL = "https://libraries.minecraft.net";
+    public static final String MINECRAFT_RESOURCES_URL = "https://resources.download.minecraft.net/";
     public static final String TASK_GROUP = "vanilla gradle";
     public static final int ASM_VERSION = Opcodes.ASM9;
     public static final String ACCESS_WIDENER_TASK_NAME = "accessWidenMinecraft";
@@ -51,6 +52,11 @@ public final class Constants {
         public static final String ORIGINAL = "original";
         public static final String MAPPINGS = "mappings";
         public static final String FILTERED = "filtered";
+    }
+
+    public static final class RunConfiguration {
+        public static final String SERVER_CONFIG = "server";
+        public static final String CLIENT_CONFIG = "client";
     }
 
     /**

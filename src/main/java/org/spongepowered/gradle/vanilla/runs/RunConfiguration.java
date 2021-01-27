@@ -44,10 +44,6 @@ import javax.inject.Inject;
  */
 public class RunConfiguration implements Named {
 
-    public static final String CLIENT_CONFIGURATION_NAME = "client";
-
-    public static final String SERVER_CONFIGURATION_NAME = "server";
-
     private final String name;
     private transient final ProjectLayout layout;
     private transient final ObjectFactory objects;

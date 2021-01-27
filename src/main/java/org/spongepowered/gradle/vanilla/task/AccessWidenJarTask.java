@@ -135,7 +135,7 @@ public abstract class AccessWidenJarTask extends DefaultTask {
     }
 
     @TaskAction
-    public void widenJar() {
+    public void execute() {
         final AccessWidener widener = new AccessWidener();
         final AccessWidenerReader reader = new AccessWidenerReader(widener);
 

@@ -37,6 +37,7 @@ import org.gradle.api.Rule;
 import org.gradle.api.UnknownDomainObjectException;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
+import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 
 import java.util.Collection;
@@ -80,10 +81,10 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      */
     public NamedDomainObjectProvider<RunConfiguration> client(final @Nullable Action<RunConfiguration> configureAction) {
         final NamedDomainObjectProvider<RunConfiguration> config;
-        if (this.getNames().contains(RunConfiguration.CLIENT_CONFIGURATION_NAME)) {
-            config = this.named(RunConfiguration.CLIENT_CONFIGURATION_NAME);
+        if (this.getNames().contains(Constants.RunConfiguration.CLIENT_CONFIG)) {
+            config = this.named(Constants.RunConfiguration.CLIENT_CONFIG);
         } else {
-            config = this.register(RunConfiguration.CLIENT_CONFIGURATION_NAME, this.configureClientRun());
+            config = this.register(Constants.RunConfiguration.CLIENT_CONFIG, this.configureClientRun());
         }
         if (configureAction != null) {
             config.configure(configureAction);
@@ -120,10 +121,10 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      */
     public NamedDomainObjectProvider<RunConfiguration> server(final @Nullable Action<RunConfiguration> configureAction) {
         final NamedDomainObjectProvider<RunConfiguration> config;
-        if (this.getNames().contains(RunConfiguration.SERVER_CONFIGURATION_NAME)) {
-            config = this.named(RunConfiguration.SERVER_CONFIGURATION_NAME);
+        if (this.getNames().contains(Constants.RunConfiguration.SERVER_CONFIG)) {
+            config = this.named(Constants.RunConfiguration.SERVER_CONFIG);
         } else {
-            config = this.register(RunConfiguration.SERVER_CONFIGURATION_NAME, this.configureServerRun());
+            config = this.register(Constants.RunConfiguration.SERVER_CONFIG, this.configureServerRun());
         }
         if (configureAction != null) {
             config.configure(configureAction);
