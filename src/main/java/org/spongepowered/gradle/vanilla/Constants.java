@@ -47,7 +47,6 @@ public final class Constants {
         public static final String LIBRARIES = "libraries";
         public static final String ORIGINAL = "original";
         public static final String MAPPINGS = "mappings";
-        public static final String REMAP = "remap";
         public static final String FILTERED = "filtered";
     }
 
