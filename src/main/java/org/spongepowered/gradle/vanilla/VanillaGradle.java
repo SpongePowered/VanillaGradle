@@ -28,10 +28,17 @@ import de.undercouch.gradle.tasks.download.Download;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
+import org.gradle.plugins.ide.eclipse.EclipsePlugin;
+import org.gradle.plugins.ide.eclipse.model.EclipseModel;
+import org.gradle.plugins.ide.idea.model.IdeaModel;
+import org.jetbrains.gradle.ext.IdeaExtPlugin;
+import org.jetbrains.gradle.ext.ProjectSettings;
+import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.task.FilterJarTask;
 import org.spongepowered.gradle.vanilla.task.MergeJarsTask;
@@ -74,6 +81,8 @@ public final class VanillaGradle implements Plugin<Project> {
             task.dependsOn(remapClientJar);
             task.dependsOn(mergedJars);
         });
+
+        this.configureIDEIntegrations(project, prepareWorkspace);
 
         project.afterEvaluate(p -> {
             minecraft.determineVersion();
@@ -206,5 +215,29 @@ public final class VanillaGradle implements Plugin<Project> {
         });
 
         return downloadAssets;
+    }
+
+    private void configureIDEIntegrations(final Project project, final TaskProvider<?> prepareWorkspaceTask) {
+        project.getPlugins().apply(IdeaExtPlugin.class);
+        project.getPlugins().apply(EclipsePlugin.class);
+        project.getPlugins().withType(IdeaExtPlugin.class, plugin -> this.configureIntellij(project, plugin, prepareWorkspaceTask));
+        project.getPlugins().withType(EclipsePlugin.class, plugin -> this.configureEclipse(project, plugin, prepareWorkspaceTask));
+    }
+
+    private void configureIntellij(final Project project, final IdeaExtPlugin plugin, final TaskProvider<?> prepareWorkspaceTask) {
+        final IdeaModel model = project.getExtensions().getByType(IdeaModel.class);
+
+        // Navigate via the extension properties...
+        final ProjectSettings ideaProjectSettings = ((ExtensionAware) model.getProject()).getExtensions().getByType(ProjectSettings.class);
+        final TaskTriggersConfig taskTriggers = ((ExtensionAware) ideaProjectSettings).getExtensions().getByType(TaskTriggersConfig.class);
+
+        // Automatically prepare a workspace after importing
+        taskTriggers.afterSync(prepareWorkspaceTask);
+    }
+
+    private void configureEclipse(final Project project, final EclipsePlugin eclipse, final TaskProvider<?> prepareWorkspaceTask) {
+        final EclipseModel model = project.getExtensions().getByType(EclipseModel.class);
+
+        model.synchronizationTasks(prepareWorkspaceTask);
     }
 }

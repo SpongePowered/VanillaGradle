@@ -11,6 +11,7 @@ repositories {
     mavenCentral()
     maven("https://maven.fabricmc.net/")
     maven("https://files.minecraftforge.net/maven")
+    gradlePluginPortal()
 }
 
 dependencies {
@@ -37,6 +38,9 @@ dependencies {
     implementation("org.ow2.asm:asm:$asmVersion")
     implementation("org.ow2.asm:asm-commons:$asmVersion")
     implementation("org.ow2.asm:asm-util:$asmVersion")
+
+    // IDE support
+    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:0.10")
 }
 
 gradlePlugin {
