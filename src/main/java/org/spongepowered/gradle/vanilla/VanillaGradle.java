@@ -30,20 +30,28 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.tasks.JavaExec;
+import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
+import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.plugins.ide.eclipse.EclipsePlugin;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
+import org.jetbrains.gradle.ext.Application;
+import org.jetbrains.gradle.ext.GradleTask;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ProjectSettings;
+import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.task.FilterJarTask;
 import org.spongepowered.gradle.vanilla.task.MergeJarsTask;
 import org.spongepowered.gradle.vanilla.task.RemapJarTask;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
+import org.spongepowered.gradle.vanilla.util.StringUtils;
 
 import java.util.Locale;
 
@@ -82,12 +90,15 @@ public final class VanillaGradle implements Plugin<Project> {
             task.dependsOn(mergedJars);
         });
 
-        this.configureIDEIntegrations(project, prepareWorkspace);
-
         project.afterEvaluate(p -> {
             minecraft.determineVersion();
             minecraft.downloadManifest();
             minecraft.createMinecraftClasspath(p);
+
+            this.configureIDEIntegrations(project, minecraft, prepareWorkspace);
+            project.getPlugins().withType(JavaPlugin.class, plugin -> {
+                this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class));
+            });
 
             prepareWorkspace.configure(task -> {
                 if (minecraft.platform().get().activeSides().contains(MinecraftSide.CLIENT)) {
@@ -218,19 +229,39 @@ public final class VanillaGradle implements Plugin<Project> {
         return downloadAssets;
     }
 
-    private void configureIDEIntegrations(final Project project, final TaskProvider<?> prepareWorkspaceTask) {
+    private void configureIDEIntegrations(final Project project, final MinecraftExtension extension, final TaskProvider<?> prepareWorkspaceTask) {
         project.getPlugins().apply(IdeaExtPlugin.class);
         project.getPlugins().apply(EclipsePlugin.class);
-        project.getPlugins().withType(IdeaExtPlugin.class, plugin -> this.configureIntellij(project, plugin, prepareWorkspaceTask));
+        project.getPlugins().withType(IdeaExtPlugin.class, plugin -> this.configureIntellij(project, extension, prepareWorkspaceTask));
         project.getPlugins().withType(EclipsePlugin.class, plugin -> this.configureEclipse(project, plugin, prepareWorkspaceTask));
     }
 
-    private void configureIntellij(final Project project, final IdeaExtPlugin plugin, final TaskProvider<?> prepareWorkspaceTask) {
+    private void configureIntellij(final Project project, final MinecraftExtension extension, final TaskProvider<?> prepareWorkspaceTask) {
         final IdeaModel model = project.getExtensions().getByType(IdeaModel.class);
 
         // Navigate via the extension properties...
         final ProjectSettings ideaProjectSettings = ((ExtensionAware) model.getProject()).getExtensions().getByType(ProjectSettings.class);
         final TaskTriggersConfig taskTriggers = ((ExtensionAware) ideaProjectSettings).getExtensions().getByType(TaskTriggersConfig.class);
+        final RunConfigurationContainer runConfigurations =
+                (RunConfigurationContainer) ((ExtensionAware) ideaProjectSettings).getExtensions().getByName("runConfigurations");
+
+        extension.getRuns().all(run -> {
+            // TODO: Make run configuration name configurable
+            runConfigurations.create("run" + StringUtils.capitalize(run.getName()) + " (" + project.getName() + ")", Application.class, ideaRun -> {
+                if (project.getTasks().getNames().contains(JavaPlugin.PROCESS_RESOURCES_TASK_NAME)) {
+                    ideaRun.getBeforeRun().create("processResources", GradleTask.class,
+                            action -> action.setTask(project.getTasks().getByName(JavaPlugin.PROCESS_RESOURCES_TASK_NAME))
+                    );
+                }
+
+                ideaRun.setMainClass(run.mainClass().get());
+                ideaRun.setWorkingDirectory(run.workingDirectory().get().getAsFile().getAbsolutePath());
+                // TODO: Figure out if it's possible to set this more appropriately based on the run configuration's classpath
+                ideaRun.moduleRef(project, project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
+                ideaRun.setJvmArgs(StringUtils.join(run.allJvmArguments()));
+                ideaRun.setProgramParameters(StringUtils.join(run.allArguments()));
+            });
+        });
 
         // Automatically prepare a workspace after importing
         taskTriggers.afterSync(prepareWorkspaceTask);
@@ -240,5 +271,18 @@ public final class VanillaGradle implements Plugin<Project> {
         final EclipseModel model = project.getExtensions().getByType(EclipseModel.class);
 
         model.synchronizationTasks(prepareWorkspaceTask);
+    }
+
+    private void createRunTasks(final MinecraftExtension extension, final TaskContainer tasks, final JavaToolchainService service) {
+        extension.getRuns().all(config -> {
+            tasks.register("run" + StringUtils.capitalize(config.getName()), JavaExec.class, exec -> {
+                exec.setGroup(Constants.TASK_GROUP + " runs");
+                exec.getMainClass().set(config.mainClass());
+                exec.getMainModule().set(config.mainModule());
+                exec.classpath(config.classpath());
+                exec.getJvmArgumentProviders().addAll(config.allJvmArguments());
+                exec.getArgumentProviders().addAll(config.allArguments());
+            });
+        });
     }
 }

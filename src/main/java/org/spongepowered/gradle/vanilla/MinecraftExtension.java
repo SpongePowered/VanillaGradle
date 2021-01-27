@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla;
 
+import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.DirectoryProperty;
@@ -36,10 +37,13 @@ import org.gradle.api.tasks.TaskProvider;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.VersionManifestV2;
+import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
+import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Objects;
 
 import javax.inject.Inject;
 
@@ -57,6 +61,7 @@ public abstract class MinecraftExtension {
     private final DirectoryProperty originalDirectory;
     private final DirectoryProperty mappingsDirectory;
     private final DirectoryProperty filteredDirectory;
+    private final RunConfigurationContainer runConfigurations;
 
     @Inject
     public MinecraftExtension(final Gradle gradle, final ObjectFactory factory, final Project project) throws IOException {
@@ -67,6 +72,7 @@ public abstract class MinecraftExtension {
         this.originalDirectory = factory.directoryProperty();
         this.mappingsDirectory = factory.directoryProperty();
         this.filteredDirectory = factory.directoryProperty();
+        this.runConfigurations = factory.newInstance(RunConfigurationContainer.class, factory.domainObjectContainer(RunConfiguration.class), this);
 
         final Path gradleHomeDirectory = gradle.getGradleUserHomeDir().toPath();
         final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.Directories.CACHES);
@@ -112,6 +118,14 @@ public abstract class MinecraftExtension {
         awTask.configure(task -> task.getAccessWideners().from(file));
     }
 
+    public RunConfigurationContainer getRuns() {
+        return this.runConfigurations;
+    }
+
+    public void runs(final Action<RunConfigurationContainer> run) {
+        Objects.requireNonNull(run, "run").execute(this.runConfigurations);
+    }
+
     protected DirectoryProperty minecraftLibrariesDirectory() {
         return this.minecraftLibrariesDirectory;
     }
@@ -132,7 +146,7 @@ public abstract class MinecraftExtension {
         return this.versionDescriptor;
     }
 
-    protected Version targetVersion() {
+    public Version targetVersion() {
         return this.targetVersion;
     }
 
