@@ -356,6 +356,9 @@ public final class VanillaGradle implements Plugin<Project> {
 
     private void configureIntellij(final Project project, final MinecraftExtension extension, final TaskProvider<?> prepareWorkspaceTask) {
         final IdeaModel model = project.getExtensions().getByType(IdeaModel.class);
+        if (model.getProject() == null) {
+            return;
+        }
 
         // Navigate via the extension properties...
         // https://github.com/JetBrains/gradle-idea-ext-plugin/wiki
