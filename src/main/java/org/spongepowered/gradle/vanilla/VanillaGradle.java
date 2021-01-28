@@ -446,10 +446,10 @@ public final class VanillaGradle implements Plugin<Project> {
 
                 if (run.requiresAssetsAndNatives().get()) {
                     ideaRun.getBeforeRun().register(Constants.Tasks.DOWNLOAD_ASSETS, GradleTask.class,
-                            action -> action.setTask(this.project.task(Constants.Tasks.DOWNLOAD_ASSETS))
+                            action -> action.setTask(this.project.getTasks().getByName(Constants.Tasks.DOWNLOAD_ASSETS))
                     );
                     ideaRun.getBeforeRun().register(Constants.Tasks.COLLECT_NATIVES, GradleTask.class,
-                            action -> action.setTask(this.project.task(Constants.Tasks.COLLECT_NATIVES))
+                            action -> action.setTask(this.project.getTasks().getByName(Constants.Tasks.COLLECT_NATIVES))
                     );
                 }
 
