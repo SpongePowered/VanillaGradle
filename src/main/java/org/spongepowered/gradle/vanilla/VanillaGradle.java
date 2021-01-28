@@ -97,11 +97,14 @@ public final class VanillaGradle implements Plugin<Project> {
             task.dependsOn(decompileJar);
         });
 
-        final NamedDomainObjectProvider<Configuration> runtimeClasspath = project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
-        minecraft.getRuns().configureEach(run -> {
-            run.classpath().from(runtimeClasspath);
+
+        project.getPlugins().withType(JavaPlugin.class, plugin -> {
+            this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class));
+            final NamedDomainObjectProvider<Configuration> runtimeClasspath = project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
+            minecraft.getRuns().configureEach(run -> {
+                run.classpath().from(runtimeClasspath);
+            });
         });
-        project.getPlugins().withType(JavaPlugin.class, plugin -> this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class)));
 
         this.createCleanTask(project.getTasks());
 
@@ -132,14 +135,9 @@ public final class VanillaGradle implements Plugin<Project> {
                     resultJar = mergedJars;
                     break;
             }
-            final TaskProvider<? extends ProcessedJarTask> finalResultJar1 = resultJar;
-            decompileJar.configure(decompile -> {
-                decompile.dependsOn(finalResultJar1);
-                decompile.getInputJar().set(finalResultJar1.flatMap(ProcessedJarTask::outputJar));
-            });
 
             if (resultJar != null) {
-                final TaskProvider<?> actualDependency;
+                final TaskProvider<? extends ProcessedJarTask> actualDependency;
                 if (project.getTasks().getNames().contains(Constants.ACCESS_WIDENER_TASK_NAME)) { // Using AW
                     final TaskProvider<AccessWidenJarTask> awTask = project.getTasks().named(
                             Constants.ACCESS_WIDENER_TASK_NAME,
@@ -159,6 +157,11 @@ public final class VanillaGradle implements Plugin<Project> {
                 } else {
                     actualDependency = resultJar;
                 }
+                decompileJar.configure(decompile -> {
+                    decompile.dependsOn(actualDependency);
+                    decompile.getInputJar().set(actualDependency.flatMap(ProcessedJarTask::outputJar));
+                });
+
                 project.getDependencies().add(
                     JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
                     project.getObjects().fileCollection().from(actualDependency)
