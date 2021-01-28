@@ -39,6 +39,7 @@ public final class Constants {
     public static final String MINECRAFT_RESOURCES_URL = "https://resources.download.minecraft.net/";
     public static final String TASK_GROUP = "vanilla gradle";
     public static final int ASM_VERSION = Opcodes.ASM9;
+    public static final String FIRST_TARGETABLE_RELEASE_TIMESTAMP = "2019-07-19T09:25:47+00:00"; // 1.14.4
 
     public static final class Directories {
         public static final String CACHES = "caches";

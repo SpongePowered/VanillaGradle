@@ -67,6 +67,7 @@ import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
+import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.task.FilterJarTask;
 import org.spongepowered.gradle.vanilla.task.MergeJarsTask;
@@ -121,7 +122,8 @@ public final class VanillaGradle implements Plugin<Project> {
             });
         });
 
-        this.createCleanTask(project.getTasks());
+        this.createCleanMinecraft(project.getTasks());
+        this.createDisplayMinecraftVersions(minecraft, project.getTasks());
 
         project.afterEvaluate(p -> {
             final Version version = minecraft.targetVersion().get();
@@ -191,7 +193,7 @@ public final class VanillaGradle implements Plugin<Project> {
         });
     }
 
-    private void createCleanTask(final TaskContainer tasks) {
+    private void createCleanMinecraft(final TaskContainer tasks) {
         tasks.register("cleanMinecraft", Delete.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.setDescription("Delete downloaded files for the current minecraft environment used for this project");
@@ -202,6 +204,14 @@ public final class VanillaGradle implements Plugin<Project> {
                 tasks.withType(MergeJarsTask.class),
                 tasks.withType(RemapJarTask.class)
             );
+        });
+    }
+
+    private void createDisplayMinecraftVersions(final MinecraftExtension extension, final TaskContainer tasks) {
+        tasks.register("displayMinecraftVersions", DisplayMinecraftVersionsTask.class, task -> {
+            task.setGroup(Constants.TASK_GROUP);
+            task.setDescription("Displays all Minecraft versions that can be targeted");
+            task.getManifest().set(extension.versionManifest());
         });
     }
 
