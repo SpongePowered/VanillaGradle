@@ -79,7 +79,7 @@ public abstract class MinecraftExtension {
         this.project = project;
         this.versionManifest = VersionManifestV2.load();
         this.version = factory.property(String.class);
-        this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.SERVER);
+        this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.JOINED);
         this.injectRepositories = factory.property(Boolean.class).convention(true);
         this.assetsDirectory = factory.directoryProperty();
         this.remappedDirectory = factory.directoryProperty();
