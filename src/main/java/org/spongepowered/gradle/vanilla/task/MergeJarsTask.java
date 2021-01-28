@@ -37,7 +37,7 @@ import org.spongepowered.gradle.vanilla.worker.JarMergeWorker;
 
 import javax.inject.Inject;
 
-public abstract class MergeJarsTask extends DefaultTask {
+public abstract class MergeJarsTask extends DefaultTask implements ProcessedJarTask {
 
     public MergeJarsTask() {
         this.setGroup(Constants.TASK_GROUP);
@@ -78,5 +78,10 @@ public abstract class MergeJarsTask extends DefaultTask {
                     parameters.getServerJar().set(this.getServerJar());
                     parameters.getMergedJar().set(this.getMergedJar());
                 });
+    }
+
+    @Override
+    public RegularFileProperty outputJar() {
+        return this.getMergedJar();
     }
 }

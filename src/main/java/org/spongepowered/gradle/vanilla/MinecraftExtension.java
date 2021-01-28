@@ -109,7 +109,6 @@ public abstract class MinecraftExtension {
         this.mappingsDirectory.set(rootDirectory.resolve(Constants.Directories.MAPPINGS).toFile());
         this.filteredDirectory.set(jarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
         this.decompiledDirectory.set(jarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
-
     }
 
     public Property<Boolean> injectRepositories() {

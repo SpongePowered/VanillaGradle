@@ -18,6 +18,9 @@ val commonDeps by configurations.creating
 val jarMerge by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
+val jarDecompile by sourceSets.creating {
+    configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
+}
 val accessWiden by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
@@ -56,6 +59,10 @@ dependencies {
     }
     implementation(jarMerge.output)
 
+    // Jar decompile worker (match with Constants)
+    "jarDecompileCompileOnly"("net.minecraftforge:forgeflower:1.5.478.18")
+    implementation(jarDecompile.output)
+
     // Access widener worker (match with Constants)
     "accessWidenCompileOnly"("net.fabricmc:access-widener:1.0.0") {
         exclude("org.ow2.asm")
@@ -65,6 +72,7 @@ dependencies {
 
 tasks.jar {
     from(jarMerge.output)
+    from(jarDecompile.output)
     from(accessWiden.output)
 }
 

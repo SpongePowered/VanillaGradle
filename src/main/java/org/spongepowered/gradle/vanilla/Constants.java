@@ -36,12 +36,10 @@ public final class Constants {
     public static final String NAME = "VanillaGradle";
     public static final String VERSION = Constants.version();
     public static final String API_V2_ENDPOINT = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
-    public static final String MINECRAFT_LIBRARIES_MAVEN_URL = "https://libraries.minecraft.net";
     public static final String MINECRAFT_RESOURCES_URL = "https://resources.download.minecraft.net/";
     public static final String TASK_GROUP = "vanilla gradle";
     public static final int ASM_VERSION = Opcodes.ASM9;
     public static final String ACCESS_WIDENER_TASK_NAME = "accessWidenMinecraft";
-    public static final String JOINED = "joined";
 
     public static final class Directories {
         public static final String CACHES = "caches";
@@ -68,6 +66,7 @@ public final class Constants {
     public static final class WorkerDependencies {
         public static final String MERGE_TOOL = "net.minecraftforge:mergetool:1.1.1";
         public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:1.0.0";
+        public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:1.5.478.18";
 
         private WorkerDependencies() {
         }
@@ -86,6 +85,7 @@ public final class Constants {
         public static final String MINECRAFT_CLASSPATH = "minecraftClasspath";
         public static final String MERGETOOL = "mergetool";
         public static final String ACCESS_WIDENER = "accessWidener";
+        public static final String FORGE_FLOWER = "forgeFlower";
 
         private Configurations() {
         }

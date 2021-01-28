@@ -55,9 +55,11 @@ import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.model.AssetIndexReference;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.task.FilterJarTask;
 import org.spongepowered.gradle.vanilla.task.MergeJarsTask;
+import org.spongepowered.gradle.vanilla.task.ProcessedJarTask;
 import org.spongepowered.gradle.vanilla.task.RemapJarTask;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 import org.spongepowered.gradle.vanilla.util.StringUtils;
@@ -81,11 +83,29 @@ public final class VanillaGradle implements Plugin<Project> {
         final TaskProvider<MergeJarsTask> mergedJars = this.createJarMerge(minecraft, remapClientJar, remapServerJar);
         final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, project.getTasks());
 
+        final TaskProvider<DecompileJarTask> decompileJar;
+
+        switch (minecraft.platform().get()) {
+            case JOINED:
+                decompileJar = this.createJarDecompile(minecraft, (TaskProvider<ProcessedJarTask>) (Object) mergedJars);
+                break;
+            case CLIENT:
+                decompileJar = this.createJarDecompile(minecraft, (TaskProvider<ProcessedJarTask>) (Object) remapClientJar);
+                break;
+            default:
+                decompileJar = this.createJarDecompile(minecraft, (TaskProvider<ProcessedJarTask>) (Object) remapServerJar);
+        }
+
         final TaskProvider<?> prepareWorkspace = project.getTasks().register("prepareWorkspace", DefaultTask.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.dependsOn(remapServerJar);
             task.dependsOn(remapClientJar);
             task.dependsOn(mergedJars);
+        });
+
+        final TaskProvider<?> prepareDecompileWorkspace = project.getTasks().register("prepareDecompileWorkspace", DefaultTask.class, task -> {
+            task.setGroup(Constants.TASK_GROUP);
+            task.dependsOn(decompileJar);
         });
 
         final NamedDomainObjectProvider<Configuration> runtimeClasspath = project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
@@ -100,6 +120,9 @@ public final class VanillaGradle implements Plugin<Project> {
 
 
         project.afterEvaluate(p -> {
+            project.getLogger().lifecycle(String.format("Targeting Minecraft '%s' on a '%s' platform", minecraft.targetVersion().get().id(),
+                minecraft.platform().get().name()));
+
             // Only add repositories if selected in extension
             this.configureRepositories(minecraft, project.getRepositories());
             minecraft.createMinecraftClasspath(p);
@@ -185,12 +208,11 @@ public final class VanillaGradle implements Plugin<Project> {
     ) {
 
         final Configuration mergetool = this.project.getConfigurations().maybeCreate(Constants.Configurations.MERGETOOL);
-        mergetool.defaultDependencies(deps -> {
-            deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.MERGE_TOOL));
-        });
+        mergetool.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.MERGE_TOOL)));
         final FileCollection mergetoolClasspath = mergetool.getIncoming().getFiles();
 
         return this.project.getTasks().register("mergeJars", MergeJarsTask.class, task -> {
+            final String platformName = minecraft.platform().get().name().toLowerCase(Locale.ROOT);
             task.onlyIf(t -> minecraft.platform().get() == MinecraftPlatform.JOINED);
 
             task.dependsOn(client);
@@ -199,21 +221,44 @@ public final class VanillaGradle implements Plugin<Project> {
             task.getClientJar().set(client.get().getOutputJar());
             task.getServerJar().set(server.get().getOutputJar());
             task.getMergedJar().set(
-                minecraft.remappedDirectory().zip(minecraft.versionDescriptor(), (dir, version) -> dir.dir(Constants.JOINED)
+                minecraft.remappedDirectory().zip(minecraft.versionDescriptor(), (dir, version) -> dir.dir(platformName)
                     .dir(version.sha1())
-                    .file("minecraft-joined-" + version.id() + ".jar"))
+                    .file("minecraft-" + platformName + "-" + version.id() + ".jar"))
             );
         });
     }
 
-    private TaskProvider<RemapJarTask> createSidedTasks(final MinecraftSide platform, final TaskContainer tasks, final MinecraftExtension minecraft) {
-        final String sideName = platform.name().toLowerCase(Locale.ROOT);
+    private TaskProvider<DecompileJarTask> createJarDecompile(
+        final MinecraftExtension minecraft,
+        final TaskProvider<ProcessedJarTask> processedJarTask
+    ) {
+
+        final Configuration forgeFlower = this.project.getConfigurations().maybeCreate(Constants.Configurations.FORGE_FLOWER);
+        forgeFlower.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.FORGE_FLOWER)));
+        final FileCollection forgeFlowerClasspath = forgeFlower.getIncoming().getFiles();
+
+        return this.project.getTasks().register("decompile", DecompileJarTask.class, task -> {
+            final String platformName = minecraft.platform().get().name().toLowerCase(Locale.ROOT);
+
+            task.dependsOn(processedJarTask);
+            task.setWorkerClasspath(forgeFlowerClasspath);
+            task.getInputJar().set(processedJarTask.get().outputJar());
+            task.getOutputJar().set(
+                minecraft.remappedDirectory().zip(minecraft.versionDescriptor(), (dir, version) -> dir.dir(platformName)
+                    .dir(version.sha1())
+                    .file("minecraft-" + platformName + "-" + version.id() + "-sources.jar"))
+            );
+        });
+    }
+
+    private TaskProvider<RemapJarTask> createSidedTasks(final MinecraftSide side, final TaskContainer tasks, final MinecraftExtension minecraft) {
+        final String sideName = side.name().toLowerCase(Locale.ROOT);
         final String capitalizedSideName = Character.toUpperCase(sideName.charAt(0)) + sideName.substring(1);
 
         final TaskProvider<Download> downloadJar = tasks.register("download" + capitalizedSideName, Download.class, task -> {
-            task.onlyIf(t -> minecraft.platform().get().activeSides().contains(platform));
+            task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
             final Version targetVersion = minecraft.targetVersion().get();
-            final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(platform.executableArtifact());
+            final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(side.executableArtifact());
             task.src(download.url());
             task.dest(minecraft.originalDirectory().get().dir(sideName).dir(download.sha1())
                     .file("minecraft-" + sideName + "-" + targetVersion.id() + ".jar").getAsFile());
@@ -221,9 +266,9 @@ public final class VanillaGradle implements Plugin<Project> {
         });
 
         final TaskProvider<Download> downloadMappings = tasks.register("download" + capitalizedSideName + "Mappings", Download.class, task -> {
-            task.onlyIf(t -> minecraft.platform().get().activeSides().contains(platform));
+            task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
             final Version targetVersion = minecraft.targetVersion().get();
-            final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(platform.mappingsArtifact());
+            final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(side.mappingsArtifact());
             task.src(download.url());
             task.dest(minecraft.mappingsDirectory().get().dir(sideName).dir(download.sha1()).file(sideName + "-" + targetVersion.id() + ".txt").getAsFile());
             task.overwrite(false);
@@ -231,16 +276,16 @@ public final class VanillaGradle implements Plugin<Project> {
 
         final TaskProvider<RemapJarTask> remapJar;
 
-        if (platform.allowedPackages().isEmpty()) {
+        if (side.allowedPackages().isEmpty()) {
             remapJar = tasks.register("remap" + capitalizedSideName + "Jar", RemapJarTask.class, task -> {
-                task.onlyIf(t -> minecraft.platform().get().activeSides().contains(platform));
+                task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
                 task.dependsOn(downloadJar);
                 task.dependsOn(downloadMappings);
 
                 task.getInputJar().fileProvider(downloadJar.map(Download::getDest));
                 task.getOutputJar().fileProvider(minecraft.remappedDirectory().zip(minecraft.targetVersion(),
                         (remapDir, version) -> {
-                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(platform.executableArtifact());
+                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(side.executableArtifact());
                             return remapDir.getAsFile().toPath().resolve(sideName).resolve(download.sha1())
                                     .resolve("minecraft-" + sideName + "-" + version.id() + "-remapped.jar").toFile();
                         }));
@@ -248,13 +293,13 @@ public final class VanillaGradle implements Plugin<Project> {
             });
         } else {
             final TaskProvider<FilterJarTask> filteredJar = tasks.register("filter" + capitalizedSideName + "Jar", FilterJarTask.class, task -> {
-                task.onlyIf(t -> minecraft.platform().get().activeSides().contains(platform));
-                task.getAllowedPackages().addAll(platform.allowedPackages());
+                task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
+                task.getAllowedPackages().addAll(side.allowedPackages());
                 task.dependsOn(downloadJar);
                 task.fromJar(downloadJar.map(Download::getDest));
                 task.getDestinationDirectory().set(minecraft.filteredDirectory().zip(minecraft.targetVersion(),
                         (path, version) -> {
-                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(platform.executableArtifact());
+                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(side.executableArtifact());
                             return path.dir(sideName).dir(download.sha1());
                         }));
                 task.getArchiveClassifier().set("filtered");
@@ -263,14 +308,14 @@ public final class VanillaGradle implements Plugin<Project> {
             });
 
             remapJar = tasks.register("remap" + capitalizedSideName + "Jar", RemapJarTask.class, task -> {
-                task.onlyIf(t -> minecraft.platform().get().activeSides().contains(platform));
+                task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
                 task.dependsOn(filteredJar);
                 task.dependsOn(downloadMappings);
 
                 task.getInputJar().set(filteredJar.flatMap(AbstractArchiveTask::getArchiveFile));
                 task.getOutputJar().fileProvider(minecraft.remappedDirectory().zip(minecraft.targetVersion(),
                         (remapDir, version) -> {
-                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(platform.executableArtifact());
+                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(side.executableArtifact());
                             return remapDir.getAsFile().toPath().resolve(sideName).resolve(download.sha1())
                                     .resolve("minecraft-" + sideName + "-" + version.id() + "-remapped.jar").toFile();
                         }));

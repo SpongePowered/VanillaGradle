@@ -44,7 +44,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
-public abstract class RemapJarTask extends DefaultTask {
+public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTask {
 
     @InputFile
     public abstract RegularFileProperty getInputJar();
@@ -76,5 +76,10 @@ public abstract class RemapJarTask extends DefaultTask {
             new ClassRemapper(new LocalVariableNamingClassVisitor(parent), mapper)));
 
         atlas.run(this.getInputJar().get().getAsFile().toPath(), this.getOutputJar().get().getAsFile().toPath());
+    }
+
+    @Override
+    public RegularFileProperty outputJar() {
+        return this.getOutputJar();
     }
 }
