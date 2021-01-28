@@ -35,6 +35,7 @@ import org.gradle.api.artifacts.repositories.MavenRepositoryContentDescriptor;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -51,6 +52,7 @@ import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
+import org.spongepowered.gradle.vanilla.model.AssetIndexReference;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
@@ -80,6 +82,7 @@ public final class VanillaGradle implements Plugin<Project> {
         final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, project.getTasks());
 
         final TaskProvider<?> prepareWorkspace = project.getTasks().register("prepareWorkspace", DefaultTask.class, task -> {
+            task.setGroup(Constants.TASK_GROUP);
             task.dependsOn(remapServerJar);
             task.dependsOn(remapClientJar);
             task.dependsOn(mergedJars);
@@ -92,6 +95,8 @@ public final class VanillaGradle implements Plugin<Project> {
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
             this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class));
         });
+
+        this.createCleanTask(project.getTasks());
 
 
         project.afterEvaluate(p -> {
@@ -136,6 +141,7 @@ public final class VanillaGradle implements Plugin<Project> {
                             (platform, version ) -> "aw-" + platform.name().toLowerCase(Locale.ROOT) + "-" + version.id()));
                     });
                     actualDependency = awTask;
+                    prepareWorkspace.configure(task -> task.dependsOn(actualDependency)); // todo: this is a bit ugly
                 } else {
                     actualDependency = resultJar;
                 }
@@ -144,6 +150,20 @@ public final class VanillaGradle implements Plugin<Project> {
                     project.getObjects().fileCollection().from(actualDependency)
                 );
             }
+        });
+    }
+
+    private void createCleanTask(final TaskContainer tasks) {
+        tasks.register("cleanMinecraft", Delete.class, task -> {
+            task.setGroup(Constants.TASK_GROUP);
+            task.setDescription("Delete downloaded files for the current minecraft environment used for this project");
+            task.delete(
+                tasks.withType(AccessWidenJarTask.class),
+                tasks.withType(Download.class).matching(dl -> !dl.getName().equals("downloadAssetIndex")),
+                tasks.withType(FilterJarTask.class),
+                tasks.withType(MergeJarsTask.class),
+                tasks.withType(RemapJarTask.class)
+            );
         });
     }
 
@@ -266,9 +286,12 @@ public final class VanillaGradle implements Plugin<Project> {
 
         // Download asset index
         final TaskProvider<Download> downloadIndex = tasks.register("downloadAssetIndex", Download.class, task -> {
-            task.src(minecraft.targetVersion().get().assetIndex().url());
-            task.dest(minecraft.assetsDirectory().dir("indexes").get().getAsFile());
+            final AssetIndexReference index = minecraft.targetVersion().get().assetIndex();
+            task.src(index.url());
+            task.dest(minecraft.assetsDirectory().dir("indexes").get().file(index.id() + ".json").getAsFile());
             task.overwrite(false);
+
+            task.doFirst(t2 -> ((Download) t2).getDest().getParentFile().mkdirs());
         });
 
         final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
