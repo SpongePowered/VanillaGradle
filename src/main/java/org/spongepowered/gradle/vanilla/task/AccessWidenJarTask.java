@@ -53,7 +53,7 @@ import java.security.NoSuchAlgorithmException;
 
 import javax.inject.Inject;
 
-public abstract class AccessWidenJarTask extends DefaultTask {
+public abstract class AccessWidenJarTask extends DefaultTask implements ProcessedJarTask {
 
     private final Property<String> accessWidenerHash;
 
@@ -150,4 +150,8 @@ public abstract class AccessWidenJarTask extends DefaultTask {
                 });
     }
 
+    @Override
+    public RegularFileProperty outputJar() {
+        return this.getDestination();
+    }
 }

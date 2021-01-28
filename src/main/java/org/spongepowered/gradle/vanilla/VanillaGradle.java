@@ -101,12 +101,9 @@ public final class VanillaGradle implements Plugin<Project> {
         minecraft.getRuns().configureEach(run -> {
             run.classpath().from(runtimeClasspath);
         });
-        project.getPlugins().withType(JavaPlugin.class, plugin -> {
-            this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class));
-        });
+        project.getPlugins().withType(JavaPlugin.class, plugin -> this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class)));
 
         this.createCleanTask(project.getTasks());
-
 
         project.afterEvaluate(p -> {
             project.getLogger().lifecycle(String.format("Targeting Minecraft '%s' on a '%s' platform", minecraft.targetVersion().get().id(),
