@@ -34,6 +34,7 @@ import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.spongepowered.gradle.vanilla.model.Version;
@@ -57,8 +58,8 @@ public abstract class MinecraftExtension {
     private final Property<Boolean> injectRepositories;
     private final VersionManifestV2 versionManifest;
 
-    private VersionDescriptor versionDescriptor;
-    private Version targetVersion;
+    private final Provider<VersionDescriptor> versionDescriptor;
+    private final Property<Version> targetVersion;
 
     private final DirectoryProperty assetsDirectory;
     private final DirectoryProperty remappedDirectory;
@@ -72,6 +73,7 @@ public abstract class MinecraftExtension {
     @Inject
     public MinecraftExtension(final Gradle gradle, final ObjectFactory factory, final Project project) throws IOException {
         this.project = project;
+        this.versionManifest = VersionManifestV2.load();
         this.version = factory.property(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.SERVER);
         this.injectRepositories = factory.property(Boolean.class).convention(true);
@@ -81,6 +83,19 @@ public abstract class MinecraftExtension {
         this.mappingsDirectory = factory.directoryProperty();
         this.filteredDirectory = factory.directoryProperty();
         this.decompiledDirectory = factory.directoryProperty();
+        this.versionDescriptor = this.version.map(
+            version -> this.versionManifest.findDescriptor(version)
+                .orElseThrow(() -> new RuntimeException(String.format("No version found for '%s' in the manifest!", this.version.get())))
+        );
+        this.targetVersion = factory.property(Version.class)
+                .value(this.versionDescriptor.map(version -> {
+            try {
+                return version.toVersion();
+            } catch (final IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        }));
+        this.targetVersion.finalizeValueOnRead();
 
         this.runConfigurations = factory.newInstance(RunConfigurationContainer.class, factory.domainObjectContainer(RunConfiguration.class), this);
 
@@ -95,7 +110,6 @@ public abstract class MinecraftExtension {
         this.filteredDirectory.set(jarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
         this.decompiledDirectory.set(jarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
 
-        this.versionManifest = VersionManifestV2.load();
     }
 
     public Property<Boolean> injectRepositories() {
@@ -172,26 +186,12 @@ public abstract class MinecraftExtension {
         Objects.requireNonNull(run, "run").execute(this.runConfigurations);
     }
 
-    protected VersionDescriptor versionDescriptor() {
+    protected Provider<VersionDescriptor> versionDescriptor() {
         return this.versionDescriptor;
     }
 
-    public Version targetVersion() {
+    public Provider<Version> targetVersion() {
         return this.targetVersion;
-    }
-
-    protected void determineVersion() {
-        this.versionDescriptor =
-                this.versionManifest.findDescriptor(this.version.get()).orElseThrow(() -> new RuntimeException(String.format("No version "
-                        + "found for '%s' in the manifest!", this.version.get())));
-    }
-
-    protected void downloadManifest() {
-        try {
-            this.targetVersion = this.versionDescriptor.toVersion();
-        } catch (final IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     protected void createMinecraftClasspath(final Project project) {
@@ -200,7 +200,7 @@ public abstract class MinecraftExtension {
             for (final MinecraftSide side : this.platform.get().activeSides()) {
                 side.applyLibraries(
                     name -> a.add(project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
-                    this.targetVersion.libraries()
+                    this.targetVersion.get().libraries()
                 );
             }
         });

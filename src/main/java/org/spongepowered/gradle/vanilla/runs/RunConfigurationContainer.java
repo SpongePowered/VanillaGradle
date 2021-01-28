@@ -39,6 +39,7 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
+import org.spongepowered.gradle.vanilla.model.Version;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -94,7 +95,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
 
     private Action<RunConfiguration> configureClientRun() {
         return config -> {
-            config.mainClass().set(this.extension.targetVersion().mainClass());
+            config.mainClass().set(this.extension.targetVersion().map(Version::mainClass));
             // TODO: Apply appropriate runner args and JVM args
             // TODO: Assets
             // TODO: Natives
@@ -134,7 +135,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
 
     private Action<RunConfiguration> configureServerRun() {
         return run -> {
-            run.mainClass().set("net.minecraft.server.Main");
+            run.mainClass().set("net.minecraft.server.Main"); // TODO: This does vary from version to version
         };
     }
 

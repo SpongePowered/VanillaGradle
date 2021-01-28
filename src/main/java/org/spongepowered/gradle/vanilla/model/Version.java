@@ -106,4 +106,9 @@ public final class Version implements Serializable {
 
         return Optional.ofNullable(this.downloads.get(classifier));
     }
+
+    public Download requireDownload(final DownloadClassifier classifier) {
+        return this.download(classifier)
+                .orElseThrow(() -> new RuntimeException("No " + classifier + " download information was within the manifest!"));
+    }
 }

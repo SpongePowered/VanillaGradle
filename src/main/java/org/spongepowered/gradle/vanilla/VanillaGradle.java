@@ -51,6 +51,8 @@ import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
+import org.spongepowered.gradle.vanilla.model.Version;
+import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.task.FilterJarTask;
 import org.spongepowered.gradle.vanilla.task.MergeJarsTask;
@@ -87,20 +89,17 @@ public final class VanillaGradle implements Plugin<Project> {
         minecraft.getRuns().configureEach(run -> {
             run.classpath().from(runtimeClasspath);
         });
+        project.getPlugins().withType(JavaPlugin.class, plugin -> {
+            this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class));
+        });
+
 
         project.afterEvaluate(p -> {
             // Only add repositories if selected in extension
             this.configureRepositories(minecraft, project.getRepositories());
-
-            minecraft.determineVersion();
-            minecraft.downloadManifest();
             minecraft.createMinecraftClasspath(p);
 
             this.configureIDEIntegrations(project, minecraft, prepareWorkspace);
-            project.getPlugins().withType(JavaPlugin.class, plugin -> {
-                this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class));
-            });
-
             prepareWorkspace.configure(task -> {
                 if (minecraft.platform().get().activeSides().contains(MinecraftSide.CLIENT)) {
                     task.dependsOn(assets);
@@ -132,17 +131,17 @@ public final class VanillaGradle implements Plugin<Project> {
                         // Configure source
                         task.getSource().from(finalResultJar);
                         // Set suffix based on target platform
-                        task.getArchiveClassifier().set("aw-"
-                                + minecraft.platform().get().name().toLowerCase(Locale.ROOT)
-                                + "-" + minecraft.targetVersion().id());
+                        task.getArchiveClassifier().set(minecraft.platform().zip(
+                            minecraft.targetVersion(),
+                            (platform, version ) -> "aw-" + platform.name().toLowerCase(Locale.ROOT) + "-" + version.id()));
                     });
                     actualDependency = awTask;
                 } else {
                     actualDependency = resultJar;
                 }
                 project.getDependencies().add(
-                        JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
-                        project.getObjects().fileCollection().from(actualDependency)
+                    JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
+                    project.getObjects().fileCollection().from(actualDependency)
                 );
             }
         });
@@ -180,9 +179,9 @@ public final class VanillaGradle implements Plugin<Project> {
             task.getClientJar().set(client.get().getOutputJar());
             task.getServerJar().set(server.get().getOutputJar());
             task.getMergedJar().set(
-                minecraft.remappedDirectory().map(dir -> dir.dir(Constants.JOINED)
-                    .dir(minecraft.versionDescriptor().sha1())
-                    .file("minecraft-joined-" + minecraft.versionDescriptor().id() + ".jar"))
+                minecraft.remappedDirectory().zip(minecraft.versionDescriptor(), (dir, version) -> dir.dir(Constants.JOINED)
+                    .dir(version.sha1())
+                    .file("minecraft-joined-" + version.id() + ".jar"))
             );
         });
     }
@@ -193,21 +192,20 @@ public final class VanillaGradle implements Plugin<Project> {
 
         final TaskProvider<Download> downloadJar = tasks.register("download" + capitalizedSideName, Download.class, task -> {
             task.onlyIf(t -> minecraft.platform().get().activeSides().contains(platform));
-            final org.spongepowered.gradle.vanilla.model.Download download = minecraft.targetVersion().download(platform.executableArtifact())
-                    .orElseThrow(() -> new RuntimeException("No " + sideName + " download information was within the manifest!"));
+            final Version targetVersion = minecraft.targetVersion().get();
+            final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(platform.executableArtifact());
             task.src(download.url());
-            task.dest(minecraft.originalDirectory().get().dir(sideName).dir(download.sha1()).file("minecraft-" + sideName + "-" + minecraft
-                    .versionDescriptor().id() + ".jar").getAsFile());
+            task.dest(minecraft.originalDirectory().get().dir(sideName).dir(download.sha1())
+                    .file("minecraft-" + sideName + "-" + targetVersion.id() + ".jar").getAsFile());
             task.overwrite(false);
         });
 
         final TaskProvider<Download> downloadMappings = tasks.register("download" + capitalizedSideName + "Mappings", Download.class, task -> {
             task.onlyIf(t -> minecraft.platform().get().activeSides().contains(platform));
-            final org.spongepowered.gradle.vanilla.model.Download download = minecraft.targetVersion().download(platform.mappingsArtifact())
-                    .orElseThrow(() -> new RuntimeException("No " + sideName + " mappings download information was within the manifest!"));
+            final Version targetVersion = minecraft.targetVersion().get();
+            final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(platform.mappingsArtifact());
             task.src(download.url());
-            task.dest(minecraft.mappingsDirectory().get().dir(sideName).dir(download.sha1()).file(sideName + "-" + minecraft
-                    .versionDescriptor().id() + ".txt").getAsFile());
+            task.dest(minecraft.mappingsDirectory().get().dir(sideName).dir(download.sha1()).file(sideName + "-" + targetVersion.id() + ".txt").getAsFile());
             task.overwrite(false);
         });
 
@@ -219,10 +217,14 @@ public final class VanillaGradle implements Plugin<Project> {
                 task.dependsOn(downloadJar);
                 task.dependsOn(downloadMappings);
 
-                task.getInputJar().set(downloadJar.get().getDest());
-                task.getOutputJar().set(minecraft.remappedDirectory().get().getAsFile().toPath().resolve(sideName).resolve(minecraft.versionDescriptor()
-                        .sha1()).resolve("minecraft-" + sideName + "-" + minecraft.versionDescriptor().id() + "-remapped.jar").toFile());
-                task.getMappingsFile().set(downloadMappings.get().getDest());
+                task.getInputJar().fileProvider(downloadJar.map(Download::getDest));
+                task.getOutputJar().fileProvider(minecraft.remappedDirectory().zip(minecraft.targetVersion(),
+                        (remapDir, version) -> {
+                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(platform.executableArtifact());
+                            return remapDir.getAsFile().toPath().resolve(sideName).resolve(download.sha1())
+                                    .resolve("minecraft-" + sideName + "-" + version.id() + "-remapped.jar").toFile();
+                        }));
+                task.getMappingsFile().fileProvider(downloadMappings.map(Download::getDest));
             });
         } else {
             final TaskProvider<FilterJarTask> filteredJar = tasks.register("filter" + capitalizedSideName + "Jar", FilterJarTask.class, task -> {
@@ -230,9 +232,13 @@ public final class VanillaGradle implements Plugin<Project> {
                 task.getAllowedPackages().addAll(platform.allowedPackages());
                 task.dependsOn(downloadJar);
                 task.fromJar(downloadJar.map(Download::getDest));
-                task.getDestinationDirectory().set(minecraft.filteredDirectory().map(path -> path.dir(sideName).dir(minecraft.versionDescriptor().sha1())));
+                task.getDestinationDirectory().set(minecraft.filteredDirectory().zip(minecraft.targetVersion(),
+                        (path, version) -> {
+                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(platform.executableArtifact());
+                            return path.dir(sideName).dir(download.sha1());
+                        }));
                 task.getArchiveClassifier().set("filtered");
-                task.getArchiveVersion().set(minecraft.versionDescriptor().id());
+                task.getArchiveVersion().set(minecraft.versionDescriptor().map(VersionDescriptor::id));
                 task.getArchiveBaseName().set("minecraft-" + sideName);
             });
 
@@ -242,9 +248,13 @@ public final class VanillaGradle implements Plugin<Project> {
                 task.dependsOn(downloadMappings);
 
                 task.getInputJar().set(filteredJar.flatMap(AbstractArchiveTask::getArchiveFile));
-                task.getOutputJar().set(minecraft.remappedDirectory().get().getAsFile().toPath().resolve(sideName).resolve(minecraft.versionDescriptor()
-                        .sha1()).resolve("minecraft-" + sideName + "-" + minecraft.versionDescriptor().id() + "-remapped.jar").toFile());
-                task.getMappingsFile().set(downloadMappings.get().getDest());
+                task.getOutputJar().fileProvider(minecraft.remappedDirectory().zip(minecraft.targetVersion(),
+                        (remapDir, version) -> {
+                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(platform.executableArtifact());
+                            return remapDir.getAsFile().toPath().resolve(sideName).resolve(download.sha1())
+                                    .resolve("minecraft-" + sideName + "-" + version.id() + "-remapped.jar").toFile();
+                        }));
+                task.getMappingsFile().fileProvider(downloadMappings.map(Download::getDest));
             });
         }
 
@@ -256,7 +266,7 @@ public final class VanillaGradle implements Plugin<Project> {
 
         // Download asset index
         final TaskProvider<Download> downloadIndex = tasks.register("downloadAssetIndex", Download.class, task -> {
-            task.src(minecraft.targetVersion().assetIndex().url());
+            task.src(minecraft.targetVersion().get().assetIndex().url());
             task.dest(minecraft.assetsDirectory().dir("indexes").get().getAsFile());
             task.overwrite(false);
         });
