@@ -41,7 +41,7 @@ import java.util.regex.Pattern;
  * <p>Argument variables in the form {@code ${variable}} are interpreted using the environment tokens property.</p>
  */
 final class ManifestDerivedArgumentProvider implements CommandLineArgumentProvider {
-    private static final Pattern ENVIRONMENT_TOKEN = Pattern.compile("\\$\\{([^}]+)}");
+    private static final Pattern PARAMETER_TOKEN = Pattern.compile("\\$\\{([^}]+)}");
 
     private final MapProperty<String, String> environmentTokens;
     private final Provider<List<Argument>> arguments;
@@ -68,7 +68,7 @@ final class ManifestDerivedArgumentProvider implements CommandLineArgumentProvid
                         builder.delete(0, builder.length());
                     }
 
-                    final Matcher matcher = ENVIRONMENT_TOKEN.matcher(argument);
+                    final Matcher matcher = ManifestDerivedArgumentProvider.PARAMETER_TOKEN.matcher(argument);
                     while (matcher.find()) {
                         matcher.appendReplacement(builder, "");
                         final String value = this.environmentTokens.get().get(matcher.group(1));

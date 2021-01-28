@@ -86,10 +86,10 @@ public class RuleDeclarationTypeAdapter extends TypeAdapter<RuleDeclaration> {
         return builder.build();
     }
 
-    public static final class RuleDeclarationTypeAdapterFactory implements TypeAdapterFactory {
+    public static final class Factory implements TypeAdapterFactory {
         private final Map<String, Rule<?>> ruleTypes;
 
-        public RuleDeclarationTypeAdapterFactory(final Rule<?>... rules) {
+        public Factory(final Rule<?>... rules) {
             this.ruleTypes = new HashMap<>(rules.length);
             for (final Rule<?> rule : rules) {
                 this.ruleTypes.put(rule.id(), rule);

@@ -36,6 +36,7 @@ import org.gradle.process.CommandLineArgumentProvider;
 import org.spongepowered.gradle.vanilla.Constants;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -50,9 +51,6 @@ import javax.inject.Inject;
 public class RunConfiguration implements Named {
 
     private final String name;
-    private transient final ProjectLayout layout;
-    private transient final ObjectFactory objects;
-
     private final ConfigurableFileCollection classpath;
     private final List<String> args = new ArrayList<>();
     private final List<CommandLineArgumentProvider> allArgs = new ArrayList<>();
@@ -61,14 +59,12 @@ public class RunConfiguration implements Named {
     private final DirectoryProperty workingDirectory;
     private final Property<String> mainClass;
     private final Property<String> mainModule;
-    private final MapProperty<String, String> launcherMetaTokens;
+    private final MapProperty<String, String> parameterTokens;
     private final Property<Boolean> requiresAssetsAndNatives;
 
     @Inject
     public RunConfiguration(final String name, final ProjectLayout layout, final ObjectFactory objects) {
         this.name = name;
-        this.layout = layout;
-        this.objects = objects;
         this.classpath = objects.fileCollection();
         this.workingDirectory = objects.directoryProperty()
                 .convention(layout.getProjectDirectory().dir("run").dir(name));
@@ -78,35 +74,35 @@ public class RunConfiguration implements Named {
         this.allJvmArgs.add(new ConstantListProvider(this.jvmArgs));
         this.mainClass = objects.property(String.class);
         this.mainModule = objects.property(String.class);
-        this.launcherMetaTokens = objects.mapProperty(String.class, String.class);
+        this.parameterTokens = objects.mapProperty(String.class, String.class);
         this.requiresAssetsAndNatives = objects.property(Boolean.class).convention(false);
 
         // Apply global environment here
-        this.launcherMetaTokens.put(Constants.LauncherEnvironmentTokens.LAUNCHER_NAME, Constants.NAME);
-        this.launcherMetaTokens.put(Constants.LauncherEnvironmentTokens.LAUNCHER_VERSION, Constants.VERSION);
+        this.parameterTokens.put(ClientRunParameterTokens.LAUNCHER_NAME, Constants.NAME);
+        this.parameterTokens.put(ClientRunParameterTokens.LAUNCHER_VERSION, Constants.VERSION);
     }
 
     /**
-     * Get the launcher meta tokens.
+     * Get the run parameter tokens.
      *
      * <p>These tokens are used to substitute values in arguments provided from
      * a Mojang launcher manifest.</p>
      *
      * @return a map of launcher meta tokens
-     * @see org.spongepowered.gradle.vanilla.Constants.LauncherEnvironmentTokens for known token names
+     * @see ClientRunParameterTokens for known token names
      */
-    public MapProperty<String, String> launcherMetaTokens() {
-        return this.launcherMetaTokens;
+    public MapProperty<String, String> parameterTokens() {
+        return this.parameterTokens;
     }
 
     /**
-     * Operate on the launcher meta tokens.
+     * Operate on the run parameter tokens.
      *
-     * @param action an action to apply to the meta tokens map
-     * @see #launcherMetaTokens() for an explanation of what meta tokens are
+     * @param action an action to apply to the parameter tokens map
+     * @see #parameterTokens() for an explanation of what parameter tokens are
      */
-    public void launcherMetaTokens(final Action<MapProperty<String, String>> action) {
-        Objects.requireNonNull(action).execute(this.launcherMetaTokens);
+    public void parameterTokens(final Action<MapProperty<String, String>> action) {
+        Objects.requireNonNull(action).execute(this.parameterTokens);
     }
 
     /**
@@ -128,7 +124,7 @@ public class RunConfiguration implements Named {
         return this.classpath;
     }
 
-    public List<CommandLineArgumentProvider> allArguments() {
+    public List<CommandLineArgumentProvider> allArgumentProviders() {
         return this.allArgs;
     }
 
@@ -136,12 +132,42 @@ public class RunConfiguration implements Named {
         Collections.addAll(this.args, args);
     }
 
-    public List<CommandLineArgumentProvider> allJvmArguments() {
+    public List<String> allArguments() {
+        final List<String> values = new ArrayList<>();
+        for (final CommandLineArgumentProvider provider : this.allArgs) {
+            final Iterable<String> arguments = provider.asArguments();
+            if (arguments instanceof Collection<?>) {
+                values.addAll((Collection<String>) arguments);
+            } else {
+                for (final String argument : arguments) {
+                    values.add(argument);
+                }
+            }
+        }
+        return values;
+    }
+
+    public List<CommandLineArgumentProvider> allJvmArgumentProviders() {
         return this.allJvmArgs;
     }
 
     public void jvmArgs(final String... args) {
         Collections.addAll(this.jvmArgs, args);
+    }
+
+    public List<String> allJvmArguments() {
+        final List<String> values = new ArrayList<>();
+        for (final CommandLineArgumentProvider provider : this.allJvmArgs) {
+            final Iterable<String> arguments = provider.asArguments();
+            if (arguments instanceof Collection<?>) {
+                values.addAll((Collection<String>) arguments);
+            } else {
+                for (final String argument : arguments) {
+                    values.add(argument);
+                }
+            }
+        }
+        return values;
     }
 
     public DirectoryProperty workingDirectory() {

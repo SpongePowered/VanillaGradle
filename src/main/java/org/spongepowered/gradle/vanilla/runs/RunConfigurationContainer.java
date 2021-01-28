@@ -41,6 +41,7 @@ import org.gradle.api.specs.Spec;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.model.Version;
+import org.spongepowered.gradle.vanilla.model.rule.FeatureRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 
 import java.util.Collection;
@@ -100,22 +101,24 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
         return config -> {
             config.mainClass().set(this.extension.targetVersion().map(Version::mainClass));
             config.requiresAssetsAndNatives().set(true);
-            final MapProperty<String, String> launcherTokens = config.launcherMetaTokens();
-            launcherTokens.put(Constants.LauncherEnvironmentTokens.VERSION_NAME, this.extension.targetVersion().map(Version::id));
-            launcherTokens.put(Constants.LauncherEnvironmentTokens.ASSETS_INDEX_NAME, this.extension.targetVersion().map(Version::assets));
-            launcherTokens.put(Constants.LauncherEnvironmentTokens.AUTH_ACCESS_TOKEN, "0");
-            launcherTokens.put(Constants.LauncherEnvironmentTokens.GAME_DIRECTORY, config.workingDirectory().map(x -> x.getAsFile().getAbsolutePath()));
-            launcherTokens.put(Constants.LauncherEnvironmentTokens.USER_TYPE, "legacy"); // or mojang
-            launcherTokens.put(Constants.LauncherEnvironmentTokens.VERSION_TYPE,
+            final MapProperty<String, String> launcherTokens = config.parameterTokens();
+            launcherTokens.put(ClientRunParameterTokens.VERSION_NAME, this.extension.targetVersion().map(Version::id));
+            launcherTokens.put(ClientRunParameterTokens.ASSETS_INDEX_NAME, this.extension.targetVersion().map(Version::assets));
+            launcherTokens.put(ClientRunParameterTokens.AUTH_ACCESS_TOKEN, "0");
+            launcherTokens.put(ClientRunParameterTokens.GAME_DIRECTORY, config.workingDirectory().map(x -> x.getAsFile().getAbsolutePath()));
+            launcherTokens.put(ClientRunParameterTokens.USER_TYPE, "legacy"); // or mojang
+            launcherTokens.put(
+                    ClientRunParameterTokens.VERSION_TYPE,
                     this.extension.targetVersion().map(v -> v.type().name().toLowerCase(Locale.ROOT)));
 
             final RuleContext context = RuleContext.create();
-            config.allArguments().add(new ManifestDerivedArgumentProvider(
+            FeatureRule.setFeature(context, FeatureRule.Features.IS_DEMO_USER, true);
+            config.allArgumentProviders().add(new ManifestDerivedArgumentProvider(
                     launcherTokens,
                     this.extension.targetVersion().map(v -> v.arguments().game()),
                     context
             ));
-            config.allJvmArguments().add(new ManifestDerivedArgumentProvider(
+            config.allJvmArgumentProviders().add(new ManifestDerivedArgumentProvider(
                     launcherTokens,
                     this.extension.targetVersion().map(v -> v.arguments().jvm()),
                     context

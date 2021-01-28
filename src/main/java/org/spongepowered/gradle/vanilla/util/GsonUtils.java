@@ -46,7 +46,7 @@ public final class GsonUtils {
             .registerTypeAdapter(ZonedDateTime.class, GsonSerializers.ZDT)
             .registerTypeAdapter(GroupArtifactVersion.class, GsonSerializers.GAV)
             .registerTypeAdapter(Pattern.class, GsonSerializers.PATTERN)
-            .registerTypeAdapterFactory(new RuleDeclarationTypeAdapter.RuleDeclarationTypeAdapterFactory(FeatureRule.INSTANCE, OperatingSystemRule.INSTANCE))
+            .registerTypeAdapterFactory(new RuleDeclarationTypeAdapter.Factory(FeatureRule.INSTANCE, OperatingSystemRule.INSTANCE))
             .registerTypeAdapterFactory(new Argument.ArgumentTypeAdapter.Factory())
             .create();
 

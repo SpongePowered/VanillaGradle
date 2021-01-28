@@ -66,6 +66,7 @@ import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
@@ -408,8 +409,8 @@ public final class VanillaGradle implements Plugin<Project> {
         });
 
         minecraft.getRuns().configureEach(run -> {
-            run.launcherMetaTokens().put(Constants.LauncherEnvironmentTokens.ASSETS_ROOT, minecraft.assetsDirectory().map(x -> x.getAsFile().getAbsolutePath()));
-            run.launcherMetaTokens().put(Constants.LauncherEnvironmentTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
+            run.parameterTokens().put(ClientRunParameterTokens.ASSETS_ROOT, minecraft.assetsDirectory().map(x -> x.getAsFile().getAbsolutePath()));
+            run.parameterTokens().put(ClientRunParameterTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
         });
 
         return downloadAssets;
@@ -457,8 +458,8 @@ public final class VanillaGradle implements Plugin<Project> {
                 ideaRun.setWorkingDirectory(run.workingDirectory().get().getAsFile().getAbsolutePath());
                 // TODO: Figure out if it's possible to set this more appropriately based on the run configuration's classpath
                 ideaRun.moduleRef(project, project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
-                ideaRun.setJvmArgs(StringUtils.join(run.allJvmArguments(), true));
-                ideaRun.setProgramParameters(StringUtils.join(run.allArguments(), false));
+                ideaRun.setJvmArgs(StringUtils.join(run.allJvmArgumentProviders(), true));
+                ideaRun.setProgramParameters(StringUtils.join(run.allArgumentProviders(), false));
             });
         });
 
@@ -480,8 +481,8 @@ public final class VanillaGradle implements Plugin<Project> {
                 exec.getMainModule().set(config.mainModule());
                 exec.classpath(config.classpath());
                 exec.setWorkingDir(config.workingDirectory());
-                exec.getJvmArgumentProviders().addAll(config.allJvmArguments());
-                exec.getArgumentProviders().addAll(config.allArguments());
+                exec.getJvmArgumentProviders().addAll(config.allJvmArgumentProviders());
+                exec.getArgumentProviders().addAll(config.allArgumentProviders());
                 if (config.requiresAssetsAndNatives().get()) {
                     exec.dependsOn(Constants.Tasks.DOWNLOAD_ASSETS);
                     exec.dependsOn(Constants.Tasks.COLLECT_NATIVES);
