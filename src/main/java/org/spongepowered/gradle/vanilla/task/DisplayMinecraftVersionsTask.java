@@ -57,5 +57,7 @@ public abstract class DisplayMinecraftVersionsTask extends DefaultTask {
             }
             DisplayMinecraftVersionsTask.logger.warn(version.id());
         }
+
+        DisplayMinecraftVersionsTask.logger.warn(Constants.OUT_OF_BAND_RELEASE);
     }
 }
