@@ -22,33 +22,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.model;
+package org.spongepowered.gradle.vanilla.model.rule;
 
-import org.spongepowered.gradle.vanilla.model.rule.RuleDeclaration;
+import java.util.Optional;
+import java.util.function.Function;
 
-import java.io.Serializable;
-import java.util.Map;
+/**
+ * Simple key-value store for active rule data.
+ *
+ * <p>Mutator methods are on individual {@link Rule} types.</p>
+ */
+public interface RuleContext {
 
-public final class Library implements Serializable {
-
-    private LibraryDownloads downloads;
-    private GroupArtifactVersion name;
-    private Map<String, String> natives;
-    private RuleDeclaration rules;
-
-    public LibraryDownloads downloads() {
-        return this.downloads;
+    /**
+     * Create an empty, mutable rule context.
+     *
+     * @return the new rule context
+     */
+    static RuleContext create() {
+        return new RuleContextImpl();
     }
 
-    public GroupArtifactVersion name() {
-        return this.name;
-    }
+    <T> Optional<T> get(final String key);
 
-    public Map<String, String> natives() {
-        return this.natives;
-    }
+    void put(final String key, final Object value);
 
-    public RuleDeclaration rules() {
-        return this.rules;
-    }
+    <T> T computeIfAbsent(final String key, Function<String, T> valueComputer);
+
 }

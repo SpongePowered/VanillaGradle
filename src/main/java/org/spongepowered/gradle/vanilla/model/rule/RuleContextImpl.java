@@ -22,33 +22,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.model;
+package org.spongepowered.gradle.vanilla.model.rule;
 
-import org.spongepowered.gradle.vanilla.model.rule.RuleDeclaration;
-
-import java.io.Serializable;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
-public final class Library implements Serializable {
+final class RuleContextImpl implements RuleContext {
+    private final Map<String, Object> backing = new ConcurrentHashMap<>();
 
-    private LibraryDownloads downloads;
-    private GroupArtifactVersion name;
-    private Map<String, String> natives;
-    private RuleDeclaration rules;
-
-    public LibraryDownloads downloads() {
-        return this.downloads;
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> Optional<T> get(final String key) {
+        return Optional.ofNullable((T) this.backing.get(key));
     }
 
-    public GroupArtifactVersion name() {
-        return this.name;
+    @Override
+    public void put(final String key, final Object value) {
+        this.backing.put(key, value);
     }
 
-    public Map<String, String> natives() {
-        return this.natives;
-    }
-
-    public RuleDeclaration rules() {
-        return this.rules;
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T computeIfAbsent(final String key, final Function<String, T> valueComputer) {
+        return (T) this.backing.computeIfAbsent(key, valueComputer);
     }
 }

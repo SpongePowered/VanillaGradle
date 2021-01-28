@@ -22,33 +22,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.model;
+package org.spongepowered.gradle.vanilla.model.rule;
 
-import org.spongepowered.gradle.vanilla.model.rule.RuleDeclaration;
+import com.google.gson.reflect.TypeToken;
 
-import java.io.Serializable;
-import java.util.Map;
+/**
+ * A rule that can filter elements of a collection.
+ * @param <T> value type
+ */
+public interface Rule<T> {
 
-public final class Library implements Serializable {
+    /**
+     * The id for declaring the rule value
+     * @return the rule ID
+     */
+    String id();
 
-    private LibraryDownloads downloads;
-    private GroupArtifactVersion name;
-    private Map<String, String> natives;
-    private RuleDeclaration rules;
+    /**
+     * Data type of the rule.
+     *
+     * @return the rule data type
+     */
+    TypeToken<T> type();
 
-    public LibraryDownloads downloads() {
-        return this.downloads;
-    }
+    /**
+     * Test if the declared value matches the current environment.
+     *
+     * @param context the context representing the current environment
+     * @param value
+     * @return whether there is a match
+     */
+    boolean test(final RuleContext context, final T value);
 
-    public GroupArtifactVersion name() {
-        return this.name;
-    }
-
-    public Map<String, String> natives() {
-        return this.natives;
-    }
-
-    public RuleDeclaration rules() {
-        return this.rules;
-    }
 }

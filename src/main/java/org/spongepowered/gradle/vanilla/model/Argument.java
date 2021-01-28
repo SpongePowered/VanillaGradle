@@ -22,36 +22,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.util;
+package org.spongepowered.gradle.vanilla.model;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import org.spongepowered.gradle.vanilla.model.GroupArtifactVersion;
-import org.spongepowered.gradle.vanilla.model.rule.FeatureRule;
-import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
-import org.spongepowered.gradle.vanilla.model.rule.RuleDeclarationTypeAdapter;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import org.spongepowered.gradle.vanilla.model.rule.RuleDeclaration;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.time.ZonedDateTime;
-import java.util.Objects;
 
-public final class GsonUtils {
+public final class Argument {
+    private final String value;
+    private final RuleDeclaration rules;
 
-    public static final Gson GSON = new GsonBuilder()
-            .registerTypeAdapter(ZonedDateTime.class, GsonSerializers.ZDT)
-            .registerTypeAdapter(GroupArtifactVersion.class, GsonSerializers.GAV)
-            .registerTypeAdapterFactory(new RuleDeclarationTypeAdapter.RuleDeclarationTypeAdapterFactory(FeatureRule.INSTANCE, OperatingSystemRule.INSTANCE))
-            .create();
-
-    public static <T> T parseFromJson(final URL url, final Class<T> type) throws IOException {
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(url, "url").openStream()))) {
-            return GsonUtils.GSON.fromJson(reader, type);
-        }
+    public Argument(final String value, final RuleDeclaration rules) {
+        this.value = value;
+        this.rules = rules;
     }
 
-    private GsonUtils() {
+    public static final class ArgumentTypeAdapter extends TypeAdapter<Argument> {
+
+        @Override
+        public void write(final JsonWriter out, final Argument value) throws IOException {
+
+        }
+
+        @Override
+        public Argument read(final JsonReader in) throws IOException {
+            return null;
+        }
     }
 }

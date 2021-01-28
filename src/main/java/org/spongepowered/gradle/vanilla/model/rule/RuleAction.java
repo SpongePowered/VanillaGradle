@@ -22,33 +22,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.model;
+package org.spongepowered.gradle.vanilla.model.rule;
 
-import org.spongepowered.gradle.vanilla.model.rule.RuleDeclaration;
+public enum RuleAction {
 
-import java.io.Serializable;
-import java.util.Map;
+    ALLOW,
+    DENY
 
-public final class Library implements Serializable {
-
-    private LibraryDownloads downloads;
-    private GroupArtifactVersion name;
-    private Map<String, String> natives;
-    private RuleDeclaration rules;
-
-    public LibraryDownloads downloads() {
-        return this.downloads;
-    }
-
-    public GroupArtifactVersion name() {
-        return this.name;
-    }
-
-    public Map<String, String> natives() {
-        return this.natives;
-    }
-
-    public RuleDeclaration rules() {
-        return this.rules;
-    }
 }
