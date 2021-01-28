@@ -66,7 +66,7 @@ public final class RuleDeclaration {
             return true;
         }
 
-        RuleAction action = RuleAction.ALLOW;
+        RuleAction action = RuleAction.DENY;
         for (final Entry entry : this.entries) {
             boolean matches = true;
             for (final Map.Entry<Rule<?>, Object> rule : entry.rules.entrySet()) {

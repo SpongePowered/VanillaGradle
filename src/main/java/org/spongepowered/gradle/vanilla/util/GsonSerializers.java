@@ -80,5 +80,18 @@ public final class GsonSerializers {
         }
     }.nullSafe();
 
+
+    static final TypeAdapter<Pattern> PATTERN = new TypeAdapter<Pattern>() {
+        @Override
+        public void write(final JsonWriter out, final Pattern value) throws IOException {
+            out.value(value.pattern());
+        }
+
+        @Override
+        public Pattern read(final JsonReader in) throws IOException {
+            return Pattern.compile(in.nextString());
+        }
+    }.nullSafe();
+
     private GsonSerializers() {}
 }

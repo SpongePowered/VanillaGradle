@@ -38,11 +38,11 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
-import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.VersionManifestV2;
+import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
@@ -145,15 +145,15 @@ public abstract class MinecraftExtension {
     public void accessWidener(final Object file) {
         final TaskProvider<AccessWidenJarTask> awTask;
         final TaskContainer tasks = this.project.getTasks();
-        if (tasks.getNames().contains(Constants.ACCESS_WIDENER_TASK_NAME)) {
-            awTask = tasks.named(Constants.ACCESS_WIDENER_TASK_NAME, AccessWidenJarTask.class);
+        if (tasks.getNames().contains(Constants.Tasks.ACCESS_WIDENER)) {
+            awTask = tasks.named(Constants.Tasks.ACCESS_WIDENER, AccessWidenJarTask.class);
         } else {
             final Configuration accessWidener = this.project.getConfigurations().maybeCreate(Constants.Configurations.ACCESS_WIDENER);
             accessWidener.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.ACCESS_WIDENER)));
             final FileCollection widenerClasspath = accessWidener.getIncoming().getFiles();
             final Directory destinationDir = this.project.getLayout().getProjectDirectory().dir(".gradle").dir(Constants.NAME).dir("aw-minecraft");
 
-            awTask = tasks.register(Constants.ACCESS_WIDENER_TASK_NAME, AccessWidenJarTask.class, task -> {
+            awTask = tasks.register(Constants.Tasks.ACCESS_WIDENER, AccessWidenJarTask.class, task -> {
                 task.setWorkerClasspath(widenerClasspath);
                 task.getExpectedNamespace().set("named");
                 task.getDestinationDirectory().set(destinationDir);
@@ -167,7 +167,7 @@ public abstract class MinecraftExtension {
         return this.versionManifest;
     }
 
-    protected DirectoryProperty assetsDirectory() {
+    public DirectoryProperty assetsDirectory() {
         return this.assetsDirectory;
     }
 
@@ -212,7 +212,8 @@ public abstract class MinecraftExtension {
             for (final MinecraftSide side : this.platform.get().activeSides()) {
                 side.applyLibraries(
                     name -> a.add(project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
-                    this.targetVersion.get().libraries()
+                    this.targetVersion.get().libraries(),
+                        RuleContext.create()
                 );
             }
         });

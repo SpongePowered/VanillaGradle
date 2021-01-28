@@ -45,7 +45,7 @@ public final class StringUtils {
         return Character.toUpperCase(input.charAt(0)) + input.substring(1);
     }
 
-    public static String join(final Iterable<CommandLineArgumentProvider> providers) {
+    public static String join(final Iterable<CommandLineArgumentProvider> providers, final boolean quoted) {
         final StringBuilder builder = new StringBuilder();
         boolean first = true;
         for (final CommandLineArgumentProvider provider : providers) {
@@ -54,7 +54,11 @@ public final class StringUtils {
                     builder.append(" ");
                 }
                 first = false;
-                builder.append(argument);
+                if (quoted) {
+                    builder.append("\"").append(argument).append("\"");
+                } else {
+                    builder.append(argument);
+                }
             }
         }
         return builder.toString();

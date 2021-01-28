@@ -24,20 +24,19 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
-import com.google.gson.JsonArray;
-
 import java.io.Serializable;
+import java.util.List;
 
 public final class Arguments implements Serializable {
 
-    private JsonArray game;
-    private JsonArray jvm;
+    private List<Argument> game;
+    private List<Argument> jvm;
 
-    public JsonArray game() {
+    public List<Argument> game() {
         return this.game;
     }
 
-    public JsonArray jvm() {
+    public List<Argument> jvm() {
         return this.jvm;
     }
 }

@@ -27,14 +27,15 @@ package org.spongepowered.gradle.vanilla.model;
 import org.spongepowered.gradle.vanilla.model.rule.RuleDeclaration;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.Map;
 
 public final class Library implements Serializable {
 
     private LibraryDownloads downloads;
     private GroupArtifactVersion name;
-    private Map<String, String> natives;
-    private RuleDeclaration rules;
+    private Map<String, String> natives = Collections.emptyMap();
+    private RuleDeclaration rules = RuleDeclaration.empty();
 
     public LibraryDownloads downloads() {
         return this.downloads;

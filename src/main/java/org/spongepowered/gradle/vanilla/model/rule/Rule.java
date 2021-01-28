@@ -41,6 +41,8 @@ public interface Rule<T> {
     /**
      * Data type of the rule.
      *
+     * <p>This type will be used to deserialize rule values from a launcher metadata file.</p>
+     *
      * @return the rule data type
      */
     TypeToken<T> type();
@@ -49,7 +51,7 @@ public interface Rule<T> {
      * Test if the declared value matches the current environment.
      *
      * @param context the context representing the current environment
-     * @param value
+     * @param value the rule value
      * @return whether there is a match
      */
     boolean test(final RuleContext context, final T value);

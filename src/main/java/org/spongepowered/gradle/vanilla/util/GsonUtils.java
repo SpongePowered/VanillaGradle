@@ -26,6 +26,7 @@ package org.spongepowered.gradle.vanilla.util;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import org.spongepowered.gradle.vanilla.model.Argument;
 import org.spongepowered.gradle.vanilla.model.GroupArtifactVersion;
 import org.spongepowered.gradle.vanilla.model.rule.FeatureRule;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
@@ -37,13 +38,16 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.time.ZonedDateTime;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 public final class GsonUtils {
 
     public static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(ZonedDateTime.class, GsonSerializers.ZDT)
             .registerTypeAdapter(GroupArtifactVersion.class, GsonSerializers.GAV)
+            .registerTypeAdapter(Pattern.class, GsonSerializers.PATTERN)
             .registerTypeAdapterFactory(new RuleDeclarationTypeAdapter.RuleDeclarationTypeAdapterFactory(FeatureRule.INSTANCE, OperatingSystemRule.INSTANCE))
+            .registerTypeAdapterFactory(new Argument.ArgumentTypeAdapter.Factory())
             .create();
 
     public static <T> T parseFromJson(final URL url, final Class<T> type) throws IOException {

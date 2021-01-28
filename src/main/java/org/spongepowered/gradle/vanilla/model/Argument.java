@@ -24,32 +24,104 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.TypeAdapter;
+import com.google.gson.TypeAdapterFactory;
+import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import org.spongepowered.gradle.vanilla.model.rule.RuleDeclaration;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public final class Argument {
-    private final String value;
+    private final List<String> value;
     private final RuleDeclaration rules;
 
-    public Argument(final String value, final RuleDeclaration rules) {
+    public Argument(final List<String> value, final RuleDeclaration rules) {
         this.value = value;
         this.rules = rules;
     }
 
+    public List<String> value() {
+        return this.value;
+    }
+
+    public RuleDeclaration rules() {
+        return this.rules == null ? RuleDeclaration.empty() : this.rules;
+    }
+
     public static final class ArgumentTypeAdapter extends TypeAdapter<Argument> {
+        private static final String VALUE = "value";
+        private static final String RULES = "rules";
+        private final TypeAdapter<RuleDeclaration> declaration;
+
+        public ArgumentTypeAdapter(final TypeAdapter<RuleDeclaration> declaration) {
+            this.declaration = declaration;
+        }
 
         @Override
-        public void write(final JsonWriter out, final Argument value) throws IOException {
-
+        public void write(final JsonWriter out, final Argument value) {
+            throw new UnsupportedOperationException();
         }
 
         @Override
         public Argument read(final JsonReader in) throws IOException {
-            return null;
+            switch (in.peek()) {
+                case STRING: // literal argument
+                    return new Argument(Collections.singletonList(in.nextString()), RuleDeclaration.empty());
+                case BEGIN_OBJECT: // argument with a rule
+                    List<String> value = null;
+                    RuleDeclaration declaration = RuleDeclaration.empty();
+                    in.beginObject();
+                    while (in.peek() != JsonToken.END_OBJECT) {
+                        final String key = in.nextName();
+                        if (key.equals(ArgumentTypeAdapter.VALUE)) {
+                            switch (in.peek()) {
+                                case STRING:
+                                    value = Collections.singletonList(in.nextString());
+                                    break;
+                                case BEGIN_ARRAY:
+                                    in.beginArray();
+                                    value = new ArrayList<>();
+                                    while (in.peek() != JsonToken.END_ARRAY) {
+                                        value.add(in.nextString());
+                                    }
+                                    in.endArray();
+                                    break;
+                                default:
+                                    throw new JsonSyntaxException("Key " + key + " expected to be either a literal string or a list of strings");
+                            }
+                        } else if (key.equals(ArgumentTypeAdapter.RULES)) {
+                            declaration = this.declaration.read(in);
+                        }
+                    }
+                    in.endObject();
+                    if (value == null) {
+                        throw new JsonSyntaxException("Exited argument declaration without finding argument values");
+                    }
+                    return new Argument(value, declaration);
+                default:
+                    throw new JsonSyntaxException("Expected either a literal argument or a rule, but got " + in.peek() + " at " + in.getPath());
+
+            }
+        }
+
+        public static final class Factory implements TypeAdapterFactory {
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public <T> TypeAdapter<T> create(final Gson gson, final TypeToken<T> type) {
+                if (!type.getRawType().equals(Argument.class)) {
+                    return null;
+                }
+                return (TypeAdapter<T>) new ArgumentTypeAdapter(gson.getAdapter(RuleDeclaration.class)).nullSafe();
+            }
         }
     }
 }

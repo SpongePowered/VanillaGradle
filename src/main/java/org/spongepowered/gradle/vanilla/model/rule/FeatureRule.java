@@ -30,12 +30,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * A rule that matches feature flags defined in the rule context.
+ */
 public final class FeatureRule implements Rule<Map<String, Boolean>> {
 
     public static final FeatureRule INSTANCE = new FeatureRule();
     private static final String CTX_FEATURES = "vanillagradle:features";
     private static final TypeToken<Map<String, Boolean>> TYPE = new TypeToken<Map<String, Boolean>>() {};
 
+    /**
+     * Known feature flags.
+     */
     public static final class Features {
 
         /**
@@ -52,6 +58,18 @@ public final class FeatureRule implements Rule<Map<String, Boolean>> {
     private FeatureRule() {
     }
 
+    /**
+     * Set a feature.
+     *
+     * @param context the rule context that will eventually be tested
+     * @param feature a feature flag
+     * @param value the value for the feature
+     * @see Features for a selection of known features
+     */
+    public static void setFeature(final RuleContext context, final String feature, final boolean value) {
+        context.computeIfAbsent(FeatureRule.CTX_FEATURES, $ -> new HashMap<String, Boolean>()).put(feature, value);
+    }
+
     @Override
     public String id() {
         return "features";
@@ -60,10 +78,6 @@ public final class FeatureRule implements Rule<Map<String, Boolean>> {
     @Override
     public TypeToken<Map<String, Boolean>> type() {
         return TYPE;
-    }
-
-    public static void setFeature(final RuleContext context, final String feature, final boolean value) {
-        context.computeIfAbsent(FeatureRule.CTX_FEATURES, $ -> new HashMap<String, Boolean>()).put(feature, value);
     }
 
     @Override

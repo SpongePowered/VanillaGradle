@@ -24,6 +24,9 @@
  */
 package org.spongepowered.gradle.vanilla.model.rule;
 
+/**
+ * The result of a rule evaluation
+ */
 public enum RuleAction {
 
     ALLOW,

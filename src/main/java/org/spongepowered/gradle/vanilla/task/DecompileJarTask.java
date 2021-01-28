@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.task;
 
+import com.sun.management.OperatingSystemMXBean;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
@@ -35,6 +36,7 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.workers.WorkerExecutor;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.worker.JarDecompileWorker;
+
 
 import java.lang.management.ManagementFactory;
 
@@ -74,9 +76,11 @@ public abstract class DecompileJarTask extends DefaultTask {
     @TaskAction
     public void execute() {
         // Execute in an isolated class loader that can access our customized classpath
+        final long totalSystemMemoryBytes =
+                ((OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getTotalPhysicalMemorySize() / (1024L * 1024L);
         this.getWorkerExecutor().processIsolation(spec -> {
             spec.forkOptions(options -> {
-                options.setMaxHeapSize("4096M");
+                options.setMaxHeapSize(Math.max(totalSystemMemoryBytes / 4, 4096) + "M");
             });
             spec.getClasspath().from(this.getWorkerClasspath());
         }).submit(JarDecompileWorker.class, parameters -> {

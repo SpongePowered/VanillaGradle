@@ -91,6 +91,7 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
                 LOGGER.warn("Successfully decompiled to {}", params.getOutputJar().get().getAsFile());
             } finally {
                 decompiler.clearContext();
+                System.gc();
             }
         } catch (final IOException e) {
             e.printStackTrace();

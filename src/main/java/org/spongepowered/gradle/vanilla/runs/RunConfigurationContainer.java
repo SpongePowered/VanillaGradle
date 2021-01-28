@@ -35,15 +35,18 @@ import org.gradle.api.NamedDomainObjectSet;
 import org.gradle.api.Namer;
 import org.gradle.api.Rule;
 import org.gradle.api.UnknownDomainObjectException;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.model.Version;
+import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -96,9 +99,27 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     private Action<RunConfiguration> configureClientRun() {
         return config -> {
             config.mainClass().set(this.extension.targetVersion().map(Version::mainClass));
-            // TODO: Apply appropriate runner args and JVM args
-            // TODO: Assets
-            // TODO: Natives
+            config.requiresAssetsAndNatives().set(true);
+            final MapProperty<String, String> launcherTokens = config.launcherMetaTokens();
+            launcherTokens.put(Constants.LauncherEnvironmentTokens.VERSION_NAME, this.extension.targetVersion().map(Version::id));
+            launcherTokens.put(Constants.LauncherEnvironmentTokens.ASSETS_INDEX_NAME, this.extension.targetVersion().map(Version::assets));
+            launcherTokens.put(Constants.LauncherEnvironmentTokens.AUTH_ACCESS_TOKEN, "0");
+            launcherTokens.put(Constants.LauncherEnvironmentTokens.GAME_DIRECTORY, config.workingDirectory().map(x -> x.getAsFile().getAbsolutePath()));
+            launcherTokens.put(Constants.LauncherEnvironmentTokens.USER_TYPE, "legacy"); // or mojang
+            launcherTokens.put(Constants.LauncherEnvironmentTokens.VERSION_TYPE,
+                    this.extension.targetVersion().map(v -> v.type().name().toLowerCase(Locale.ROOT)));
+
+            final RuleContext context = RuleContext.create();
+            config.allArguments().add(new ManifestDerivedArgumentProvider(
+                    launcherTokens,
+                    this.extension.targetVersion().map(v -> v.arguments().game()),
+                    context
+            ));
+            config.allJvmArguments().add(new ManifestDerivedArgumentProvider(
+                    launcherTokens,
+                    this.extension.targetVersion().map(v -> v.arguments().jvm()),
+                    context
+            ));
         };
     }
 

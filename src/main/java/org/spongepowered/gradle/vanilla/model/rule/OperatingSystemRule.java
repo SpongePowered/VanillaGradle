@@ -26,6 +26,8 @@ package org.spongepowered.gradle.vanilla.model.rule;
 
 import com.google.gson.reflect.TypeToken;
 
+import java.lang.management.ManagementFactory;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -33,6 +35,7 @@ public final class OperatingSystemRule implements Rule<OperatingSystemRule.OSInf
 
     private static final String CTX_OS_NAME = "vanillagradle:os_name";
     private static final String CTX_OS_VERSION = "vanillagradle:os_version";
+    private static final String CTX_OS_ARCH = "vanillagradle:os_arch";
 
     public static final OperatingSystemRule INSTANCE = new OperatingSystemRule();
     private static final TypeToken<OSInfo> TYPE = TypeToken.get(OSInfo.class);
@@ -40,10 +43,12 @@ public final class OperatingSystemRule implements Rule<OperatingSystemRule.OSInf
     public static final class OSInfo {
         final String name;
         final Pattern version;
+        final String arch;
 
-        public OSInfo(final String name, final Pattern version) {
+        public OSInfo(final String name, final Pattern version, final String arch) {
             this.name = name;
             this.version = version;
+            this.arch = arch;
         }
     }
 
@@ -53,6 +58,10 @@ public final class OperatingSystemRule implements Rule<OperatingSystemRule.OSInf
 
     public static void setOsVersion(final RuleContext ctx, final String version) {
         ctx.put(OperatingSystemRule.CTX_OS_VERSION, version);
+    }
+
+    public static void setOsArchitecture(final RuleContext ctx, final String arch) {
+        ctx.put(OperatingSystemRule.CTX_OS_ARCH, arch);
     }
 
     private OperatingSystemRule() {
@@ -70,11 +79,25 @@ public final class OperatingSystemRule implements Rule<OperatingSystemRule.OSInf
 
     @Override
     public boolean test(final RuleContext context, final OSInfo value) {
-        final String osName = context.<String>get(OperatingSystemRule.CTX_OS_NAME).orElseGet(() -> System.getProperty("os.name"));
+        final String osName =
+                context.<String>get(OperatingSystemRule.CTX_OS_NAME).orElseGet(() -> OperatingSystemRule.normalizeOsName(System.getProperty("os.name")));
         final String osVersion = context.<String>get(OperatingSystemRule.CTX_OS_VERSION).orElseGet(() -> System.getProperty("os.version"));
+        final String osArch = context.<String>get(OperatingSystemRule.CTX_OS_ARCH).orElseGet(() -> System.getProperty("os.arch"));
 
         return Objects.equals(osName, value.name)
-                && (value.version == null || value.version.matcher(osVersion).find());
+                && (value.version == null || value.version.matcher(osVersion).find())
+                && (value.arch == null || value.arch.equals(osArch));
+    }
+
+    public static String normalizeOsName(final String name) {
+        final String lowerName = name.toLowerCase(Locale.ROOT);
+        if (lowerName.startsWith("windows")) {
+            return "windows";
+        } else if (lowerName.contains("os x")) {
+            return "osx";
+        } else {
+            return lowerName;
+        }
     }
 
 }

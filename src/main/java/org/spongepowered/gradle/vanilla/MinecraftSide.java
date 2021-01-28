@@ -27,6 +27,7 @@ package org.spongepowered.gradle.vanilla;
 import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.model.GroupArtifactVersion;
 import org.spongepowered.gradle.vanilla.model.Library;
+import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -37,10 +38,16 @@ import java.util.function.Consumer;
 public enum MinecraftSide {
     CLIENT(DownloadClassifier.CLIENT, DownloadClassifier.CLIENT_MAPPINGS) {
         @Override
-        void applyLibraries(final Consumer<GroupArtifactVersion> handler, final List<Library> knownLibraries) {
+        void applyLibraries(
+            final Consumer<GroupArtifactVersion> handler,
+            final List<Library> knownLibraries,
+            final RuleContext rules
+        ) {
             // Client gets all libraries
             for (final Library library : knownLibraries) {
-                handler.accept(library.name());
+                if (library.rules().test(rules)) {
+                    handler.accept(library.name());
+                }
             }
         }
     },
@@ -54,12 +61,14 @@ public enum MinecraftSide {
         }
 
         @Override
-        void applyLibraries(final Consumer<GroupArtifactVersion> handler, final List<Library> knownLibraries) {
+        void applyLibraries(
+                final Consumer<GroupArtifactVersion> handler, final List<Library> knownLibraries,
+                final RuleContext rules) {
             // TODO: This is kinda ugly, using a hardcoded list
             // Unfortunately Gradle both lets you tweak the metadata of an incoming artifact, and transform the artifact itself, but not both at
             // the same time.
             for (final Library library : knownLibraries) {
-                if (!Constants.CLIENT_ONLY_DEPENDENCY_GROUPS.contains(library.name().group())) {
+                if (!Constants.CLIENT_ONLY_DEPENDENCY_GROUPS.contains(library.name().group()) && library.rules().test(rules)) {
                     handler.accept(library.name());
                 }
             }
@@ -87,7 +96,11 @@ public enum MinecraftSide {
         return this.mappingsArtifact;
     }
 
-    abstract void applyLibraries(final Consumer<GroupArtifactVersion> dependencyAccepter, final List<Library> knownLibraries);
+    abstract void applyLibraries(
+        final Consumer<GroupArtifactVersion> dependencyAccepter,
+        final List<Library> knownLibraries,
+        final RuleContext rules
+    );
 
     /**
      * Get packages that will remain unfiltered in the jar

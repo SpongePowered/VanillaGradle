@@ -39,7 +39,6 @@ public final class Constants {
     public static final String MINECRAFT_RESOURCES_URL = "https://resources.download.minecraft.net/";
     public static final String TASK_GROUP = "vanilla gradle";
     public static final int ASM_VERSION = Opcodes.ASM9;
-    public static final String ACCESS_WIDENER_TASK_NAME = "accessWidenMinecraft";
 
     public static final class Directories {
         public static final String CACHES = "caches";
@@ -52,6 +51,16 @@ public final class Constants {
         public static final String FILTERED = "filtered";
 
         private Directories() {
+        }
+    }
+
+    public static final class Tasks {
+
+        public static final String ACCESS_WIDENER = "accessWidenMinecraft";
+        public static final String DOWNLOAD_ASSETS = "downloadAssets";
+        public static final String COLLECT_NATIVES = "collectNatives";
+
+        private Tasks() {
         }
     }
 
@@ -89,6 +98,24 @@ public final class Constants {
 
         private Configurations() {
         }
+    }
+
+    public static final class LauncherEnvironmentTokens {
+        public static final String AUTH_PLAYER_NAME = "auth_player_name";
+        public static final String VERSION_NAME = "version_name";
+        public static final String GAME_DIRECTORY = "game_directory";
+        public static final String ASSETS_ROOT = "assets_root";
+        public static final String ASSETS_INDEX_NAME = "assets_index_name";
+        public static final String AUTH_UUID = "auth_uuid";
+        public static final String AUTH_ACCESS_TOKEN = "auth_access_token";
+        public static final String USER_TYPE = "user_type";
+        public static final String VERSION_TYPE = "version_type";
+        public static final String RESOLUTION_WIDTH = "resolution_width";
+        public static final String RESOLUTION_HEIGHT = "resolution_height";
+        public static final String NATIVES_DIRECTORY = "natives_directory";
+        public static final String LAUNCHER_NAME = "launcher_name";
+        public static final String LAUNCHER_VERSION = "launcher_version";
+        public static final String CLASSPATH = "classpath";
     }
 
     /**

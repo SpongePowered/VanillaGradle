@@ -33,9 +33,14 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.MavenRepositoryContentDescriptor;
+import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
+import org.gradle.api.file.FileSystemLocation;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.SourceSet;
@@ -55,9 +60,12 @@ import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.model.AssetIndexReference;
 import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
+import org.spongepowered.gradle.vanilla.model.Library;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
+import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.task.FilterJarTask;
@@ -68,15 +76,20 @@ import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 import org.spongepowered.gradle.vanilla.util.StringUtils;
 
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class VanillaGradle implements Plugin<Project> {
+    private static final AtomicBoolean VERSION_ANNOUNCED = new AtomicBoolean();
 
     private Project project;
 
     @Override
     public void apply(final Project project) {
         this.project = project;
-        project.getLogger().lifecycle(String.format("SpongePowered Vanilla 'GRADLE' Toolset Version '%s'", Constants.VERSION));
+
+        if (VanillaGradle.VERSION_ANNOUNCED.compareAndSet(false, true)) {
+            project.getLogger().lifecycle(String.format("SpongePowered Vanilla 'GRADLE' Toolset Version '%s'", Constants.VERSION));
+        }
 
         final MinecraftExtension minecraft = project.getExtensions().create("minecraft", MinecraftExtension.class, project);
 
@@ -99,7 +112,6 @@ public final class VanillaGradle implements Plugin<Project> {
             task.setGroup(Constants.TASK_GROUP);
             task.dependsOn(decompileJar);
         });
-
 
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
             this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class));
@@ -147,9 +159,9 @@ public final class VanillaGradle implements Plugin<Project> {
 
             if (resultJar != null) {
                 final TaskProvider<? extends ProcessedJarTask> actualDependency;
-                if (project.getTasks().getNames().contains(Constants.ACCESS_WIDENER_TASK_NAME)) { // Using AW
+                if (project.getTasks().getNames().contains(Constants.Tasks.ACCESS_WIDENER)) { // Using AW
                     final TaskProvider<AccessWidenJarTask> awTask = project.getTasks().named(
-                            Constants.ACCESS_WIDENER_TASK_NAME,
+                            Constants.Tasks.ACCESS_WIDENER,
                             AccessWidenJarTask.class
                     );
                     final TaskProvider<?> finalResultJar = resultJar;
@@ -339,9 +351,51 @@ public final class VanillaGradle implements Plugin<Project> {
             task.doFirst(t2 -> ((Download) t2).getDest().getParentFile().mkdirs());
         });
 
-        final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
+        final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register(Constants.Tasks.DOWNLOAD_ASSETS, DownloadAssetsTask.class, task -> {
             task.getAssetsDirectory().set(minecraft.assetsDirectory().dir("objects"));
             task.getAssetsIndex().fileProvider(downloadIndex.map(Download::getDest));
+        });
+
+        final NamedDomainObjectProvider<Configuration> natives = this.project.getConfigurations().register("minecraftNatives", config -> {
+            config.setVisible(false);
+            config.setCanBeResolved(true);
+            config.setCanBeConsumed(false);
+            config.setTransitive(false);
+            config.withDependencies(set -> {
+                final RuleContext context = RuleContext.create();
+                final String osName = OperatingSystemRule.normalizeOsName(System.getProperty("os.name"));
+                for (final Library library : minecraft.targetVersion().get().libraries()) {
+                    final String nativeClassifier = library.natives().get(osName);
+                    if (nativeClassifier != null && library.rules().test(context)) {
+                        set.add(this.project.getDependencies().create(
+                            library.name().group()
+                            + ':' + library.name().artifact()
+                            + ':' + library.name().version()
+                            + ':' + nativeClassifier
+                        ));
+                    }
+                }
+            });
+        });
+
+        final Provider<FileCollection> nativesFiles = natives.map(config -> config.getIncoming().getFiles());
+        final Provider<Directory> nativesDir = this.project.getLayout().getBuildDirectory().dir("run-natives");
+        final Provider<FileCollection> extractedNatives = nativesFiles.flatMap(tree -> tree.getElements().map(files -> {
+            final ConfigurableFileCollection extracted = this.project.files();
+            for (final FileSystemLocation file : files) {
+                extracted.from(this.project.zipTree(file));
+            }
+            return extracted;
+        }));
+        final TaskProvider<Copy> gatherNatives = tasks.register(Constants.Tasks.COLLECT_NATIVES, Copy.class, task -> {
+            task.setGroup(Constants.TASK_GROUP);
+            task.from(extractedNatives);
+            task.into(nativesDir.get());
+        });
+
+        minecraft.getRuns().configureEach(run -> {
+            run.launcherMetaTokens().put(Constants.LauncherEnvironmentTokens.ASSETS_ROOT, minecraft.assetsDirectory().map(x -> x.getAsFile().getAbsolutePath()));
+            run.launcherMetaTokens().put(Constants.LauncherEnvironmentTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
         });
 
         return downloadAssets;
@@ -376,12 +430,21 @@ public final class VanillaGradle implements Plugin<Project> {
                     );
                 }
 
+                if (run.requiresAssetsAndNatives().get()) {
+                    ideaRun.getBeforeRun().register(Constants.Tasks.DOWNLOAD_ASSETS, GradleTask.class,
+                            action -> action.setTask(this.project.task(Constants.Tasks.DOWNLOAD_ASSETS))
+                    );
+                    ideaRun.getBeforeRun().register(Constants.Tasks.COLLECT_NATIVES, GradleTask.class,
+                            action -> action.setTask(this.project.task(Constants.Tasks.COLLECT_NATIVES))
+                    );
+                }
+
                 ideaRun.setMainClass(run.mainClass().get());
                 ideaRun.setWorkingDirectory(run.workingDirectory().get().getAsFile().getAbsolutePath());
                 // TODO: Figure out if it's possible to set this more appropriately based on the run configuration's classpath
                 ideaRun.moduleRef(project, project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
-                ideaRun.setJvmArgs(StringUtils.join(run.allJvmArguments()));
-                ideaRun.setProgramParameters(StringUtils.join(run.allArguments()));
+                ideaRun.setJvmArgs(StringUtils.join(run.allJvmArguments(), true));
+                ideaRun.setProgramParameters(StringUtils.join(run.allArguments(), false));
             });
         });
 
@@ -405,6 +468,15 @@ public final class VanillaGradle implements Plugin<Project> {
                 exec.setWorkingDir(config.workingDirectory());
                 exec.getJvmArgumentProviders().addAll(config.allJvmArguments());
                 exec.getArgumentProviders().addAll(config.allArguments());
+                if (config.requiresAssetsAndNatives().get()) {
+                    exec.dependsOn(Constants.Tasks.DOWNLOAD_ASSETS);
+                    exec.dependsOn(Constants.Tasks.COLLECT_NATIVES);
+                }
+
+                exec.doFirst(task -> {
+                    final JavaExec je = (JavaExec) task;
+                    je.getWorkingDir().mkdirs();
+                });
             });
         });
     }

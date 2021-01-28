@@ -24,18 +24,23 @@
  */
 package org.spongepowered.gradle.vanilla.runs;
 
+import org.gradle.api.Action;
 import org.gradle.api.Named;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.process.CommandLineArgumentProvider;
+import org.spongepowered.gradle.vanilla.Constants;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
+import javax.annotation.Nonnull;
 import javax.inject.Inject;
 
 /**
@@ -56,6 +61,8 @@ public class RunConfiguration implements Named {
     private final DirectoryProperty workingDirectory;
     private final Property<String> mainClass;
     private final Property<String> mainModule;
+    private final MapProperty<String, String> launcherMetaTokens;
+    private final Property<Boolean> requiresAssetsAndNatives;
 
     @Inject
     public RunConfiguration(final String name, final ProjectLayout layout, final ObjectFactory objects) {
@@ -71,8 +78,52 @@ public class RunConfiguration implements Named {
         this.allJvmArgs.add(new ConstantListProvider(this.jvmArgs));
         this.mainClass = objects.property(String.class);
         this.mainModule = objects.property(String.class);
+        this.launcherMetaTokens = objects.mapProperty(String.class, String.class);
+        this.requiresAssetsAndNatives = objects.property(Boolean.class).convention(false);
+
+        // Apply global environment here
+        this.launcherMetaTokens.put(Constants.LauncherEnvironmentTokens.LAUNCHER_NAME, Constants.NAME);
+        this.launcherMetaTokens.put(Constants.LauncherEnvironmentTokens.LAUNCHER_VERSION, Constants.VERSION);
     }
 
+    /**
+     * Get the launcher meta tokens.
+     *
+     * <p>These tokens are used to substitute values in arguments provided from
+     * a Mojang launcher manifest.</p>
+     *
+     * @return a map of launcher meta tokens
+     * @see org.spongepowered.gradle.vanilla.Constants.LauncherEnvironmentTokens for known token names
+     */
+    public MapProperty<String, String> launcherMetaTokens() {
+        return this.launcherMetaTokens;
+    }
+
+    /**
+     * Operate on the launcher meta tokens.
+     *
+     * @param action an action to apply to the meta tokens map
+     * @see #launcherMetaTokens() for an explanation of what meta tokens are
+     */
+    public void launcherMetaTokens(final Action<MapProperty<String, String>> action) {
+        Objects.requireNonNull(action).execute(this.launcherMetaTokens);
+    }
+
+    /**
+     * If assets and natives are required, this will make this run configuration
+     * depend on the assets and natives collection tasks.
+     *
+     * @return the assets and natives property
+     */
+    public Property<Boolean> requiresAssetsAndNatives() {
+        return this.requiresAssetsAndNatives;
+    }
+
+    /**
+     * Get the classpath used to run this game.
+     *
+     * @return the JVM classpath
+     */
     public ConfigurableFileCollection classpath() {
         return this.classpath;
     }
@@ -106,7 +157,7 @@ public class RunConfiguration implements Named {
     }
 
     @Override
-    public String getName() {
+    public @Nonnull String getName() {
         return this.name;
     }
 
@@ -119,7 +170,7 @@ public class RunConfiguration implements Named {
 
         @Override
         public Iterable<String> asArguments() {
-            return this.contents;
+            return this.contents == null ? Collections.emptyList() : this.contents;
         }
     }
 }
