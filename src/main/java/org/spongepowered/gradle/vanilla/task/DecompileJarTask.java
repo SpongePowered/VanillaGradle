@@ -44,11 +44,14 @@ public abstract class DecompileJarTask extends DefaultTask {
     @TaskAction
     public void execute() {
         // Execute in an isolated class loader that can access our customized classpath
-        this.getWorkerExecutor()
-            .classLoaderIsolation(spec -> spec.getClasspath().from(this.getWorkerClasspath()))
-            .submit(JarDecompileWorker.class, parameters -> {
-                parameters.getInputJar().set(this.getInputJar());
-                parameters.getOutputJar().set(this.getOutputJar());
+        this.getWorkerExecutor().processIsolation(spec -> {
+            spec.forkOptions(options -> {
+                options.setMaxHeapSize("2048M");
             });
+            spec.getClasspath().from(this.getWorkerClasspath());
+        }).submit(JarDecompileWorker.class, parameters -> {
+            parameters.getInputJar().set(this.getInputJar());
+            parameters.getOutputJar().set(this.getOutputJar());
+        });
     }
 }

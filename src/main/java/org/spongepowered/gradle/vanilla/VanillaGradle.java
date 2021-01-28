@@ -83,18 +83,7 @@ public final class VanillaGradle implements Plugin<Project> {
         final TaskProvider<MergeJarsTask> mergedJars = this.createJarMerge(minecraft, remapClientJar, remapServerJar);
         final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, project.getTasks());
 
-        final TaskProvider<DecompileJarTask> decompileJar;
-
-        switch (minecraft.platform().get()) {
-            case JOINED:
-                decompileJar = this.createJarDecompile(minecraft, (TaskProvider<ProcessedJarTask>) (Object) mergedJars);
-                break;
-            case CLIENT:
-                decompileJar = this.createJarDecompile(minecraft, (TaskProvider<ProcessedJarTask>) (Object) remapClientJar);
-                break;
-            default:
-                decompileJar = this.createJarDecompile(minecraft, (TaskProvider<ProcessedJarTask>) (Object) remapServerJar);
-        }
+        final TaskProvider<DecompileJarTask> decompileJar = this.createJarDecompile(minecraft);
 
         final TaskProvider<?> prepareWorkspace = project.getTasks().register("prepareWorkspace", DefaultTask.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
@@ -134,7 +123,7 @@ public final class VanillaGradle implements Plugin<Project> {
                 }
             });
 
-            TaskProvider<?> resultJar = null;
+            TaskProvider<? extends ProcessedJarTask> resultJar = null;
             switch (minecraft.platform().get()) {
                 case CLIENT:
                     resultJar = remapClientJar;
@@ -146,6 +135,11 @@ public final class VanillaGradle implements Plugin<Project> {
                     resultJar = mergedJars;
                     break;
             }
+            final TaskProvider<? extends ProcessedJarTask> finalResultJar1 = resultJar;
+            decompileJar.configure(decompile -> {
+                decompile.dependsOn(finalResultJar1);
+                decompile.getInputJar().set(finalResultJar1.flatMap(ProcessedJarTask::outputJar));
+            });
 
             if (resultJar != null) {
                 final TaskProvider<?> actualDependency;
@@ -229,10 +223,8 @@ public final class VanillaGradle implements Plugin<Project> {
     }
 
     private TaskProvider<DecompileJarTask> createJarDecompile(
-        final MinecraftExtension minecraft,
-        final TaskProvider<ProcessedJarTask> processedJarTask
+        final MinecraftExtension minecraft
     ) {
-
         final Configuration forgeFlower = this.project.getConfigurations().maybeCreate(Constants.Configurations.FORGE_FLOWER);
         forgeFlower.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.FORGE_FLOWER)));
         final FileCollection forgeFlowerClasspath = forgeFlower.getIncoming().getFiles();
@@ -240,9 +232,7 @@ public final class VanillaGradle implements Plugin<Project> {
         return this.project.getTasks().register("decompile", DecompileJarTask.class, task -> {
             final String platformName = minecraft.platform().get().name().toLowerCase(Locale.ROOT);
 
-            task.dependsOn(processedJarTask);
             task.setWorkerClasspath(forgeFlowerClasspath);
-            task.getInputJar().set(processedJarTask.get().outputJar());
             task.getOutputJar().set(
                 minecraft.remappedDirectory().zip(minecraft.versionDescriptor(), (dir, version) -> dir.dir(platformName)
                     .dir(version.sha1())
