@@ -76,6 +76,7 @@ import org.spongepowered.gradle.vanilla.task.RemapJarTask;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 import org.spongepowered.gradle.vanilla.util.StringUtils;
 
+import java.io.File;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -183,6 +184,15 @@ public final class VanillaGradle implements Plugin<Project> {
                 decompileJar.configure(decompile -> {
                     decompile.dependsOn(actualDependency);
                     decompile.getInputJar().set(actualDependency.flatMap(ProcessedJarTask::outputJar));
+                    decompile.getOutputJar().fileProvider(actualDependency.flatMap(task -> task.outputJar().map(out -> {
+                        final File output = out.getAsFile();
+                        final String fileName = output.getName();
+                        final int dotIndex = fileName.lastIndexOf('.');
+                        final String nameWithoutExtension = dotIndex == -1 ? fileName : fileName.substring(0, dotIndex);
+                        final String extension = dotIndex == -1 ? "" : fileName.substring(dotIndex);
+
+                        return new File(output.getParentFile(), nameWithoutExtension + "-sources" + extension);
+                    })));
                 });
 
                 project.getDependencies().add(
@@ -262,14 +272,8 @@ public final class VanillaGradle implements Plugin<Project> {
         final FileCollection minecraftClasspath = minecraft.minecraftClasspathConfiguration().getIncoming().getFiles();
 
         return this.project.getTasks().register("decompile", DecompileJarTask.class, task -> {
-            final String platformName = minecraft.platform().get().name().toLowerCase(Locale.ROOT);
             task.getDecompileClasspath().from(minecraftClasspath);
             task.setWorkerClasspath(forgeFlowerClasspath);
-            task.getOutputJar().set(
-                minecraft.remappedDirectory().zip(minecraft.versionDescriptor(), (dir, version) -> dir.dir(platformName)
-                    .dir(version.sha1())
-                    .file("minecraft-" + platformName + "-" + version.id() + "-sources.jar"))
-            );
         });
     }
 
