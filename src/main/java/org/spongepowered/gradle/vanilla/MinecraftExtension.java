@@ -69,6 +69,7 @@ public abstract class MinecraftExtension {
     private final DirectoryProperty decompiledDirectory;
 
     private final RunConfigurationContainer runConfigurations;
+    private final Configuration minecraftClasspath;
 
     @Inject
     public MinecraftExtension(final Gradle gradle, final ObjectFactory factory, final Project project) throws IOException {
@@ -109,6 +110,7 @@ public abstract class MinecraftExtension {
         this.mappingsDirectory.set(rootDirectory.resolve(Constants.Directories.MAPPINGS).toFile());
         this.filteredDirectory.set(jarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
         this.decompiledDirectory.set(jarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
+        this.minecraftClasspath = project.getConfigurations().create(Constants.Configurations.MINECRAFT_CLASSPATH);
     }
 
     public Property<Boolean> injectRepositories() {
@@ -194,8 +196,7 @@ public abstract class MinecraftExtension {
     }
 
     protected void createMinecraftClasspath(final Project project) {
-        final Configuration minecraftClasspath = project.getConfigurations().create(Constants.Configurations.MINECRAFT_CLASSPATH);
-        minecraftClasspath.withDependencies(a -> {
+        this.minecraftClasspath.withDependencies(a -> {
             for (final MinecraftSide side : this.platform.get().activeSides()) {
                 side.applyLibraries(
                     name -> a.add(project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
@@ -204,7 +205,11 @@ public abstract class MinecraftExtension {
             }
         });
 
-        project.getConfigurations().named(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME).configure(path -> path.extendsFrom(minecraftClasspath));
-        project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).configure(path -> path.extendsFrom(minecraftClasspath));
+        project.getConfigurations().named(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME).configure(path -> path.extendsFrom(this.minecraftClasspath));
+        project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).configure(path -> path.extendsFrom(this.minecraftClasspath));
+    }
+
+    Configuration minecraftClasspathConfiguration() {
+        return this.minecraftClasspath;
     }
 }

@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.worker;
 
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.workers.WorkAction;
 import org.gradle.workers.WorkParameters;
@@ -33,6 +34,7 @@ import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -58,10 +60,11 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.UNIT_TEST_MODE, FALSE);
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.MAX_PROCESSING_METHOD, FALSE);
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.IGNORE_INVALID_BYTECODE, TRUE);
-        JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.THREADS, Runtime.getRuntime().availableProcessors() / 2);
+        JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.THREADS, Runtime.getRuntime().availableProcessors() - 1);
     }
 
     public static abstract class Parameters implements WorkParameters {
+        public abstract ConfigurableFileCollection getDecompileClasspath();
         public abstract RegularFileProperty getInputJar();
         public abstract RegularFileProperty getOutputJar();
     }
@@ -78,9 +81,14 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
             // add classes
             decompiler.addSource(params.getInputJar().get().getAsFile());
 
+            for (final File library : params.getDecompileClasspath()) {
+                decompiler.addLibrary(library);
+            }
+
             // perform the decompile
             try {
                 decompiler.decompileContext();
+                LOGGER.warn("Successfully decompiled to {}", params.getOutputJar().get().getAsFile());
             } finally {
                 decompiler.clearContext();
             }

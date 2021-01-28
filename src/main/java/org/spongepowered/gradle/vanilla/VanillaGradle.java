@@ -228,10 +228,11 @@ public final class VanillaGradle implements Plugin<Project> {
         final Configuration forgeFlower = this.project.getConfigurations().maybeCreate(Constants.Configurations.FORGE_FLOWER);
         forgeFlower.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.FORGE_FLOWER)));
         final FileCollection forgeFlowerClasspath = forgeFlower.getIncoming().getFiles();
+        final FileCollection minecraftClasspath = minecraft.minecraftClasspathConfiguration().getIncoming().getFiles();
 
         return this.project.getTasks().register("decompile", DecompileJarTask.class, task -> {
             final String platformName = minecraft.platform().get().name().toLowerCase(Locale.ROOT);
-
+            task.getDecompileClasspath().from(minecraftClasspath);
             task.setWorkerClasspath(forgeFlowerClasspath);
             task.getOutputJar().set(
                 minecraft.remappedDirectory().zip(minecraft.versionDescriptor(), (dir, version) -> dir.dir(platformName)

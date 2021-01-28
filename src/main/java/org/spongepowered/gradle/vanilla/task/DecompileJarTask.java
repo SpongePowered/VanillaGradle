@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla.task;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.Classpath;
@@ -34,6 +35,8 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.workers.WorkerExecutor;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.worker.JarDecompileWorker;
+
+import java.lang.management.ManagementFactory;
 
 import javax.inject.Inject;
 
@@ -56,6 +59,9 @@ public abstract class DecompileJarTask extends DefaultTask {
 
     public abstract void setWorkerClasspath(final FileCollection collection);
 
+    @Classpath
+    public abstract ConfigurableFileCollection getDecompileClasspath();
+
     @InputFile
     public abstract RegularFileProperty getInputJar();
 
@@ -70,10 +76,11 @@ public abstract class DecompileJarTask extends DefaultTask {
         // Execute in an isolated class loader that can access our customized classpath
         this.getWorkerExecutor().processIsolation(spec -> {
             spec.forkOptions(options -> {
-                options.setMaxHeapSize("2048M");
+                options.setMaxHeapSize("4096M");
             });
             spec.getClasspath().from(this.getWorkerClasspath());
         }).submit(JarDecompileWorker.class, parameters -> {
+            parameters.getDecompileClasspath().from(this.getDecompileClasspath());
             parameters.getInputJar().set(this.getInputJar());
             parameters.getOutputJar().set(this.getOutputJar());
         });
