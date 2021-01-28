@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla;
 
 import org.gradle.api.Action;
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.Directory;
@@ -37,7 +38,9 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
+import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.model.Version;
+import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.VersionManifestV2;
 import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
@@ -86,7 +89,8 @@ public abstract class MinecraftExtension {
         this.decompiledDirectory = factory.directoryProperty();
         this.versionDescriptor = this.version.map(
             version -> this.versionManifest.findDescriptor(version)
-                .orElseThrow(() -> new RuntimeException(String.format("No version found for '%s' in the manifest!", this.version.get())))
+                .orElseThrow(() -> new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was not found in the "
+                                + "manifest! Try '%s' instead.", this.version.get(), this.versionManifest.latest().get(VersionClassifier.RELEASE))))
         );
         this.targetVersion = factory.property(Version.class)
                 .value(this.versionDescriptor.map(version -> {
@@ -115,6 +119,10 @@ public abstract class MinecraftExtension {
 
     public Property<Boolean> injectRepositories() {
         return this.injectRepositories;
+    }
+
+    protected Property<String> version() {
+        return this.version;
     }
 
     public void version(final String version) {
@@ -153,6 +161,10 @@ public abstract class MinecraftExtension {
         }
 
         awTask.configure(task -> task.getAccessWideners().from(file));
+    }
+
+    protected VersionManifestV2 versionManifest() {
+        return this.versionManifest;
     }
 
     protected DirectoryProperty assetsDirectory() {

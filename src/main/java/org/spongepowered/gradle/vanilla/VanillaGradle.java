@@ -26,6 +26,7 @@ package org.spongepowered.gradle.vanilla;
 
 import de.undercouch.gradle.tasks.download.Download;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -53,7 +54,9 @@ import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.model.AssetIndexReference;
+import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.model.Version;
+import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
@@ -109,6 +112,12 @@ public final class VanillaGradle implements Plugin<Project> {
         this.createCleanTask(project.getTasks());
 
         project.afterEvaluate(p -> {
+            final Version version = minecraft.targetVersion().get();
+            if (!version.download(DownloadClassifier.CLIENT_MAPPINGS).isPresent() && !version.download(DownloadClassifier.SERVER_MAPPINGS).isPresent()) {
+                throw new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was released before Mojang "
+                        + "provided official mappings! Try '%s' instead.", minecraft.version().get(), minecraft.versionManifest().latest()
+                        .get(VersionClassifier.RELEASE)));
+            }
             project.getLogger().lifecycle(String.format("Targeting Minecraft '%s' on a '%s' platform", minecraft.targetVersion().get().id(),
                 minecraft.platform().get().name()));
 
@@ -150,7 +159,7 @@ public final class VanillaGradle implements Plugin<Project> {
                         // Set suffix based on target platform
                         task.getArchiveClassifier().set(minecraft.platform().zip(
                             minecraft.targetVersion(),
-                            (platform, version ) -> "aw-" + platform.name().toLowerCase(Locale.ROOT) + "-" + version.id()));
+                            (pm, v) -> "aw-" + pm.name().toLowerCase(Locale.ROOT) + "-" + v.id()));
                     });
                     actualDependency = awTask;
                     prepareWorkspace.configure(task -> task.dependsOn(actualDependency)); // todo: this is a bit ugly
