@@ -33,6 +33,10 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.MavenRepositoryContentDescriptor;
+import org.gradle.api.attributes.Bundling;
+import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.LibraryElements;
+import org.gradle.api.attributes.Usage;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
@@ -95,6 +99,17 @@ public final class VanillaGradle implements Plugin<Project> {
         }
 
         final MinecraftExtension minecraft = project.getExtensions().create("minecraft", MinecraftExtension.class, project);
+        final NamedDomainObjectProvider<Configuration> minecraftConfig = project.getConfigurations().register(Constants.Configurations.MINECRAFT, config -> {
+            config.setCanBeResolved(false);
+            config.setCanBeConsumed(true);
+            config.attributes(attributes -> {
+                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.LIBRARY));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
+                attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.EXTERNAL));
+                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.getObjects().named(LibraryElements.class,
+                        LibraryElements.JAR));
+            });
+        });
 
         final TaskProvider<RemapJarTask> remapClientJar = this.createSidedTasks(MinecraftSide.CLIENT, project.getTasks(), minecraft);
         final TaskProvider<RemapJarTask> remapServerJar = this.createSidedTasks(MinecraftSide.SERVER, project.getTasks(), minecraft);
@@ -117,6 +132,9 @@ public final class VanillaGradle implements Plugin<Project> {
         });
 
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
+            project.getConfigurations().named(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, config -> {
+                config.extendsFrom(minecraftConfig.get());
+            });
             this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class));
             final NamedDomainObjectProvider<Configuration> runtimeClasspath = project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
             minecraft.getRuns().configureEach(run -> {
@@ -197,7 +215,7 @@ public final class VanillaGradle implements Plugin<Project> {
                 });
 
                 project.getDependencies().add(
-                    JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
+                    minecraftConfig.getName(),
                     project.getObjects().fileCollection().from(actualDependency)
                 );
             }

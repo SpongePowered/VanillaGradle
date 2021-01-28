@@ -93,6 +93,7 @@ public final class Constants {
     }
 
     public static final class Configurations {
+        public static final String MINECRAFT = "minecraft";
         public static final String MINECRAFT_CLASSPATH = "minecraftClasspath";
         public static final String MERGETOOL = "mergetool";
         public static final String ACCESS_WIDENER = "accessWidener";

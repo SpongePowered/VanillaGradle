@@ -26,6 +26,7 @@ package org.spongepowered.gradle.vanilla.task;
 
 import org.gradle.api.file.ArchiveOperations;
 import org.gradle.api.file.DuplicatesStrategy;
+import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.bundling.Zip;
@@ -40,6 +41,9 @@ public abstract class FilterJarTask extends Zip {
 
     @Input
     public abstract SetProperty<String> getAllowedPackages();
+
+    @Inject
+    protected abstract ProviderFactory getProviders();
 
     @Inject
     protected abstract ArchiveOperations getArchiveOps();
@@ -76,7 +80,7 @@ public abstract class FilterJarTask extends Zip {
     }
 
     public void fromJar(final Object jar) {
-        this.from(this.getArchiveOps().zipTree(jar));
+        this.from(this.getProviders().provider(() -> this.getArchiveOps().zipTree(jar)));
     }
 
 }
