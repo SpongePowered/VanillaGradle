@@ -12,6 +12,18 @@ For additional help use the channel `#vanillagradle` on the [Sponge Discord serv
 Otherwise, to get a workspace up and going immediately it is as simple as
 
 ```
+plugins {
+    java
+    id("org.spongepowered.gradle.vanilla") version "0.1"
+}
+
+group = "org.example"
+version = "1.0-SNAPSHOT"
+
+repositories {
+    mavenCentral()
+}
+
 minecraft {
     version("21w03a")
     runs {
