@@ -127,11 +127,6 @@ public final class VanillaGradle implements Plugin<Project> {
             task.dependsOn(mergedJars);
         });
 
-        final TaskProvider<?> prepareDecompileWorkspace = project.getTasks().register("prepareDecompileWorkspace", DefaultTask.class, task -> {
-            task.setGroup(Constants.TASK_GROUP);
-            task.dependsOn(decompileJar);
-        });
-
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
             project.getConfigurations().named(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, config -> {
                 config.extendsFrom(minecraftConfig.get());
