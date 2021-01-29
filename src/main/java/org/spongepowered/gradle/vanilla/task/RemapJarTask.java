@@ -31,6 +31,7 @@ import org.cadixdev.lorenz.asm.LorenzRemapper;
 import org.cadixdev.lorenz.io.proguard.ProGuardReader;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.invocation.Gradle;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
@@ -44,8 +45,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTask {
+
+    private static final ConcurrentHashMap<Path, Lock> REMAPPER_LOCKS = new ConcurrentHashMap<>();
 
     @InputFile
     public abstract RegularFileProperty getInputJar();
@@ -63,6 +70,7 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
     @TaskAction
     public void execute() throws IOException {
         final Atlas atlas = new Atlas();
+        final Path inputJar = this.getInputJar().get().getAsFile().toPath();
 
         final MappingSet scratchMappings = MappingSet.create();
         try (final BufferedReader reader = Files.newBufferedReader(this.getMappingsFile().getAsFile().get().toPath(), StandardCharsets.UTF_8)) {
@@ -72,15 +80,25 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
 
         final MappingSet mappings = scratchMappings.reverse();
 
-        atlas.install(ctx -> SignatureStripperTransformer.INSTANCE);
-        atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) ->
-            new ClassRemapper(new SyntheticParameterAnnotationsFix(new LocalVariableNamingClassVisitor(parent)), mapper)));
+        final Lock remapLock = RemapJarTask.REMAPPER_LOCKS.computeIfAbsent(inputJar, path -> new ReentrantLock());
+        remapLock.lock();
+        try {
+            atlas.install(ctx -> SignatureStripperTransformer.INSTANCE);
+            atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) ->
+                    new ClassRemapper(new SyntheticParameterAnnotationsFix(new LocalVariableNamingClassVisitor(parent)), mapper)));
 
-        atlas.run(this.getInputJar().get().getAsFile().toPath(), this.getOutputJar().get().getAsFile().toPath());
+            atlas.run(inputJar, this.getOutputJar().get().getAsFile().toPath());
+        } finally {
+            remapLock.unlock();
+        }
     }
 
     @Override
     public RegularFileProperty outputJar() {
         return this.getOutputJar();
+    }
+
+    public static void registerExecutionCompleteListener(final Gradle gradle) {
+        gradle.buildFinished(result -> RemapJarTask.REMAPPER_LOCKS.clear());
     }
 }

@@ -94,6 +94,7 @@ public final class VanillaGradle implements Plugin<Project> {
     public void apply(final Project project) {
         this.project = project;
 
+        RemapJarTask.registerExecutionCompleteListener(project.getGradle());
         if (VanillaGradle.VERSION_ANNOUNCED.compareAndSet(false, true)) {
             project.getLogger().lifecycle(String.format("SpongePowered Vanilla 'GRADLE' Toolset Version '%s'", Constants.VERSION));
         }
