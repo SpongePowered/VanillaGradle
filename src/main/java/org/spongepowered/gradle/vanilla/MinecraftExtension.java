@@ -107,13 +107,15 @@ public abstract class MinecraftExtension {
         final Path gradleHomeDirectory = gradle.getGradleUserHomeDir().toPath();
         final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.Directories.CACHES);
         final Path rootDirectory = cacheDirectory.resolve(Constants.NAME);
-        final Path jarsDirectory = rootDirectory.resolve(Constants.Directories.JARS);
+        final Path globalJarsDirectory = rootDirectory.resolve(Constants.Directories.JARS);
+        final Path projectLocalJarsDirectory = project.getProjectDir().toPath().resolve(Constants.Directories.CACHES)
+                .resolve(Constants.NAME).resolve(Constants.Directories.JARS);
         this.assetsDirectory.set(rootDirectory.resolve(Constants.Directories.ASSETS).toFile());
-        this.remappedDirectory.set(jarsDirectory.resolve(Constants.Directories.REMAPPED).toFile());
-        this.originalDirectory.set(jarsDirectory.resolve(Constants.Directories.ORIGINAL).toFile());
+        this.originalDirectory.set(globalJarsDirectory.resolve(Constants.Directories.ORIGINAL).toFile());
         this.mappingsDirectory.set(rootDirectory.resolve(Constants.Directories.MAPPINGS).toFile());
-        this.filteredDirectory.set(jarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
-        this.decompiledDirectory.set(jarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
+        this.remappedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.REMAPPED).toFile());
+        this.filteredDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
+        this.decompiledDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
         this.minecraftClasspath = project.getConfigurations().create(Constants.Configurations.MINECRAFT_CLASSPATH);
     }
 
