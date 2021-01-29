@@ -1,12 +1,27 @@
 ![VanillaGradle Logo](docs/logo.png?raw=true)
 
-**VanillaGradle** is a toolchain for Minecraft: Java Edition that builds a workspace to interact with the game using the official mappings provided to the public by Mojang Studios.
+**VanillaGradle** is a toolchain for *Minecraft: Java Edition* that provides a workspace to interact with the game using official mappings provided 
+by Mojang Studios.
 
 ### Documentation
 
 The main documentation for **VanillaGradle** can be found in the [Wiki](../../wiki) (not available yet).
 
 For additional help use the channel `#vanillagradle` on the [Sponge Discord server](https://discord.gg/sponge).
+
+Otherwise, to get a workspace up and going immediately it is as simple as
+
+```
+minecraft {
+    version("21w03a")
+    runs {
+        server()
+        client()
+    }
+}
+```
+
+Within IntelliJ IDEA, this will generate run configurations named `runClient` and `runServer`
 
 ### Building VanillaGradle
 **VanillaGradle** uses the [Gradle](http://gradle.org/) build automation system. To
