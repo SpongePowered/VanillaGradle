@@ -57,6 +57,7 @@ public class RunConfiguration implements Named {
     private final List<String> jvmArgs = new ArrayList<>();
     private final List<CommandLineArgumentProvider> allJvmArgs = new ArrayList<>();
     private final DirectoryProperty workingDirectory;
+    private final Property<String> displayName;
     private final Property<String> mainClass;
     private final Property<String> mainModule;
     private final MapProperty<String, String> parameterTokens;
@@ -65,9 +66,11 @@ public class RunConfiguration implements Named {
     @Inject
     public RunConfiguration(final String name, final ProjectLayout layout, final ObjectFactory objects) {
         this.name = name;
+        this.displayName = objects.property(String.class);
+
         this.classpath = objects.fileCollection();
         this.workingDirectory = objects.directoryProperty()
-                .convention(layout.getProjectDirectory().dir("run").dir(name));
+                .convention(layout.getProjectDirectory().dir("run").dir(this.name));
 
         // Apply ad-hoc arguments
         this.allArgs.add(new ConstantListProvider(this.args));
@@ -80,6 +83,10 @@ public class RunConfiguration implements Named {
         // Apply global environment here
         this.parameterTokens.put(ClientRunParameterTokens.LAUNCHER_NAME, Constants.NAME);
         this.parameterTokens.put(ClientRunParameterTokens.LAUNCHER_VERSION, Constants.VERSION);
+    }
+
+    public Property<String> displayName() {
+        return this.displayName;
     }
 
     /**

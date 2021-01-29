@@ -456,10 +456,10 @@ public final class VanillaGradle implements Plugin<Project> {
                 (RunConfigurationContainer) ((ExtensionAware) ideaProjectSettings).getExtensions().getByName("runConfigurations");
 
         extension.getRuns().all(run -> {
-            // TODO: Make run configuration name configurable
-            runConfigurations.create("run" + StringUtils.capitalize(run.getName()) + " (" + project.getName() + ")", Application.class, ideaRun -> {
+            final String displayName = run.displayName().getOrNull();
+            runConfigurations.create(displayName == null ? run.getName() + " (" + project.getName() + ")" : displayName, Application.class, ideaRun -> {
                 if (project.getTasks().getNames().contains(JavaPlugin.PROCESS_RESOURCES_TASK_NAME)) {
-                    ideaRun.getBeforeRun().create("processResources", GradleTask.class,
+                    ideaRun.getBeforeRun().create(JavaPlugin.PROCESS_RESOURCES_TASK_NAME, GradleTask.class,
                             action -> action.setTask(project.getTasks().getByName(JavaPlugin.PROCESS_RESOURCES_TASK_NAME))
                     );
                 }
@@ -494,8 +494,11 @@ public final class VanillaGradle implements Plugin<Project> {
 
     private void createRunTasks(final MinecraftExtension extension, final TaskContainer tasks, final JavaToolchainService service) {
         extension.getRuns().all(config -> {
-            tasks.register("run" + StringUtils.capitalize(config.getName()), JavaExec.class, exec -> {
+            tasks.register(config.getName(), JavaExec.class, exec -> {
                 exec.setGroup(Constants.TASK_GROUP + " runs");
+                if (config.displayName().isPresent()) {
+                    exec.setDescription(config.displayName().get());
+                }
                 exec.getMainClass().set(config.mainClass());
                 exec.getMainModule().set(config.mainModule());
                 exec.classpath(config.classpath());

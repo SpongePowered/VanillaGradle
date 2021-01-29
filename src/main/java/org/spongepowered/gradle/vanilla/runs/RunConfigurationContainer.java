@@ -59,8 +59,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     private final MinecraftExtension extension;
 
     @Inject
-    public RunConfigurationContainer(
-            final NamedDomainObjectContainer<RunConfiguration> delegate, final MinecraftExtension extension) {
+    public RunConfigurationContainer(final NamedDomainObjectContainer<RunConfiguration> delegate, final MinecraftExtension extension) {
         this.delegate = delegate;
         this.extension = extension;
     }
@@ -73,7 +72,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      * @return a provider for the configuration
      */
     public NamedDomainObjectProvider<RunConfiguration> client() {
-        return this.client(null);
+        return this.client("runClient", null);
     }
 
     /**
@@ -83,12 +82,12 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      *
      * @return a provider for the configuration
      */
-    public NamedDomainObjectProvider<RunConfiguration> client(final @Nullable Action<RunConfiguration> configureAction) {
+    public NamedDomainObjectProvider<RunConfiguration> client(final String taskName, final @Nullable Action<RunConfiguration> configureAction) {
         final NamedDomainObjectProvider<RunConfiguration> config;
-        if (this.getNames().contains(Constants.RunConfiguration.CLIENT_CONFIG)) {
-            config = this.named(Constants.RunConfiguration.CLIENT_CONFIG);
+        if (this.getNames().contains(taskName)) {
+            config = this.named(taskName);
         } else {
-            config = this.register(Constants.RunConfiguration.CLIENT_CONFIG, this.configureClientRun());
+            config = this.register(taskName, this.configureClientRun());
         }
         if (configureAction != null) {
             config.configure(configureAction);
@@ -132,7 +131,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      * @return a provider for the configuration
      */
     public NamedDomainObjectProvider<RunConfiguration> server() {
-        return this.server(null);
+        return this.server("runServer", null);
     }
 
     /**
@@ -142,12 +141,12 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      *
      * @return a provider for the configuration
      */
-    public NamedDomainObjectProvider<RunConfiguration> server(final @Nullable Action<RunConfiguration> configureAction) {
+    public NamedDomainObjectProvider<RunConfiguration> server(final String taskName, final @Nullable Action<RunConfiguration> configureAction) {
         final NamedDomainObjectProvider<RunConfiguration> config;
-        if (this.getNames().contains(Constants.RunConfiguration.SERVER_CONFIG)) {
-            config = this.named(Constants.RunConfiguration.SERVER_CONFIG);
+        if (this.getNames().contains(taskName)) {
+            config = this.named(taskName);
         } else {
-            config = this.register(Constants.RunConfiguration.SERVER_CONFIG, this.configureServerRun());
+            config = this.register(taskName, this.configureServerRun());
         }
         if (configureAction != null) {
             config.configure(configureAction);
@@ -190,8 +189,8 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
-    public NamedDomainObjectProvider<RunConfiguration> register(
-            final String name, final Action<? super RunConfiguration> configurationAction) throws InvalidUserDataException {
+    public NamedDomainObjectProvider<RunConfiguration> register(final String name, final Action<? super RunConfiguration> configurationAction)
+            throws InvalidUserDataException {
         return this.delegate.register(name, configurationAction);
     }
 
