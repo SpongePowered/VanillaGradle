@@ -499,6 +499,7 @@ public final class VanillaGradle implements Plugin<Project> {
                 if (config.displayName().isPresent()) {
                     exec.setDescription(config.displayName().get());
                 }
+                exec.setStandardInput(System.in);
                 exec.getMainClass().set(config.mainClass());
                 exec.getMainModule().set(config.mainModule());
                 exec.classpath(config.classpath());

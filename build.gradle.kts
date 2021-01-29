@@ -8,10 +8,9 @@ group = "org.spongepowered"
 version = "0.1"
 
 repositories {
-    mavenCentral()
-    maven("https://maven.fabricmc.net/")
-    maven("https://files.minecraftforge.net/maven")
-    gradlePluginPortal()
+    maven("https://repo-new.spongepowered.org/repository/maven-public/") {
+        name = "sponge-v2"
+    }
 }
 
 val commonDeps by configurations.creating
@@ -44,7 +43,7 @@ dependencies {
         exclude("org.ow2.asm") // Use our own ASM
     }
     implementation("org.cadixdev:lorenz:0.5.6")
-    implementation("org.cadixdev:lorenz-asm:0.5.4") {
+    implementation("org.cadixdev:lorenz-asm:0.5.6") {
         exclude("org.ow2.asm") // Use our own ASM
     }
 
