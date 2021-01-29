@@ -72,7 +72,18 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      * @return a provider for the configuration
      */
     public NamedDomainObjectProvider<RunConfiguration> client() {
-        return this.client("runClient", null);
+        return this.client(null);
+    }
+
+    /**
+     * Create a run configuration pre-configured with standard settings to start the Minecraft client.
+     *
+     * Will return a reference if the client configuration already exists.
+     *
+     * @return a provider for the configuration
+     */
+    public NamedDomainObjectProvider<RunConfiguration> client(final @Nullable Action<? super RunConfiguration> configureAction) {
+        return this.client("runClient", configureAction);
     }
 
     /**
@@ -82,7 +93,8 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      *
      * @return a provider for the configuration
      */
-    public NamedDomainObjectProvider<RunConfiguration> client(final String taskName, final @Nullable Action<RunConfiguration> configureAction) {
+    public NamedDomainObjectProvider<RunConfiguration> client(final String taskName,
+            final @Nullable Action<? super RunConfiguration> configureAction) {
         final NamedDomainObjectProvider<RunConfiguration> config;
         if (this.getNames().contains(taskName)) {
             config = this.named(taskName);
@@ -131,7 +143,18 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      * @return a provider for the configuration
      */
     public NamedDomainObjectProvider<RunConfiguration> server() {
-        return this.server("runServer", null);
+        return this.server(null);
+    }
+
+    /**
+     * Create a run configuration pre-configured with standard settings to start the Minecraft server.
+     *
+     * Will return a reference if the server configuration already exists.
+     *
+     * @return a provider for the configuration
+     */
+    public NamedDomainObjectProvider<RunConfiguration> server(final Action<? super RunConfiguration> configureAction) {
+        return this.server("runServer", configureAction);
     }
 
     /**
@@ -141,7 +164,8 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      *
      * @return a provider for the configuration
      */
-    public NamedDomainObjectProvider<RunConfiguration> server(final String taskName, final @Nullable Action<RunConfiguration> configureAction) {
+    public NamedDomainObjectProvider<RunConfiguration> server(final String taskName,
+            final @Nullable Action<? super RunConfiguration> configureAction) {
         final NamedDomainObjectProvider<RunConfiguration> config;
         if (this.getNames().contains(taskName)) {
             config = this.named(taskName);

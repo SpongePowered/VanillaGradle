@@ -50,6 +50,7 @@ import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
@@ -220,8 +221,10 @@ public abstract class MinecraftExtension {
             }
         });
 
-        project.getConfigurations().named(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME).configure(path -> path.extendsFrom(this.minecraftClasspath));
-        project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).configure(path -> path.extendsFrom(this.minecraftClasspath));
+        Stream.of(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME,
+                JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME).forEach( config -> {
+                    project.getConfigurations().named(config).configure(path -> path.extendsFrom(this.minecraftClasspath));
+        });
     }
 
     Configuration minecraftClasspathConfiguration() {
