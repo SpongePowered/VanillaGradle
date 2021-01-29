@@ -40,6 +40,9 @@ public class AssetIndex {
     }
 
     public static final class Asset implements Serializable {
+
+        private static final long serialVersionUID = 1L;
+
         private final String hash;
         private final int size;
 

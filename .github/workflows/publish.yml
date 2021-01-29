@@ -1,0 +1,45 @@
+# Making changes? https://github.com/nektos/act may help you test locally
+
+name: Publish
+
+on:
+  push:
+      branches: [master]
+      tags-ignore: ["*"]
+  release:
+    types: [released]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v2
+      - name: Setup JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Make gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: Publish with Gradle (snapshot)
+        if: ${{ github.event_name != 'release' }}
+        run: ./gradlew publish
+        env:
+          ORG_GRADLE_PROJECT_spongeSnapshotRepo: ${{ secrets.SPONGE_MAVEN_SNAPSHOT_REPO_URL }}
+          ORG_GRADLE_PROJECT_spongeReleaseRepo: ${{ secrets.SPONGE_MAVEN_RELEASE_REPO_URL }}
+          ORG_GRADLE_PROJECT_spongeUsername: ${{ secrets.SPONGE_MAVEN_REPO_USER }}
+          ORG_GRADLE_PROJECT_spongePassword: ${{ secrets.SPONGE_MAVEN_REPO_PASSWORD }}
+          ORG_GRADLE_PROJECT_spongeSigningKey: ${{ secrets.SPONGE_SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_spongeSigningPassword: ${{ secrets.SPONGE_SIGNING_PASSWORD }}
+      - name: Publish with Gradle (release)
+        if: ${{ github.event_name == 'release' }}
+        run: ./gradlew publish publishPlugins
+        # GitHub Actions has a broken YAML parser that can't handle anchors, so we have to specify all this twice...
+        # Maybe someday they'll fix this (since, you know, YAML is a brand new spec that parsers haven't had time to fully implement... oh wait)
+        env:
+          ORG_GRADLE_PROJECT_spongeSnapshotRepo: ${{ secrets.SPONGE_MAVEN_SNAPSHOT_REPO_URL }}
+          ORG_GRADLE_PROJECT_spongeReleaseRepo: ${{ secrets.SPONGE_MAVEN_RELEASE_REPO_URL }}
+          ORG_GRADLE_PROJECT_spongeUsername: ${{ secrets.SPONGE_MAVEN_REPO_USER }}
+          ORG_GRADLE_PROJECT_spongePassword: ${{ secrets.SPONGE_MAVEN_REPO_PASSWORD }}
+          ORG_GRADLE_PROJECT_spongeSigningKey: ${{ secrets.SPONGE_SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_spongeSigningPassword: ${{ secrets.SPONGE_SIGNING_PASSWORD }}

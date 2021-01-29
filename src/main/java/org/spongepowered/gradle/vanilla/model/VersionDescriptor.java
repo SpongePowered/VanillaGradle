@@ -33,6 +33,8 @@ import java.time.ZonedDateTime;
 
 public final class VersionDescriptor implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private String id;
     private VersionClassifier type;
     private URL url;

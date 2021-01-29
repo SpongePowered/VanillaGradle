@@ -29,6 +29,8 @@ import java.util.Map;
 
 public final class LibraryDownloads implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private Download artifact;
     private Map<String, Download> classifiers;
 

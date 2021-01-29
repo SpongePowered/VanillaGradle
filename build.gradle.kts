@@ -1,15 +1,19 @@
 plugins {
+    id("com.gradle.plugin-publish") version "0.12.0"
     `java-gradle-plugin`
     `maven-publish`
-    id("org.cadixdev.licenser") version "0.5.0"
+    val indraVersion = "1.2.1"
+    id("net.kyori.indra") version indraVersion
+    id("net.kyori.indra.license-header") version indraVersion
+    id("org.ajoberstar.grgit") version "4.1.0"
 }
 
 group = "org.spongepowered"
-version = "0.1"
+version = "0.1-SNAPSHOT"
 
 repositories {
     maven("https://repo-new.spongepowered.org/repository/maven-public/") {
-        name = "sponge-v2"
+        name = "sponge"
     }
 }
 
@@ -75,11 +79,91 @@ tasks.jar {
     from(accessWiden.output)
 }
 
+tasks.withType(Jar::class).configureEach {
+    manifest.attributes["Git-Commit"] = grgit.head().id
+    manifest.attributes["Git-Branch"] = grgit.branch.current().name
+}
+
+indra {
+    javaVersions {
+        testWith(8, 11, 15)
+    }
+}
+
 gradlePlugin {
     plugins {
         create("vanillagradle") {
             id = "org.spongepowered.gradle.vanilla"
             implementationClass = "org.spongepowered.gradle.vanilla.VanillaGradle"
+        }
+    }
+}
+
+pluginBundle {
+    website = "https://spongepowered.org"
+    vcsUrl = "https://github.com/SpongePowered/VanillaGradle"
+    description = "Set up a Minecraft workspace for project development"
+    tags = listOf("minecraft", "vanilla")
+
+    plugins {
+        named("vanillagradle") {
+            displayName = "VanillaGradle"
+        }
+    }
+}
+
+publishing {
+    publications {
+        withType(MavenPublication::class).configureEach {
+            artifactId = project.name.toLowerCase()
+
+            pom {
+                name.set(project.name)
+                description.set(pluginBundle.description)
+                url.set(pluginBundle.website)
+
+                organization {
+                    name.set("SpongePowered")
+                    url.set("https://spongepowered.org")
+                }
+
+                scm {
+                    connection.set("scm:git:git://github.com/SpongePowered/VanillaGradle.git")
+                    developerConnection.set("scm:git:ssh://github.com/SpongePowered/VanillaGradle.git")
+                    url.set(pluginBundle.vcsUrl)
+                }
+
+                ciManagement {
+                    system.set("GitHub Actions")
+                    url.set("https://github.com/SpongePowered/VanillaGradle.git")
+                }
+
+                licenses {
+                    license {
+                        name.set("MIT")
+                        url.set("https://github.com/SpongePowered/VanillaGradle/raw/master/LICENSE.txt")
+                        distribution.set("repo")
+                    }
+                }
+            }
+        }
+    }
+
+    repositories {
+        if (
+            project.hasProperty("spongeSnapshotRepo") &&
+            project.hasProperty("spongeReleaseRepo")
+        ) {
+            val repoUrl = if (project.version.toString().endsWith("-SNAPSHOT")) {
+                project.property("spongeSnapshotRepo")
+            } else {
+                project.property("spongeReleaseRepo")
+            } as String
+
+            maven(repoUrl) {
+                name = "sponge"
+                credentials(PasswordCredentials::class)
+            }
         }
     }
 }
@@ -95,7 +179,4 @@ license {
         this["url"] = projectUrl
     }
     header = project.file("HEADER.txt")
-
-    include("**/*.java")
-    newLine = false
 }

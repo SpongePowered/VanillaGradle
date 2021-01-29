@@ -29,6 +29,8 @@ import java.net.URL;
 
 public final class AssetIndexReference implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private String id;
     private String sha1;
     private int size;

@@ -29,6 +29,8 @@ import java.util.List;
 
 public final class Arguments implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private List<Argument> game;
     private List<Argument> jvm;
 

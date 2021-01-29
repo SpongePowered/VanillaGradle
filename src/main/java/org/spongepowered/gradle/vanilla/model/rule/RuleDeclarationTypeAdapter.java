@@ -54,6 +54,7 @@ public class RuleDeclarationTypeAdapter extends TypeAdapter<RuleDeclaration> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public RuleDeclaration read(final JsonReader in) throws IOException {
         if (in.peek() != JsonToken.BEGIN_ARRAY) {
             throw new JsonSyntaxException("Expected rule declaration at " + in.getPath() + " to be an array");

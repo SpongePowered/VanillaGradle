@@ -31,6 +31,8 @@ import javax.annotation.Nullable;
 
 public final class Download implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private String path;
     private String sha1;
     private int size;

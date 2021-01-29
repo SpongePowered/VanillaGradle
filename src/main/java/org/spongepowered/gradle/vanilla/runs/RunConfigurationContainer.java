@@ -197,6 +197,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public RunConfiguration create(final String name, final Closure configureClosure) throws InvalidUserDataException {
         return this.delegate.create(name, configureClosure);
     }
@@ -208,6 +209,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public NamedDomainObjectContainer<RunConfiguration> configure(final Closure configureClosure) {
         return this.delegate.configure(configureClosure);
     }
@@ -314,6 +316,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public RunConfiguration getByName(final String name, final Closure configureClosure) throws UnknownDomainObjectException {
         return this.delegate.getByName(name, configureClosure);
     }
@@ -334,6 +337,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public Rule addRule(final String description, final Closure ruleAction) {
         return this.delegate.addRule(description, ruleAction);
     }
@@ -370,6 +374,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public <S extends RunConfiguration> DomainObjectCollection<S> withType(final Class<S> type, final Closure configureClosure) {
         return this.delegate.withType(type, configureClosure);
     }
@@ -380,6 +385,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public NamedDomainObjectSet<RunConfiguration> matching(final Closure spec) {
         return this.delegate.matching(spec);
     }
@@ -390,6 +396,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public void whenObjectAdded(final Closure action) {
         this.delegate.whenObjectAdded(action);
     }
@@ -400,6 +407,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public void whenObjectRemoved(final Closure action) {
         this.delegate.whenObjectRemoved(action);
     }
@@ -410,6 +418,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public void all(final Closure action) {
         this.delegate.all(action);
     }
@@ -455,6 +464,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public Set<RunConfiguration> findAll(final Closure spec) {
         return this.delegate.findAll(spec);
     }

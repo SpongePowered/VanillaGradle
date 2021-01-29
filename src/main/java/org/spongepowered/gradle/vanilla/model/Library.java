@@ -32,6 +32,8 @@ import java.util.Map;
 
 public final class Library implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private LibraryDownloads downloads;
     private GroupArtifactVersion name;
     private Map<String, String> natives = Collections.emptyMap();
