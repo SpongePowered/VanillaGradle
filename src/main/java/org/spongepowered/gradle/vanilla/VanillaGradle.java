@@ -474,7 +474,10 @@ public final class VanillaGradle implements Plugin<Project> {
                 }
 
                 ideaRun.setMainClass(run.mainClass().get());
-                ideaRun.setWorkingDirectory(run.workingDirectory().get().getAsFile().getAbsolutePath());
+                final File runDirectory = run.workingDirectory().get().getAsFile();
+                ideaRun.setWorkingDirectory(runDirectory.getAbsolutePath());
+                runDirectory.mkdirs();
+
                 // TODO: Figure out if it's possible to set this more appropriately based on the run configuration's classpath
                 ideaRun.moduleRef(project, project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
                 ideaRun.setJvmArgs(StringUtils.join(run.allJvmArgumentProviders(), true));
