@@ -108,7 +108,7 @@ public abstract class MinecraftExtension {
         final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.Directories.CACHES);
         final Path rootDirectory = cacheDirectory.resolve(Constants.NAME);
         final Path globalJarsDirectory = rootDirectory.resolve(Constants.Directories.JARS);
-        final Path projectLocalJarsDirectory = project.getProjectDir().toPath().resolve(Constants.Directories.CACHES)
+        final Path projectLocalJarsDirectory = project.getProjectDir().toPath().resolve(".gradle").resolve(Constants.Directories.CACHES)
                 .resolve(Constants.NAME).resolve(Constants.Directories.JARS);
         this.assetsDirectory.set(rootDirectory.resolve(Constants.Directories.ASSETS).toFile());
         this.originalDirectory.set(globalJarsDirectory.resolve(Constants.Directories.ORIGINAL).toFile());
