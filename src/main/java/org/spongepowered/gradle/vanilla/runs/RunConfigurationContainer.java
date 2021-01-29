@@ -41,7 +41,6 @@ import org.gradle.api.specs.Spec;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.model.Version;
-import org.spongepowered.gradle.vanilla.model.rule.FeatureRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 
 import java.util.Collection;
@@ -112,7 +111,6 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
                     this.extension.targetVersion().map(v -> v.type().name().toLowerCase(Locale.ROOT)));
 
             final RuleContext context = RuleContext.create();
-            FeatureRule.setFeature(context, FeatureRule.Features.IS_DEMO_USER, true);
             config.allArgumentProviders().add(new ManifestDerivedArgumentProvider(
                     launcherTokens,
                     this.extension.targetVersion().map(v -> v.arguments().game()),
