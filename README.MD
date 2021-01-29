@@ -14,7 +14,7 @@ Otherwise, to get a workspace up and going immediately it is as simple as
 ```
 plugins {
     java
-    id("org.spongepowered.gradle.vanilla") version "0.1"
+    id("org.spongepowered.gradle.vanilla") version "0.1-SNAPSHOT"
 }
 
 group = "org.example"
