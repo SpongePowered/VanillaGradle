@@ -37,6 +37,7 @@ import org.gradle.api.tasks.TaskAction;
 import org.objectweb.asm.commons.ClassRemapper;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.asm.LocalVariableNamingClassVisitor;
+import org.spongepowered.gradle.vanilla.asm.SyntheticParameterAnnotationsFix;
 import org.spongepowered.gradle.vanilla.transformer.SignatureStripperTransformer;
 
 import java.io.BufferedReader;
@@ -73,7 +74,7 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
 
         atlas.install(ctx -> SignatureStripperTransformer.INSTANCE);
         atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) ->
-            new ClassRemapper(new LocalVariableNamingClassVisitor(parent), mapper)));
+            new ClassRemapper(new SyntheticParameterAnnotationsFix(new LocalVariableNamingClassVisitor(parent)), mapper)));
 
         atlas.run(this.getInputJar().get().getAsFile().toPath(), this.getOutputJar().get().getAsFile().toPath());
     }
