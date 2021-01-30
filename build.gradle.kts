@@ -43,7 +43,7 @@ dependencies {
     // Just main
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("de.undercouch:gradle-download-task:4.1.1")
-    implementation("org.cadixdev:atlas:0.2.1-SNAPSHOT") {
+    implementation("org.cadixdev:atlas:0.2.1") {
         exclude("org.ow2.asm") // Use our own ASM
     }
     implementation("org.cadixdev:lorenz:0.5.6")

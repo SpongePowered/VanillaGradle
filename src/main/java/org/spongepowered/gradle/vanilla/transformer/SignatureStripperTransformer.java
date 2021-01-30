@@ -58,7 +58,7 @@ public final class SignatureStripperTransformer implements JarEntryTransformer {
         if (entry.getName().startsWith("META-INF")) {
             if (entry.getExtension().equals("RSA")
             || entry.getExtension().equals("SF")) {
-                return new JarResourceEntry(entry.getName(), entry.getTime(), new byte[0]);
+                return null;
             }
         }
         return entry;
