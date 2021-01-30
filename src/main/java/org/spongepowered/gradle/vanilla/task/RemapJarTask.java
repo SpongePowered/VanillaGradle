@@ -46,12 +46,21 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTask {
 
+    private static final Lock ATLAS_EXECUTOR_LOCK = new ReentrantLock();
+    private static volatile ExecutorService atlasExecutor = null;
     private static final ConcurrentHashMap<Path, Lock> REMAPPER_LOCKS = new ConcurrentHashMap<>();
 
     @InputFile
@@ -69,7 +78,6 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
     
     @TaskAction
     public void execute() throws IOException {
-        final Atlas atlas = new Atlas();
         final Path inputJar = this.getInputJar().get().getAsFile().toPath();
 
         final MappingSet scratchMappings = MappingSet.create();
@@ -80,8 +88,26 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
 
         final MappingSet mappings = scratchMappings.reverse();
 
+        ExecutorService executor = RemapJarTask.atlasExecutor;
+        if (executor == null) {
+            RemapJarTask.ATLAS_EXECUTOR_LOCK.lock();
+            try {
+                if (RemapJarTask.atlasExecutor == null) {
+                    final int maxProcessors = Runtime.getRuntime().availableProcessors();
+                    RemapJarTask.atlasExecutor = new ThreadPoolExecutor(maxProcessors / 4, maxProcessors,
+                            30, TimeUnit.SECONDS,
+                            new LinkedBlockingDeque<>());
+                }
+                executor = RemapJarTask.atlasExecutor;
+            } finally {
+                RemapJarTask.ATLAS_EXECUTOR_LOCK.unlock();
+            }
+        }
+
+
         final Lock remapLock = RemapJarTask.REMAPPER_LOCKS.computeIfAbsent(inputJar, path -> new ReentrantLock());
         remapLock.lock();
+        final Atlas atlas = new Atlas(executor);
         try {
             atlas.install(ctx -> SignatureStripperTransformer.INSTANCE);
             atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) ->
@@ -89,6 +115,7 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
 
             atlas.run(inputJar, this.getOutputJar().get().getAsFile().toPath());
         } finally {
+            atlas.close();
             remapLock.unlock();
         }
     }
@@ -99,6 +126,13 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
     }
 
     public static void registerExecutionCompleteListener(final Gradle gradle) {
-        gradle.buildFinished(result -> RemapJarTask.REMAPPER_LOCKS.clear());
+        gradle.buildFinished(result -> {
+            RemapJarTask.REMAPPER_LOCKS.clear();
+            final ExecutorService exec = RemapJarTask.atlasExecutor;
+            RemapJarTask.atlasExecutor = null;
+            if (exec != null) {
+                exec.shutdownNow();
+            }
+        });
     }
 }
