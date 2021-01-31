@@ -246,7 +246,6 @@ public final class VanillaGradle implements Plugin<Project> {
                 repo.setUrl(Constants.Repositories.MINECRAFT);
                 repo.mavenContent(MavenRepositoryContentDescriptor::releasesOnly);
             });
-            handler.maven(repo -> repo.setUrl(Constants.Repositories.FABRIC_MC));
             handler.maven(repo -> repo.setUrl(Constants.Repositories.MINECRAFT_FORGE));
         }
     }

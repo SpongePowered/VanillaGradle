@@ -76,7 +76,7 @@ public final class Constants {
 
     public static final class WorkerDependencies {
         public static final String MERGE_TOOL = "net.minecraftforge:mergetool:1.1.1";
-        public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:1.0.0";
+        public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:1.0.2";
         public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:1.5.478.18";
 
         private WorkerDependencies() {
@@ -86,7 +86,6 @@ public final class Constants {
     public static final class Repositories {
         public static final String MINECRAFT = "https://libraries.minecraft.net/";
         public static final String MINECRAFT_FORGE = "https://files.minecraftforge.net/maven/";
-        public static final String FABRIC_MC = "https://maven.fabricmc.net/";
 
         private Repositories() {
         }

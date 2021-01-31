@@ -67,7 +67,7 @@ dependencies {
     implementation(jarDecompile.output)
 
     // Access widener worker (match with Constants)
-    "accessWidenCompileOnly"("net.fabricmc:access-widener:1.0.0") {
+    "accessWidenCompileOnly"("net.fabricmc:access-widener:1.0.2") {
         exclude("org.ow2.asm")
     }
     implementation(accessWiden.output)
