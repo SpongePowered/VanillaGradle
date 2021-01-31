@@ -45,7 +45,7 @@ public enum MinecraftSide {
         ) {
             // Client gets all libraries
             for (final Library library : knownLibraries) {
-                if (library.rules().test(rules)) {
+                if (!library.isNatives() && library.rules().test(rules)) {
                     handler.accept(library.name());
                 }
             }
@@ -68,7 +68,7 @@ public enum MinecraftSide {
             // Unfortunately Gradle both lets you tweak the metadata of an incoming artifact, and transform the artifact itself, but not both at
             // the same time.
             for (final Library library : knownLibraries) {
-                if (!Constants.CLIENT_ONLY_DEPENDENCY_GROUPS.contains(library.name().group()) && library.rules().test(rules)) {
+                if (!library.isNatives() && !Constants.CLIENT_ONLY_DEPENDENCY_GROUPS.contains(library.name().group()) && library.rules().test(rules)) {
                     handler.accept(library.name());
                 }
             }

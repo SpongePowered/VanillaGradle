@@ -26,7 +26,6 @@ package org.spongepowered.gradle.vanilla.model.rule;
 
 import com.google.gson.reflect.TypeToken;
 
-import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -80,7 +79,7 @@ public final class OperatingSystemRule implements Rule<OperatingSystemRule.OSInf
     @Override
     public boolean test(final RuleContext context, final OSInfo value) {
         final String osName =
-                context.<String>get(OperatingSystemRule.CTX_OS_NAME).orElseGet(() -> OperatingSystemRule.normalizeOsName(System.getProperty("os.name")));
+                OperatingSystemRule.normalizeOsName(context.<String>get(OperatingSystemRule.CTX_OS_NAME).orElseGet(() -> System.getProperty("os.name")));
         final String osVersion = context.<String>get(OperatingSystemRule.CTX_OS_VERSION).orElseGet(() -> System.getProperty("os.version"));
         final String osArch = context.<String>get(OperatingSystemRule.CTX_OS_ARCH).orElseGet(() -> System.getProperty("os.arch"));
 

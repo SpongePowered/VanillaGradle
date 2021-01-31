@@ -47,4 +47,8 @@ public final class GroupArtifactVersion {
         return this.version;
     }
 
+    @Override
+    public String toString() {
+        return this.group + ':' + this.artifact + ':' + this.version;
+    }
 }

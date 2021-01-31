@@ -22,17 +22,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.model.rule;
+package org.spongepowered.gradle.vanilla.model;
 
-import com.google.gson.annotations.SerializedName;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.opentest4j.AssertionFailedError;
+import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
+import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 
-/**
- * The result of a rule evaluation
- */
-public enum RuleAction {
+import java.io.IOException;
 
-    ALLOW,
-    @SerializedName(value = "disallow", alternate = "deny")
-    DENY
+class VersionedDependencyTest {
 
+    @Test
+    @Disabled("Makes network requests")
+    void dependenciesFromManifest() throws IOException {
+        final VersionManifestV2 manifest = VersionManifestV2.load();
+
+        final String latestName = manifest.latest().get(VersionClassifier.RELEASE);
+        final Version actual = manifest.findDescriptor(latestName).orElseThrow(AssertionFailedError::new).toVersion();
+
+        final RuleContext context = RuleContext.create();
+        OperatingSystemRule.setOsName(context, "osx");
+        for (final Library library : actual.libraries()) {
+            if (library.rules().test(context)) {
+                System.out.println(library.name());
+            }
+        }
+    }
 }

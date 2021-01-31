@@ -34,6 +34,8 @@ configurations.implementation {
 
 dependencies {
     val asmVersion: String by project
+    val junitVersion: String by project
+
     // All source sets
     commonDeps(gradleApi())
     commonDeps("org.ow2.asm:asm:$asmVersion")
@@ -71,6 +73,9 @@ dependencies {
         exclude("org.ow2.asm")
     }
     implementation(accessWiden.output)
+
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 }
 
 tasks.jar {

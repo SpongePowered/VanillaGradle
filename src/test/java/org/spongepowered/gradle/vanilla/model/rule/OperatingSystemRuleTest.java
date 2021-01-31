@@ -24,15 +24,21 @@
  */
 package org.spongepowered.gradle.vanilla.model.rule;
 
-import com.google.gson.annotations.SerializedName;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/**
- * The result of a rule evaluation
- */
-public enum RuleAction {
+import org.junit.jupiter.api.Test;
 
-    ALLOW,
-    @SerializedName(value = "disallow", alternate = "deny")
-    DENY
+public class OperatingSystemRuleTest {
+
+    @Test
+    void testNormalizeWindows() {
+        assertEquals("windows", OperatingSystemRule.normalizeOsName("Windows"));
+        assertEquals("windows", OperatingSystemRule.normalizeOsName("Windows 10"));
+    }
+
+    @Test
+    void testNormalizeMacOs() {
+        assertEquals("osx", OperatingSystemRule.normalizeOsName("Mac OS X"));
+    }
 
 }

@@ -51,6 +51,20 @@ public final class Library implements Serializable {
         return this.natives;
     }
 
+    /**
+     * Get whether this is a natives declaration or a standard dependency declaration.
+     *
+     * <p>When a dependency contains natives, Mojang specifies it twice: Once
+     * with natives, and once without. The ones with natives are used only for
+     * extracting natives, and the ones without are only used when
+     * downloading dependencies.</p>
+     *
+     * @return whether this is a natives dependency
+     */
+    public boolean isNatives() {
+        return !this.natives.isEmpty();
+    }
+
     public RuleDeclaration rules() {
         return this.rules;
     }
