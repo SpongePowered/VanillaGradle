@@ -84,6 +84,7 @@ import org.spongepowered.gradle.vanilla.util.StringUtils;
 import java.io.File;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 public final class VanillaGradle implements Plugin<Project> {
     private static final AtomicBoolean VERSION_ANNOUNCED = new AtomicBoolean();
@@ -128,9 +129,10 @@ public final class VanillaGradle implements Plugin<Project> {
         });
 
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
-            project.getConfigurations().named(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME, config -> {
-                config.extendsFrom(minecraftConfig.get());
+            Stream.of(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME).forEach(config -> {
+                project.getConfigurations().named(config, instance -> instance.extendsFrom(minecraftConfig.get()));
             });
+
             this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class));
             final NamedDomainObjectProvider<Configuration> runtimeClasspath = project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
             minecraft.getRuns().configureEach(run -> {
