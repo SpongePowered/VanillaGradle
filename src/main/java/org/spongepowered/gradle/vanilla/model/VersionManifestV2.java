@@ -63,7 +63,7 @@ public final class VersionManifestV2 implements Serializable {
     }
 
     public static VersionManifestV2 load() throws IOException {
-        final URL url = new URL(Constants.API_V2_ENDPOINT);
+        final URL url = new URL(Constants.Manifests.API_V2_ENDPOINT);
         return GsonUtils.parseFromJson(url, VersionManifestV2.class);
     }
 }

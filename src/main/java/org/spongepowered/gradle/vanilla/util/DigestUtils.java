@@ -24,6 +24,11 @@
  */
 package org.spongepowered.gradle.vanilla.util;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 public final class DigestUtils {
 
     // From http://stackoverflow.com/questions/9655181/convert-from-byte-array-to-hex-string-in-java
@@ -40,6 +45,24 @@ public final class DigestUtils {
             hexChars[j * 2 + 1] = DigestUtils.hexArray[v & 0x0F];
         }
         return new String(hexChars);
+    }
+
+    public static boolean validateSha1(final String expectedHash, final InputStream stream) throws IOException {
+        final MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-1");
+        } catch (final NoSuchAlgorithmException ex) {
+            throw new AssertionError(ex); // Guaranteed present by MessageDigest spec
+        }
+
+        final byte[] buf = new byte[4096];
+        int read;
+
+        while ((read = stream.read(buf)) != -1) {
+            digest.update(buf,0, read);
+        }
+
+        return expectedHash.equals(DigestUtils.toHexString(digest.digest()));
     }
 
 }

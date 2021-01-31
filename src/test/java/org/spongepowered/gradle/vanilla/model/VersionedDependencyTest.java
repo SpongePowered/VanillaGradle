@@ -37,10 +37,10 @@ class VersionedDependencyTest {
     @Test
     @Disabled("Makes network requests")
     void dependenciesFromManifest() throws IOException {
-        final VersionManifestV2 manifest = VersionManifestV2.load();
+        final VersionManifestRepository repo = VersionManifestRepository.direct();
 
-        final String latestName = manifest.latest().get(VersionClassifier.RELEASE);
-        final Version actual = manifest.findDescriptor(latestName).orElseThrow(AssertionFailedError::new).toVersion();
+        final String latestName = repo.latestVersion(VersionClassifier.RELEASE).orElseThrow(() -> new IllegalStateException("No latest release!"));
+        final Version actual = repo.fullVersion(latestName).orElseThrow(AssertionFailedError::new);
 
         final RuleContext context = RuleContext.create();
         OperatingSystemRule.setOsName(context, "osx");

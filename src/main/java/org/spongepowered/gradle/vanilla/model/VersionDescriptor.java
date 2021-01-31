@@ -71,11 +71,4 @@ public final class VersionDescriptor implements Serializable {
         return this.complianceLevel;
     }
 
-    public Version toVersion() throws IOException {
-        if (this.url == null) {
-            throw new IllegalStateException("No URL has been specified for a version descriptor!");
-        }
-
-        return GsonUtils.parseFromJson(this.url, Version.class);
-    }
 }

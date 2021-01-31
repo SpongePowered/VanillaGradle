@@ -33,9 +33,13 @@ import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleDeclarationTypeAdapter;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -51,8 +55,20 @@ public final class GsonUtils {
             .create();
 
     public static <T> T parseFromJson(final URL url, final Class<T> type) throws IOException {
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(url, "url").openStream()))) {
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(url, "url").openStream(), StandardCharsets.UTF_8))) {
             return GsonUtils.GSON.fromJson(reader, type);
+        }
+    }
+
+    public static <T> T parseFromJson(final Path path, final Class<T> type) throws IOException {
+        try (final BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            return GsonUtils.GSON.fromJson(reader, type);
+        }
+    }
+
+    public static <T> void writeToJson(final Path path, final T value, final Class<T> type) throws IOException {
+        try (final BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+            GsonUtils.GSON.toJson(value, type, writer);
         }
     }
 

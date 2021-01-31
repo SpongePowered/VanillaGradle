@@ -35,7 +35,6 @@ public final class Constants {
 
     public static final String NAME = "VanillaGradle";
     public static final String VERSION = Constants.version();
-    public static final String API_V2_ENDPOINT = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
     public static final String MINECRAFT_RESOURCES_URL = "https://resources.download.minecraft.net/";
     public static final String TASK_GROUP = "vanilla gradle";
     public static final int ASM_VERSION = Opcodes.ASM9;
@@ -51,8 +50,18 @@ public final class Constants {
         public static final String ORIGINAL = "original";
         public static final String MAPPINGS = "mappings";
         public static final String FILTERED = "filtered";
+        public static final String MANIFESTS = "manifests";
 
         private Directories() {
+        }
+    }
+
+    public static final class Manifests {
+        public static final String SKIP_CACHE = "vanillagradle.skipManifestCache";
+        public static final String API_V2_ENDPOINT = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
+        public static final long CACHE_TIMEOUT_SECONDS = 24 /* hours */ * 60 /* minutes/hr */ * 60 /* seconds/min */;
+
+        private Manifests() {
         }
     }
 

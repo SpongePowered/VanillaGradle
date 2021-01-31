@@ -44,6 +44,7 @@ import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
 import org.spongepowered.gradle.vanilla.model.VersionManifestV2;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
@@ -63,7 +64,7 @@ public abstract class MinecraftExtension {
     private final Property<String> version;
     private final Property<MinecraftPlatform> platform;
     private final Property<Boolean> injectRepositories;
-    private final VersionManifestV2 versionManifest;
+    private final VersionManifestRepository versions;
 
     private final Provider<VersionDescriptor> versionDescriptor;
     private final Property<Version> targetVersion;
@@ -81,7 +82,6 @@ public abstract class MinecraftExtension {
     @Inject
     public MinecraftExtension(final Gradle gradle, final ObjectFactory factory, final Project project) throws IOException {
         this.project = project;
-        this.versionManifest = VersionManifestV2.load();
         this.version = factory.property(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.JOINED);
         this.injectRepositories = factory.property(Boolean.class).convention(true);
@@ -91,22 +91,6 @@ public abstract class MinecraftExtension {
         this.mappingsDirectory = factory.directoryProperty();
         this.filteredDirectory = factory.directoryProperty();
         this.decompiledDirectory = factory.directoryProperty();
-        this.versionDescriptor = this.version.map(
-            version -> this.versionManifest.findDescriptor(version)
-                .orElseThrow(() -> new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was not found in the "
-                                + "manifest! Try '%s' instead.", this.version.get(), this.versionManifest.latest().get(VersionClassifier.RELEASE))))
-        );
-        this.targetVersion = factory.property(Version.class)
-                .value(this.versionDescriptor.map(version -> {
-                    try {
-                        return version.toVersion();
-                    } catch (final IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }));
-        this.targetVersion.finalizeValueOnRead();
-
-        this.runConfigurations = factory.newInstance(RunConfigurationContainer.class, factory.domainObjectContainer(RunConfiguration.class), this);
 
         final Path gradleHomeDirectory = gradle.getGradleUserHomeDir().toPath();
         final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.Directories.CACHES);
@@ -121,6 +105,34 @@ public abstract class MinecraftExtension {
         this.filteredDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
         this.decompiledDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
         this.minecraftClasspath = project.getConfigurations().create(Constants.Configurations.MINECRAFT_CLASSPATH);
+
+        final Path cacheDir = rootDirectory.resolve(Constants.Directories.MANIFESTS);
+        // Create a version repository. If Gradle is in offline mode, read only from cache
+        if (project.hasProperty(Constants.Manifests.SKIP_CACHE)) {
+            this.versions = VersionManifestRepository.direct();
+        } else {
+            this.versions = VersionManifestRepository.caching(cacheDir, !gradle.getStartParameter().isOffline());
+        }
+        this.versionDescriptor = this.version.map(version -> {
+            try {
+                return this.versions.manifest().findDescriptor(version)
+                    .orElseThrow(() -> new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was not found in the "
+                        + "manifest! Try '%s' instead.", this.version.get(), this.versions.latestVersion(VersionClassifier.RELEASE).orElse(null))));
+            } catch (final IOException ex) {
+                throw new GradleException("Failed to read version manifest", ex);
+            }
+        });
+        this.targetVersion = factory.property(Version.class)
+            .value(this.version.map(version -> {
+                try {
+                    return this.versions.fullVersion(version).orElse(null);
+                } catch (final IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }));
+        this.targetVersion.finalizeValueOnRead();
+
+        this.runConfigurations = factory.newInstance(RunConfigurationContainer.class, factory.domainObjectContainer(RunConfiguration.class), this);
     }
 
     public Property<Boolean> injectRepositories() {
@@ -170,7 +182,11 @@ public abstract class MinecraftExtension {
     }
 
     protected VersionManifestV2 versionManifest() {
-        return this.versionManifest;
+        try {
+            return this.versions.manifest();
+        } catch (final IOException ex) {
+            throw new GradleException("Failed to load manifest", ex);
+        }
     }
 
     public DirectoryProperty assetsDirectory() {
