@@ -27,9 +27,12 @@ package org.spongepowered.gradle.vanilla.task;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.workers.WorkerExecutor;
 import org.spongepowered.gradle.vanilla.Constants;
@@ -37,6 +40,7 @@ import org.spongepowered.gradle.vanilla.worker.JarMergeWorker;
 
 import javax.inject.Inject;
 
+@CacheableTask
 public abstract class MergeJarsTask extends DefaultTask implements ProcessedJarTask {
 
     public MergeJarsTask() {
@@ -57,9 +61,11 @@ public abstract class MergeJarsTask extends DefaultTask implements ProcessedJarT
     public abstract void setWorkerClasspath(final FileCollection collection);
 
     @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getClientJar();
 
     @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getServerJar();
 
     @OutputFile

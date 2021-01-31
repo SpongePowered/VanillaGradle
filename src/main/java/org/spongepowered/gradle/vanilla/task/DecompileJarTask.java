@@ -32,6 +32,8 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.workers.WorkerExecutor;
 import org.spongepowered.gradle.vanilla.Constants;
@@ -65,6 +67,7 @@ public abstract class DecompileJarTask extends DefaultTask {
     public abstract ConfigurableFileCollection getDecompileClasspath();
 
     @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getInputJar();
 
     @OutputFile

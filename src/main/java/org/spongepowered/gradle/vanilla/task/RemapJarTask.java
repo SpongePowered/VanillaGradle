@@ -32,8 +32,11 @@ import org.cadixdev.lorenz.io.proguard.ProGuardReader;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.invocation.Gradle;
+import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.objectweb.asm.commons.ClassRemapper;
 import org.spongepowered.gradle.vanilla.Constants;
@@ -54,6 +57,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+@CacheableTask
 public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTask {
 
     private static final Lock ATLAS_EXECUTOR_LOCK = new ReentrantLock();
@@ -61,9 +65,11 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
     private static final ConcurrentHashMap<Path, Lock> REMAPPER_LOCKS = new ConcurrentHashMap<>();
 
     @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getInputJar();
 
     @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getMappingsFile();
 
     @OutputFile
@@ -104,15 +110,13 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
 
         final Lock remapLock = RemapJarTask.REMAPPER_LOCKS.computeIfAbsent(inputJar, path -> new ReentrantLock());
         remapLock.lock();
-        final Atlas atlas = new Atlas(executor);
-        try {
+        try (final Atlas atlas = new Atlas(executor)) {
             atlas.install(ctx -> SignatureStripperTransformer.INSTANCE);
             atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) ->
-                    new ClassRemapper(new SyntheticParameterAnnotationsFix(new LocalVariableNamingClassVisitor(parent)), mapper)));
+                new ClassRemapper(new SyntheticParameterAnnotationsFix(new LocalVariableNamingClassVisitor(parent)), mapper)));
 
             atlas.run(inputJar, this.getOutputJar().get().getAsFile().toPath());
         } finally {
-            atlas.close();
             remapLock.unlock();
         }
     }

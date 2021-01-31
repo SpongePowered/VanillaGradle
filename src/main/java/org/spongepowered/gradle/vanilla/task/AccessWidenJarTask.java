@@ -33,12 +33,15 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
+import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.workers.WorkerExecutor;
 import org.spongepowered.gradle.vanilla.util.DigestUtils;
@@ -53,6 +56,7 @@ import java.security.NoSuchAlgorithmException;
 
 import javax.inject.Inject;
 
+@CacheableTask
 public abstract class AccessWidenJarTask extends DefaultTask implements ProcessedJarTask {
 
     private final Property<String> accessWidenerHash;
@@ -80,6 +84,7 @@ public abstract class AccessWidenJarTask extends DefaultTask implements Processe
     protected abstract WorkerExecutor getWorkerExecutor();
 
     @InputFiles
+    @PathSensitive(PathSensitivity.NAME_ONLY)
     public abstract ConfigurableFileCollection getSource();
 
     /**
@@ -95,6 +100,7 @@ public abstract class AccessWidenJarTask extends DefaultTask implements Processe
     public abstract Property<String> getArchiveClassifier();
 
     @InputFiles
+    @PathSensitive(PathSensitivity.RELATIVE)
     public abstract ConfigurableFileCollection getAccessWideners();
 
     @Internal // calculated from the input file
