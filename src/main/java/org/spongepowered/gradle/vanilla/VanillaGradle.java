@@ -101,7 +101,7 @@ public final class VanillaGradle implements Plugin<Project> {
 
         final MinecraftExtension minecraft = project.getExtensions().create("minecraft", MinecraftExtension.class, project);
         final NamedDomainObjectProvider<Configuration> minecraftConfig = project.getConfigurations().register(Constants.Configurations.MINECRAFT, config -> {
-            config.setCanBeResolved(false);
+            config.setCanBeResolved(true);
             config.setCanBeConsumed(true);
             config.attributes(attributes -> {
                 attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.LIBRARY));
@@ -128,13 +128,13 @@ public final class VanillaGradle implements Plugin<Project> {
         });
 
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
-            project.getConfigurations().named(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, config -> {
+            project.getConfigurations().named(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME, config -> {
                 config.extendsFrom(minecraftConfig.get());
             });
             this.createRunTasks(minecraft, project.getTasks(), project.getExtensions().getByType(JavaToolchainService.class));
             final NamedDomainObjectProvider<Configuration> runtimeClasspath = project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
             minecraft.getRuns().configureEach(run -> {
-                run.classpath().from(runtimeClasspath);
+                run.classpath().from(minecraftConfig, minecraft.minecraftClasspathConfiguration(), runtimeClasspath);
             });
         });
 

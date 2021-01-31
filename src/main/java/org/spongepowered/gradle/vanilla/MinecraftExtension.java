@@ -229,8 +229,9 @@ public abstract class MinecraftExtension {
             }
         });
 
-        Stream.of(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME,
-                JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME).forEach( config -> {
+        Stream.of(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
+                JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME,
+                JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME).forEach( config -> {
                     project.getConfigurations().named(config).configure(path -> path.extendsFrom(this.minecraftClasspath));
         });
     }
