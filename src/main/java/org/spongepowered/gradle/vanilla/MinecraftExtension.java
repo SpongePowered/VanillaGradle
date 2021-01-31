@@ -24,6 +24,8 @@
  */
 package org.spongepowered.gradle.vanilla;
 
+import groovy.lang.Closure;
+import groovy.lang.DelegatesTo;
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
@@ -38,6 +40,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
@@ -95,12 +98,12 @@ public abstract class MinecraftExtension {
         );
         this.targetVersion = factory.property(Version.class)
                 .value(this.versionDescriptor.map(version -> {
-            try {
-                return version.toVersion();
-            } catch (final IOException ex) {
-                throw new RuntimeException(ex);
-            }
-        }));
+                    try {
+                        return version.toVersion();
+                    } catch (final IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }));
         this.targetVersion.finalizeValueOnRead();
 
         this.runConfigurations = factory.newInstance(RunConfigurationContainer.class, factory.domainObjectContainer(RunConfiguration.class), this);
@@ -196,6 +199,11 @@ public abstract class MinecraftExtension {
 
     public RunConfigurationContainer getRuns() {
         return this.runConfigurations;
+    }
+
+    @SuppressWarnings("rawtypes")
+    public void runs(final @DelegatesTo(value = RunConfigurationContainer.class, strategy = Closure.DELEGATE_FIRST) Closure run) {
+        ConfigureUtil.configure(run, this.runConfigurations);
     }
 
     public void runs(final Action<RunConfigurationContainer> run) {

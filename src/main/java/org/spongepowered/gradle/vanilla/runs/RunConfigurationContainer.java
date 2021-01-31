@@ -35,10 +35,11 @@ import org.gradle.api.NamedDomainObjectSet;
 import org.gradle.api.Namer;
 import org.gradle.api.Rule;
 import org.gradle.api.UnknownDomainObjectException;
+import org.gradle.api.internal.NamedDomainObjectContainerConfigureDelegate;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
-import org.spongepowered.gradle.vanilla.Constants;
+import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
@@ -65,9 +66,10 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     /**
-     * Create a run configuration pre-configured with standard settings to start the Minecraft client.
+     * Create a run configuration pre-configured with standard settings to start
+     * the Minecraft client.
      *
-     * Will return a reference if the client configuration already exists.
+     * <p>Will return a reference if the client configuration already exists.</p>
      *
      * @return a provider for the configuration
      */
@@ -76,9 +78,10 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     /**
-     * Create a run configuration pre-configured with standard settings to start the Minecraft client.
+     * Create a run configuration pre-configured with standard settings to start
+     * the Minecraft client.
      *
-     * Will return a reference if the client configuration already exists.
+     * <p>Will return a reference if the client configuration already exists.</p>
      *
      * @return a provider for the configuration
      */
@@ -87,9 +90,11 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     /**
-     * Create a run configuration pre-configured with standard settings to start the Minecraft client.
+     * Create a run configuration pre-configured with standard settings to start
+     * the Minecraft client.
      *
-     * Will return a reference if the client configuration already exists, while applying the configuration action.
+     * <p>Will return a reference if the client configuration already exists,
+     * while applying the configuration action.</p>
      *
      * @return a provider for the configuration
      */
@@ -138,18 +143,18 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     /**
      * Create a run configuration pre-configured with standard settings to start the Minecraft server.
      *
-     * Will return a reference if the server configuration already exists.
+     * <p>Will return a reference if the server configuration already exists.</p>
      *
      * @return a provider for the configuration
      */
     public NamedDomainObjectProvider<RunConfiguration> server() {
-        return this.server(null);
+        return this.server((Action<? super RunConfiguration>) null);
     }
 
     /**
      * Create a run configuration pre-configured with standard settings to start the Minecraft server.
      *
-     * Will return a reference if the server configuration already exists.
+     * <p>Will return a reference if the server configuration already exists.</p>
      *
      * @return a provider for the configuration
      */
@@ -158,9 +163,11 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     /**
-     * Create a run configuration pre-configured with standard settings to start the Minecraft server.
+     * Create a run configuration pre-configured with standard settings to start
+     * the Minecraft server.
      *
-     * Will return a reference if the server configuration already exists, while applying the configuration action.
+     * <p>Will return a reference if the server configuration already exists,
+     * while applying the configuration action.</p>
      *
      * @return a provider for the configuration
      */
@@ -211,7 +218,8 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     @Override
     @SuppressWarnings("rawtypes")
     public NamedDomainObjectContainer<RunConfiguration> configure(final Closure configureClosure) {
-        return this.delegate.configure(configureClosure);
+        // TODO: This uses internal API, see if there's a more 'public' way to do this
+        return ConfigureUtil.configureSelf(configureClosure, this, new NamedDomainObjectContainerConfigureDelegate(configureClosure, this));
     }
 
     @Override

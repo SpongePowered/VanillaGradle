@@ -142,13 +142,17 @@ public final class VanillaGradle implements Plugin<Project> {
         this.createDisplayMinecraftVersions(minecraft, project.getTasks());
 
         project.afterEvaluate(p -> {
+            if (!minecraft.targetVersion().isPresent()) {
+                throw new GradleException("No minecraft version has been set! Did you set the version() property in the 'minecraft' extension");
+            }
+
             final Version version = minecraft.targetVersion().get();
             if (!version.download(DownloadClassifier.CLIENT_MAPPINGS).isPresent() && !version.download(DownloadClassifier.SERVER_MAPPINGS).isPresent()) {
                 throw new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was released before Mojang "
                         + "provided official mappings! Try '%s' instead.", minecraft.version().get(), minecraft.versionManifest().latest()
                         .get(VersionClassifier.RELEASE)));
             }
-            project.getLogger().lifecycle(String.format("Targeting Minecraft '%s' on a '%s' platform", minecraft.targetVersion().get().id(),
+            project.getLogger().lifecycle(String.format("Targeting Minecraft '%s' on a '%s' platform", version.id(),
                 minecraft.platform().get().name()));
 
             // Only add repositories if selected in extension
