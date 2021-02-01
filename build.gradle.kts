@@ -2,6 +2,7 @@ plugins {
     id("com.gradle.plugin-publish") version "0.12.0"
     `java-gradle-plugin`
     `maven-publish`
+    signing
     val indraVersion = "1.2.1"
     id("net.kyori.indra") version indraVersion
     id("net.kyori.indra.license-header") version indraVersion
@@ -192,4 +193,22 @@ license {
         this["url"] = projectUrl
     }
     header = project.file("HEADER.txt")
+}
+
+signing {
+    sign(publishing.publications)
+    val spongeSigningKey = project.findProperty("spongeSigningKey") as String?
+    val spongeSigningPassword = project.findProperty("spongeSigningPassword") as String?
+    if (spongeSigningKey != null && spongeSigningPassword != null) {
+        val keyFile = file(spongeSigningKey)
+        if (keyFile.exists()) {
+            useInMemoryPgpKeys(file(spongeSigningKey).readText(Charsets.UTF_8), spongeSigningPassword)
+        } else {
+            useInMemoryPgpKeys(spongeSigningKey, spongeSigningPassword)
+        }
+    } else {
+        signatories = PgpSignatoryProvider() // don't use gpg agent
+    }
+
+    setRequired({ !project.gradle.startParameter.taskNames.contains("publishToMavenLocal")})
 }
