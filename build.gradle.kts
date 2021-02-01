@@ -85,8 +85,16 @@ tasks.jar {
 }
 
 tasks.withType(Jar::class).configureEach {
-    manifest.attributes["Git-Commit"] = grgit.head().id
-    manifest.attributes["Git-Branch"] = grgit.branch.current().name
+    manifest.attributes(
+            "Git-Commit" to grgit.head().id,
+            "Git-Branch" to grgit.branch.current().name,
+            "Specification-Title" to "VanillaGradle",
+            "Specification-Vendor" to "SpongePowered",
+            "Specification-Version" to project.version,
+            "Implementation-Title" to project.name,
+            "Implementation-Version" to project.version,
+            "Implementation-Vendor" to "SpongePowered"
+    )
 }
 
 indra {
