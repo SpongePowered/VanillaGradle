@@ -51,7 +51,6 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
-import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.plugins.ide.eclipse.EclipsePlugin;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
@@ -67,18 +66,16 @@ import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.model.Library;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
-import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
-import org.spongepowered.gradle.vanilla.task.FilterJarTask;
 import org.spongepowered.gradle.vanilla.task.MergeJarsTask;
 import org.spongepowered.gradle.vanilla.task.ProcessedJarTask;
-import org.spongepowered.gradle.vanilla.task.RemapJarTask;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
+import org.spongepowered.gradle.vanilla.task.AtlasTransformTask;
 import org.spongepowered.gradle.vanilla.util.StringUtils;
 
 import java.io.File;
@@ -95,7 +92,7 @@ public final class VanillaGradle implements Plugin<Project> {
     public void apply(final Project project) {
         this.project = project;
 
-        RemapJarTask.registerExecutionCompleteListener(project.getGradle());
+        AtlasTransformTask.registerExecutionCompleteListener(project.getGradle());
         if (VanillaGradle.VERSION_ANNOUNCED.compareAndSet(false, true)) {
             project.getLogger().lifecycle(String.format("SpongePowered Vanilla 'GRADLE' Toolset Version '%s'", Constants.VERSION));
         }
@@ -113,8 +110,8 @@ public final class VanillaGradle implements Plugin<Project> {
             });
         });
 
-        final TaskProvider<RemapJarTask> remapClientJar = this.createSidedTasks(MinecraftSide.CLIENT, project.getTasks(), minecraft);
-        final TaskProvider<RemapJarTask> remapServerJar = this.createSidedTasks(MinecraftSide.SERVER, project.getTasks(), minecraft);
+        final TaskProvider<AtlasTransformTask> remapClientJar = this.createSidedTasks(MinecraftSide.CLIENT, project.getTasks(), minecraft);
+        final TaskProvider<AtlasTransformTask> remapServerJar = this.createSidedTasks(MinecraftSide.SERVER, project.getTasks(), minecraft);
 
         final TaskProvider<MergeJarsTask> mergedJars = this.createJarMerge(minecraft, remapClientJar, remapServerJar);
         final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, project.getTasks());
@@ -231,9 +228,8 @@ public final class VanillaGradle implements Plugin<Project> {
             task.delete(
                 tasks.withType(AccessWidenJarTask.class),
                 tasks.withType(Download.class).matching(dl -> !dl.getName().equals("downloadAssetIndex")),
-                tasks.withType(FilterJarTask.class),
-                tasks.withType(MergeJarsTask.class),
-                tasks.withType(RemapJarTask.class)
+                tasks.withType(AtlasTransformTask.class),
+                tasks.withType(MergeJarsTask.class)
             );
         });
     }
@@ -258,8 +254,8 @@ public final class VanillaGradle implements Plugin<Project> {
 
     private TaskProvider<MergeJarsTask> createJarMerge(
             final MinecraftExtension minecraft,
-            final TaskProvider<RemapJarTask> client,
-            final TaskProvider<RemapJarTask> server
+            final TaskProvider<AtlasTransformTask> client,
+            final TaskProvider<AtlasTransformTask> server
     ) {
 
         final Configuration mergetool = this.project.getConfigurations().maybeCreate(Constants.Configurations.MERGETOOL);
@@ -297,7 +293,7 @@ public final class VanillaGradle implements Plugin<Project> {
         });
     }
 
-    private TaskProvider<RemapJarTask> createSidedTasks(final MinecraftSide side, final TaskContainer tasks, final MinecraftExtension minecraft) {
+    private TaskProvider<AtlasTransformTask> createSidedTasks(final MinecraftSide side, final TaskContainer tasks, final MinecraftExtension minecraft) {
         final String sideName = side.name().toLowerCase(Locale.ROOT);
         final String capitalizedSideName = Character.toUpperCase(sideName.charAt(0)) + sideName.substring(1);
 
@@ -320,10 +316,7 @@ public final class VanillaGradle implements Plugin<Project> {
             task.overwrite(false);
         });
 
-        final TaskProvider<RemapJarTask> remapJar;
-
-        if (side.allowedPackages().isEmpty()) {
-            remapJar = tasks.register("remap" + capitalizedSideName + "Jar", RemapJarTask.class, task -> {
+        return tasks.register("remap" + capitalizedSideName + "Jar", AtlasTransformTask.class, task -> {
                 task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
                 task.dependsOn(downloadJar);
                 task.dependsOn(downloadMappings);
@@ -335,41 +328,14 @@ public final class VanillaGradle implements Plugin<Project> {
                             return remapDir.getAsFile().toPath().resolve(sideName).resolve(download.sha1())
                                     .resolve("minecraft-" + sideName + "-" + version.id() + "-remapped.jar").toFile();
                         }));
-                task.getMappingsFile().fileProvider(downloadMappings.map(Download::getDest));
-            });
-        } else {
-            final TaskProvider<FilterJarTask> filteredJar = tasks.register("filter" + capitalizedSideName + "Jar", FilterJarTask.class, task -> {
-                task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
-                task.getAllowedPackages().addAll(side.allowedPackages());
-                task.dependsOn(downloadJar);
-                task.fromJar(downloadJar.map(Download::getDest));
-                task.getDestinationDirectory().set(minecraft.filteredDirectory().zip(minecraft.targetVersion(),
-                        (path, version) -> {
-                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(side.executableArtifact());
-                            return path.dir(sideName).dir(download.sha1());
-                        }));
-                task.getArchiveClassifier().set("filtered");
-                task.getArchiveVersion().set(minecraft.versionDescriptor().map(VersionDescriptor::id));
-                task.getArchiveBaseName().set("minecraft-" + sideName);
-            });
 
-            remapJar = tasks.register("remap" + capitalizedSideName + "Jar", RemapJarTask.class, task -> {
-                task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
-                task.dependsOn(filteredJar);
-                task.dependsOn(downloadMappings);
+                if (!side.allowedPackages().isEmpty()) {
+                    task.getTransformations().filterEntries().getAllowedPackages().addAll(side.allowedPackages());
+                }
 
-                task.getInputJar().set(filteredJar.flatMap(AbstractArchiveTask::getArchiveFile));
-                task.getOutputJar().fileProvider(minecraft.remappedDirectory().zip(minecraft.targetVersion(),
-                        (remapDir, version) -> {
-                            final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(side.executableArtifact());
-                            return remapDir.getAsFile().toPath().resolve(sideName).resolve(download.sha1())
-                                    .resolve("minecraft-" + sideName + "-" + version.id() + "-remapped.jar").toFile();
-                        }));
-                task.getMappingsFile().fileProvider(downloadMappings.map(Download::getDest));
+                task.getTransformations().stripSignatures();
+                task.getTransformations().remap().getMappingsFile().fileProvider(downloadMappings.map(Download::getDest));
             });
-        }
-
-        return remapJar;
     }
 
     private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtension minecraft, final TaskContainer tasks) {

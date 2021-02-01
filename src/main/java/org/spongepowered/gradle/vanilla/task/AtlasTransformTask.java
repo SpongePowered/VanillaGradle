@@ -25,30 +25,23 @@
 package org.spongepowered.gradle.vanilla.task;
 
 import org.cadixdev.atlas.Atlas;
-import org.cadixdev.bombe.asm.jar.JarEntryRemappingTransformer;
-import org.cadixdev.lorenz.MappingSet;
-import org.cadixdev.lorenz.asm.LorenzRemapper;
-import org.cadixdev.lorenz.io.proguard.ProGuardReader;
+import org.gradle.api.Action;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
-import org.objectweb.asm.commons.ClassRemapper;
 import org.spongepowered.gradle.vanilla.Constants;
-import org.spongepowered.gradle.vanilla.asm.LocalVariableNamingClassVisitor;
-import org.spongepowered.gradle.vanilla.asm.SyntheticParameterAnnotationsFix;
-import org.spongepowered.gradle.vanilla.transformer.SignatureStripperTransformer;
+import org.spongepowered.gradle.vanilla.transformer.AtlasTransformCollection;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -58,24 +51,32 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 @CacheableTask
-public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTask {
+public abstract class AtlasTransformTask extends DefaultTask implements ProcessedJarTask {
 
     private static final Lock ATLAS_EXECUTOR_LOCK = new ReentrantLock();
-    private static volatile ExecutorService atlasExecutor = null;
+    private static volatile ExecutorService atlasExecutor;
     private static final ConcurrentHashMap<Path, Lock> REMAPPER_LOCKS = new ConcurrentHashMap<>();
 
     @InputFile
     @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getInputJar();
 
-    @InputFile
-    @PathSensitive(PathSensitivity.RELATIVE)
-    public abstract RegularFileProperty getMappingsFile();
-
     @OutputFile
     public abstract RegularFileProperty getOutputJar();
 
-    public RemapJarTask() {
+    /**
+     * Steps that will be applied to configure each Atlas instance before processing the input file
+     *
+     * @return the configuration steps.
+     */
+    @Nested
+    public abstract AtlasTransformCollection getTransformations();
+
+    public void transformations(final Action<AtlasTransformCollection> configure) {
+        Objects.requireNonNull(configure, "configure").execute(this.getTransformations());
+    }
+
+    public AtlasTransformTask() {
         this.setGroup(Constants.TASK_GROUP);
     }
     
@@ -83,37 +84,29 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
     public void execute() throws IOException {
         final Path inputJar = this.getInputJar().get().getAsFile().toPath();
 
-        final MappingSet scratchMappings = MappingSet.create();
-        try (final BufferedReader reader = Files.newBufferedReader(this.getMappingsFile().getAsFile().get().toPath(), StandardCharsets.UTF_8)) {
-            final ProGuardReader proguard = new ProGuardReader(reader);
-            proguard.read(scratchMappings);
-        }
-
-        final MappingSet mappings = scratchMappings.reverse();
-
-        ExecutorService executor = RemapJarTask.atlasExecutor;
+        ExecutorService executor = AtlasTransformTask.atlasExecutor;
         if (executor == null) {
-            RemapJarTask.ATLAS_EXECUTOR_LOCK.lock();
+            AtlasTransformTask.ATLAS_EXECUTOR_LOCK.lock();
             try {
-                if (RemapJarTask.atlasExecutor == null) {
+                if (AtlasTransformTask.atlasExecutor == null) {
                     final int maxProcessors = Runtime.getRuntime().availableProcessors();
-                    RemapJarTask.atlasExecutor = new ThreadPoolExecutor(maxProcessors / 4, maxProcessors,
+                    AtlasTransformTask.atlasExecutor = new ThreadPoolExecutor(maxProcessors / 4, maxProcessors,
                             30, TimeUnit.SECONDS,
                             new LinkedBlockingDeque<>());
                 }
-                executor = RemapJarTask.atlasExecutor;
+                executor = AtlasTransformTask.atlasExecutor;
             } finally {
-                RemapJarTask.ATLAS_EXECUTOR_LOCK.unlock();
+                AtlasTransformTask.ATLAS_EXECUTOR_LOCK.unlock();
             }
         }
 
 
-        final Lock remapLock = RemapJarTask.REMAPPER_LOCKS.computeIfAbsent(inputJar, path -> new ReentrantLock());
+        final Lock remapLock = AtlasTransformTask.REMAPPER_LOCKS.computeIfAbsent(inputJar, path -> new ReentrantLock());
         remapLock.lock();
         try (final Atlas atlas = new Atlas(executor)) {
-            atlas.install(ctx -> SignatureStripperTransformer.INSTANCE);
-            atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) ->
-                new ClassRemapper(new SyntheticParameterAnnotationsFix(new LocalVariableNamingClassVisitor(parent)), mapper)));
+            for (final Action<? super Atlas> action : this.getTransformations().getTransformations().get()) {
+                action.execute(atlas);
+            }
 
             atlas.run(inputJar, this.getOutputJar().get().getAsFile().toPath());
         } finally {
@@ -128,12 +121,13 @@ public abstract class RemapJarTask extends DefaultTask implements ProcessedJarTa
 
     public static void registerExecutionCompleteListener(final Gradle gradle) {
         gradle.buildFinished(result -> {
-            RemapJarTask.REMAPPER_LOCKS.clear();
-            final ExecutorService exec = RemapJarTask.atlasExecutor;
-            RemapJarTask.atlasExecutor = null;
+            AtlasTransformTask.REMAPPER_LOCKS.clear();
+            final ExecutorService exec = AtlasTransformTask.atlasExecutor;
+            AtlasTransformTask.atlasExecutor = null;
             if (exec != null) {
                 exec.shutdownNow();
             }
         });
     }
+
 }

@@ -32,7 +32,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.jar.Attributes;
 
-public final class SignatureStripperTransformer implements JarEntryTransformer {
+final class SignatureStripperTransformer implements JarEntryTransformer {
     public static final SignatureStripperTransformer INSTANCE = new SignatureStripperTransformer();
 
     private SignatureStripperTransformer() {
