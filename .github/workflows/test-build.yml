@@ -4,6 +4,7 @@ name: Build And Test
 
 on:
   push:
+    branches: "*"
     tags-ignore: ["*"]
   pull_request:
 
