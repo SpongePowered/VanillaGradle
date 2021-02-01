@@ -10,10 +10,10 @@ plugins {
 }
 
 group = "org.spongepowered"
-version = "0.1-SNAPSHOT"
+version = "0.1"
 
 repositories {
-    maven("https://repo-new.spongepowered.org/repository/maven-public/") {
+    maven("https://repo.spongepowered.org/repository/maven-public/") {
         name = "sponge"
     }
 }
@@ -125,6 +125,18 @@ pluginBundle {
         }
     }
 }
+
+// Needed to publish plugins using GH actions secrets
+
+fun copyProperty(definition: String, target: String) {
+    val property = project.findProperty(definition)
+    if (property != null) {
+        project.extra[target] = property
+    }
+}
+
+copyProperty("pluginPortalApiKey", "gradle.publish.key")
+copyProperty("pluginPortalApiSecret", "gradle.publish.secret")
 
 publishing {
     publications {

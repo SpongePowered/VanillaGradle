@@ -43,3 +43,5 @@ jobs:
           ORG_GRADLE_PROJECT_spongePassword: ${{ secrets.SPONGE_MAVEN_REPO_PASSWORD }}
           ORG_GRADLE_PROJECT_spongeSigningKey: ${{ secrets.SPONGE_SIGNING_KEY }}
           ORG_GRADLE_PROJECT_spongeSigningPassword: ${{ secrets.SPONGE_SIGNING_PASSWORD }}
+          ORG_GRADLE_PROJECT_pluginPortalApiKey: ${{ secrets.GRADLE_PLUGIN_PORTAL_KEY }}
+          ORG_GRADLE_PROJECT_pluginPortalApiSecret: ${{ secrets.GRADLE_PLUGIN_PORTAL_SECRET }}

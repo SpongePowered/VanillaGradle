@@ -14,7 +14,7 @@ Otherwise, to get a workspace up and going immediately it is as simple as
 ```
 plugins {
     java
-    id("org.spongepowered.gradle.vanilla") version "0.1-SNAPSHOT"
+    id("org.spongepowered.gradle.vanilla") version "0.1"
 }
 
 group = "org.example"
@@ -57,7 +57,7 @@ your system you can instead run the supplied Gradle wrapper `gradlew`)*
   <tbody>
     <tr>
       <td valign="top"><b>0.1</b></td>
-      <td valign="top">January 2021</td>
+      <td valign="top">February 2021</td>
       <td valign="top">
         <ul>
           <li>Initial Release</li>
