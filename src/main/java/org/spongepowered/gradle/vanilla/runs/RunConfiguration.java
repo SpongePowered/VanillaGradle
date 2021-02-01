@@ -35,6 +35,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.spongepowered.gradle.vanilla.Constants;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -87,6 +88,10 @@ public class RunConfiguration implements Named {
 
     public Property<String> displayName() {
         return this.displayName;
+    }
+
+    public void displayName(final String displyName) {
+        this.displayName.set(displyName);
     }
 
     /**
@@ -181,12 +186,24 @@ public class RunConfiguration implements Named {
         return this.workingDirectory;
     }
 
+    public void workingDirectory(final File directory) {
+        this.workingDirectory.set(directory);
+    }
+
     public Property<String> mainClass() {
         return this.mainClass;
     }
 
+    public void mainClass(final String mainClass) {
+        this.mainClass.set(mainClass);
+    }
+
     public Property<String> mainModule() {
         return this.mainModule;
+    }
+
+    public void mainModule(final String mainModule) {
+        this.mainModule.set(mainModule);
     }
 
     @Override

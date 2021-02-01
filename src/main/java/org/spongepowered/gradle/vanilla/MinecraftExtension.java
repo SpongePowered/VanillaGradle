@@ -139,6 +139,10 @@ public abstract class MinecraftExtension {
         return this.injectRepositories;
     }
 
+    public void injectRepositories(final boolean injectRepositories) {
+        this.injectRepositories.set(injectRepositories);
+    }
+
     protected Property<String> version() {
         return this.version;
     }
