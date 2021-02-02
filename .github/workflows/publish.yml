@@ -23,7 +23,7 @@ jobs:
         run: chmod +x ./gradlew
       - name: Publish with Gradle (snapshot)
         if: ${{ github.event_name != 'release' }}
-        run: ./gradlew publish
+        run: ./gradlew -PforceSign=true publish
         env:
           ORG_GRADLE_PROJECT_spongeSnapshotRepo: ${{ secrets.SPONGE_MAVEN_SNAPSHOT_REPO_URL }}
           ORG_GRADLE_PROJECT_spongeReleaseRepo: ${{ secrets.SPONGE_MAVEN_RELEASE_REPO_URL }}

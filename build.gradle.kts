@@ -1,12 +1,10 @@
 plugins {
     id("com.gradle.plugin-publish") version "0.12.0"
     `java-gradle-plugin`
-    `maven-publish`
-    signing
-    val indraVersion = "1.2.1"
+    val indraVersion = "1.3.0"
     id("net.kyori.indra") version indraVersion
     id("net.kyori.indra.license-header") version indraVersion
-    id("org.ajoberstar.grgit") version "4.1.0"
+    id("net.kyori.indra.publishing.gradle-plugin") version indraVersion
 }
 
 group = "org.spongepowered"
@@ -99,99 +97,47 @@ tasks.withType(Jar::class).configureEach {
 }
 
 indra {
+    github("SpongePowered", "VanillaGradle") {
+        ci = true
+    }
+    mitLicense()
+
     javaVersions {
         testWith(8, 11, 15)
     }
-}
 
-gradlePlugin {
-    plugins {
-        create("vanillagradle") {
-            id = "org.spongepowered.gradle.vanilla"
-            implementationClass = "org.spongepowered.gradle.vanilla.VanillaGradle"
-        }
-    }
-}
-
-pluginBundle {
-    website = "https://spongepowered.org"
-    vcsUrl = "https://github.com/SpongePowered/VanillaGradle"
-    description = "Set up a Minecraft workspace for project development"
-    tags = listOf("minecraft", "vanilla")
-
-    plugins {
-        named("vanillagradle") {
-            displayName = "VanillaGradle"
-        }
-    }
-}
-
-// Needed to publish plugins using GH actions secrets
-
-fun copyProperty(definition: String, target: String) {
-    val property = project.findProperty(definition)
-    if (property != null) {
-        project.extra[target] = property
-    }
-}
-
-copyProperty("pluginPortalApiKey", "gradle.publish.key")
-copyProperty("pluginPortalApiSecret", "gradle.publish.secret")
-
-publishing {
-    publications {
-        withType(MavenPublication::class).configureEach {
-            artifactId = project.name.toLowerCase()
-
-            pom {
-                name.set(project.name)
-                description.set(pluginBundle.description)
-                url.set(pluginBundle.website)
-
-                organization {
-                    name.set("SpongePowered")
-                    url.set("https://spongepowered.org")
-                }
-
-                scm {
-                    connection.set("scm:git:git://github.com/SpongePowered/VanillaGradle.git")
-                    developerConnection.set("scm:git:ssh://github.com/SpongePowered/VanillaGradle.git")
-                    url.set(pluginBundle.vcsUrl)
-                }
-
-                ciManagement {
-                    system.set("GitHub Actions")
-                    url.set("https://github.com/SpongePowered/VanillaGradle.git")
-                }
-
-                licenses {
-                    license {
-                        name.set("MIT")
-                        url.set("https://github.com/SpongePowered/VanillaGradle/raw/master/LICENSE.txt")
-                        distribution.set("repo")
-                    }
-                }
+    configurePublications {
+        pom {
+            organization {
+                name.set("SpongePowered")
+                url.set("https://spongepowered.org")
             }
         }
     }
 
-    repositories {
-        if (
-            project.hasProperty("spongeSnapshotRepo") &&
-            project.hasProperty("spongeReleaseRepo")
-        ) {
-            val repoUrl = if (project.version.toString().endsWith("-SNAPSHOT")) {
-                project.property("spongeSnapshotRepo")
-            } else {
-                project.property("spongeReleaseRepo")
-            } as String
-
-            maven(repoUrl) {
-                name = "sponge"
-                credentials(PasswordCredentials::class)
-            }
-        }
+    if (
+        project.hasProperty("spongeSnapshotRepo") &&
+        project.hasProperty("spongeReleaseRepo")
+    ) {
+        publishSnapshotsTo("sponge", project.property("spongeSnapshotRepo") as String)
+        publishReleasesTo("sponge", project.property("spongeReleaseRepo") as String)
     }
+}
+
+indraPluginPublishing {
+    plugin(
+            id = "gradle.vanilla",
+            mainClass = "org.spongepowered.gradle.vanilla.VanillaGradle",
+            displayName = "VanillaGradle",
+            description = "Set up a Minecraft workspace for project development",
+            tags = listOf("minecraft", "vanilla")
+    )
+}
+
+pluginBundle.website = "https://spongepowered.org"
+
+publishing.publications.withType(MavenPublication::class).configureEach {
+    artifactId = project.name.toLowerCase()
 }
 
 license {
@@ -208,7 +154,6 @@ license {
 }
 
 signing {
-    sign(publishing.publications)
     val spongeSigningKey = project.findProperty("spongeSigningKey") as String?
     val spongeSigningPassword = project.findProperty("spongeSigningPassword") as String?
     if (spongeSigningKey != null && spongeSigningPassword != null) {
@@ -221,6 +166,4 @@ signing {
     } else {
         signatories = PgpSignatoryProvider() // don't use gpg agent
     }
-
-    setRequired({ !project.gradle.startParameter.taskNames.contains("publishToMavenLocal")})
 }
