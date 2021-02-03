@@ -366,7 +366,7 @@ public final class VanillaGradle implements Plugin<Project> {
                 final String osName = OperatingSystemRule.normalizeOsName(System.getProperty("os.name"));
                 for (final Library library : minecraft.targetVersion().get().libraries()) {
                     final String nativeClassifier = library.natives().get(osName);
-                    if (nativeClassifier != null && library.rules().test(context)) {
+                    if (nativeClassifier != null && library.rules().test(context) && !library.name().artifact().equals("java-objc-bridge")) {
                         set.add(this.project.getDependencies().create(
                             library.name().group()
                             + ':' + library.name().artifact()
