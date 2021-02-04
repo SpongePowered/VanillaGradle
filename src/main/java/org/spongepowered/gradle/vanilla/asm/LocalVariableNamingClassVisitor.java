@@ -27,6 +27,7 @@ package org.spongepowered.gradle.vanilla.asm;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.spongepowered.gradle.vanilla.Constants;
 
 public final class LocalVariableNamingClassVisitor extends ClassVisitor {
@@ -37,6 +38,15 @@ public final class LocalVariableNamingClassVisitor extends ClassVisitor {
 
     @Override
     public MethodVisitor visitMethod(final int access, final String name, final String descriptor, final String signature, final String[] exceptions) {
-        return new LocalVariableNamer((access & Opcodes.ACC_STATIC) != 0, super.visitMethod(access, name, descriptor, signature, exceptions));
+        int paramSlotCount = 0;
+        try {
+            final Type[] md = Type.getMethodType(descriptor).getArgumentTypes();
+            for (final Type type : md) {
+                paramSlotCount += type.getSize();
+            }
+        } catch (final Exception ex) {
+            paramSlotCount = 0;
+        }
+        return new LocalVariableNamer((access & Opcodes.ACC_STATIC) != 0, paramSlotCount, super.visitMethod(access, name, descriptor, signature, exceptions));
     }
 }

@@ -31,15 +31,27 @@ import org.spongepowered.gradle.vanilla.Constants;
 public final class LocalVariableNamer extends MethodVisitor {
 
     private final boolean isStatic;
+    private final int paramSlotCount;
 
-    public LocalVariableNamer(final boolean isStatic, final MethodVisitor methodVisitor) {
+    public LocalVariableNamer(final boolean isStatic, final int paramSlotCount, final MethodVisitor methodVisitor) {
         super(Constants.ASM_VERSION, methodVisitor);
         this.isStatic = isStatic;
+        this.paramSlotCount = paramSlotCount;
     }
 
     @Override
     public void visitLocalVariable(final String name, final String descriptor, final String signature, final Label start, final Label end,
             final int index) {
-        super.visitLocalVariable(index == 0 && !this.isStatic ? "this" : "var" + index, descriptor, signature, start, end, index);
+        final int paramSlotOffset = this.isStatic ? this.paramSlotCount : this.paramSlotCount + 1;
+        final String varName;
+        if (index == 0 && !this.isStatic) {
+            varName = "this";
+        } else if (index < paramSlotOffset) {
+            varName = "param" + index;
+        } else {
+            varName = "var" + (index - paramSlotOffset);
+        }
+
+        super.visitLocalVariable(varName, descriptor, signature, start, end, index);
     }
 }

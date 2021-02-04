@@ -240,11 +240,12 @@ public abstract class MinecraftExtension {
 
     protected void createMinecraftClasspath(final Project project) {
         this.minecraftClasspath.withDependencies(a -> {
+            final RuleContext context = RuleContext.create();
             for (final MinecraftSide side : this.platform.get().activeSides()) {
                 side.applyLibraries(
                     name -> a.add(project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
                     this.targetVersion.get().libraries(),
-                        RuleContext.create()
+                    context
                 );
             }
         });
