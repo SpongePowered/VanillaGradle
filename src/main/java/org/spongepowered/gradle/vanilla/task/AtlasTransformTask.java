@@ -76,10 +76,6 @@ public abstract class AtlasTransformTask extends DefaultTask implements Processe
         Objects.requireNonNull(configure, "configure").execute(this.getTransformations());
     }
 
-    public AtlasTransformTask() {
-        this.setGroup(Constants.TASK_GROUP);
-    }
-    
     @TaskAction
     public void execute() throws IOException {
         final Path inputJar = this.getInputJar().get().getAsFile().toPath();

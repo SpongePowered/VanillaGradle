@@ -43,10 +43,6 @@ import javax.inject.Inject;
 @CacheableTask
 public abstract class MergeJarsTask extends DefaultTask implements ProcessedJarTask {
 
-    public MergeJarsTask() {
-        this.setGroup(Constants.TASK_GROUP);
-    }
-
     /**
      * Get the classpath used to execute the jar merge worker.
      *
