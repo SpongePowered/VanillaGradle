@@ -38,7 +38,7 @@ import java.util.function.Consumer;
 public enum MinecraftSide {
     CLIENT(DownloadClassifier.CLIENT, DownloadClassifier.CLIENT_MAPPINGS) {
         @Override
-        void applyLibraries(
+        public void applyLibraries(
             final Consumer<GroupArtifactVersion> handler,
             final List<Library> knownLibraries,
             final RuleContext rules
@@ -61,7 +61,7 @@ public enum MinecraftSide {
         }
 
         @Override
-        void applyLibraries(
+        public void applyLibraries(
                 final Consumer<GroupArtifactVersion> handler, final List<Library> knownLibraries,
                 final RuleContext rules) {
             // TODO: This is kinda ugly, using a hardcoded list
@@ -75,7 +75,7 @@ public enum MinecraftSide {
         }
 
         @Override
-        Set<String> allowedPackages() {
+        public Set<String> allowedPackages() {
             return this.packages;
         }
     };
@@ -88,15 +88,15 @@ public enum MinecraftSide {
         this.mappingsArtifact = mappingsArtifact;
     }
 
-    final DownloadClassifier executableArtifact() {
+    public final DownloadClassifier executableArtifact() {
         return this.executableArtifact;
     }
 
-    final DownloadClassifier mappingsArtifact() {
+    public final DownloadClassifier mappingsArtifact() {
         return this.mappingsArtifact;
     }
 
-    abstract void applyLibraries(
+    public abstract void applyLibraries(
         final Consumer<GroupArtifactVersion> dependencyAccepter,
         final List<Library> knownLibraries,
         final RuleContext rules
@@ -109,7 +109,7 @@ public enum MinecraftSide {
      *
      * @return a set of packages to leave unfiltered, or empty to perform no filtering
      */
-    Set<String> allowedPackages() {
+    public Set<String> allowedPackages() {
         return Collections.emptySet();
     }
 }
