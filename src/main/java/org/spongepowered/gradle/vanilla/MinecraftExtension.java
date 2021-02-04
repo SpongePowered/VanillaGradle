@@ -35,7 +35,6 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskContainer;
@@ -54,7 +53,6 @@ import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
@@ -143,7 +141,7 @@ public abstract class MinecraftExtension {
         this.injectRepositories.set(injectRepositories);
     }
 
-    protected Property<String> version() {
+    public Property<String> version() {
         return this.version;
     }
 
@@ -151,7 +149,7 @@ public abstract class MinecraftExtension {
         this.version.set(version);
     }
 
-    protected Property<MinecraftPlatform> platform() {
+    public Property<MinecraftPlatform> platform() {
         return this.platform;
     }
 
@@ -248,12 +246,6 @@ public abstract class MinecraftExtension {
                     context
                 );
             }
-        });
-
-        Stream.of(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
-                JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME,
-                JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME).forEach( config -> {
-                    project.getConfigurations().named(config).configure(path -> path.extendsFrom(this.minecraftClasspath));
         });
     }
 
