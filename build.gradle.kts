@@ -136,10 +136,6 @@ indraPluginPublishing {
 
 pluginBundle.website = "https://spongepowered.org"
 
-publishing.publications.withType(MavenPublication::class).configureEach {
-    artifactId = project.name.toLowerCase()
-}
-
 license {
     val name: String by project
     val organization: String by project

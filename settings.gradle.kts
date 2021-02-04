@@ -4,4 +4,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "VanillaGradle"
+rootProject.name = "vanillagradle"
