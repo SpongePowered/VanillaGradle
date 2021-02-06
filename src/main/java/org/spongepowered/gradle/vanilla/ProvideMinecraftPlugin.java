@@ -25,7 +25,6 @@
 package org.spongepowered.gradle.vanilla;
 
 import de.undercouch.gradle.tasks.download.Download;
-import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -40,16 +39,26 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemLocation;
+import org.gradle.api.plugins.ExtensionAware;
+import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.Delete;
+import org.gradle.api.tasks.JavaExec;
+import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.gradle.plugins.ide.eclipse.model.EclipseModel;
+import org.gradle.plugins.ide.idea.model.IdeaModel;
+import org.jetbrains.gradle.ext.Application;
+import org.jetbrains.gradle.ext.GradleTask;
+import org.jetbrains.gradle.ext.ProjectSettings;
+import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.model.AssetIndexReference;
-import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.model.Library;
 import org.spongepowered.gradle.vanilla.model.Version;
-import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
@@ -59,6 +68,8 @@ import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.task.MergeJarsTask;
 import org.spongepowered.gradle.vanilla.task.ProcessedJarTask;
+import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
+import org.spongepowered.gradle.vanilla.util.StringUtils;
 
 import java.io.File;
 import java.util.Locale;
@@ -108,19 +119,13 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
         this.createCleanMinecraft(target.getTasks());
 
+        target.getPlugins().withType(JavaPlugin.class, $ -> {
+            this.createRunTasks(minecraft, target.getTasks(), target.getExtensions().getByType(JavaToolchainService.class));
+
+            minecraft.getRuns().configureEach(run -> run.classpath().from(minecraftConfig, minecraft.minecraftClasspathConfiguration()));
+        });
+
         target.afterEvaluate(p -> {
-            if (minecraft.targetVersion().isPresent()) {
-                final Version version = minecraft.targetVersion().get();
-                if (!version.download(DownloadClassifier.CLIENT_MAPPINGS).isPresent() && !version.download(DownloadClassifier.SERVER_MAPPINGS)
-                    .isPresent()) {
-                    throw new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was released before Mojang "
-                        + "provided official mappings! Try '%s' instead.", minecraft.version().get(), minecraft.versionManifest().latest()
-                        .get(VersionClassifier.RELEASE)));
-                }
-                p.getLogger().lifecycle(String.format("Targeting Minecraft '%s' on a '%s' platform", version.id(),
-                    minecraft.platform().get().name()
-                ));
-            }
 
             // Only add repositories if selected in extension
             this.configureRepositories(minecraft, p.getRepositories());
@@ -185,6 +190,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                     p.getObjects().fileCollection().from(actualDependency)
                 );
             }
+
+            this.configureIDEIntegrations(p, minecraft);
         });
     }
 
@@ -346,6 +353,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
         return downloadAssets;
     }
+
     private void createCleanMinecraft(final TaskContainer tasks) {
         tasks.register("cleanMinecraft", Delete.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
@@ -356,6 +364,79 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 tasks.withType(AtlasTransformTask.class),
                 tasks.withType(MergeJarsTask.class)
             );
+        });
+    }
+
+    private void configureIDEIntegrations(final Project project, final MinecraftExtension extension) {
+        IdeConfigurer.apply(project, new IdeConfigurer.IdeImportAction() {
+            @Override
+            public void idea(final Project project, final IdeaModel idea, final ProjectSettings ideaExtension) {
+                final RunConfigurationContainer runConfigurations =
+                    (RunConfigurationContainer) ((ExtensionAware) ideaExtension).getExtensions().getByName("runConfigurations");
+
+                extension.getRuns().all(run -> {
+                    final String displayName = run.displayName().getOrNull();
+                    runConfigurations.create(displayName == null ? run.getName() + " (" + project.getName() + ")" : displayName, Application.class, ideaRun -> {
+                        if (project.getTasks().getNames().contains(JavaPlugin.PROCESS_RESOURCES_TASK_NAME)) {
+                            ideaRun.getBeforeRun().create(JavaPlugin.PROCESS_RESOURCES_TASK_NAME, GradleTask.class,
+                                action -> action.setTask(project.getTasks().getByName(JavaPlugin.PROCESS_RESOURCES_TASK_NAME))
+                            );
+                        }
+
+                        if (run.requiresAssetsAndNatives().get()) {
+                            ideaRun.getBeforeRun().register(Constants.Tasks.DOWNLOAD_ASSETS, GradleTask.class,
+                                action -> action.setTask(project.getTasks().getByName(Constants.Tasks.DOWNLOAD_ASSETS))
+                            );
+                            ideaRun.getBeforeRun().register(Constants.Tasks.COLLECT_NATIVES, GradleTask.class,
+                                action -> action.setTask(project.getTasks().getByName(Constants.Tasks.COLLECT_NATIVES))
+                            );
+                        }
+
+                        ideaRun.setMainClass(run.mainClass().get());
+                        final File runDirectory = run.workingDirectory().get().getAsFile();
+                        ideaRun.setWorkingDirectory(runDirectory.getAbsolutePath());
+                        runDirectory.mkdirs();
+
+                        // TODO: Figure out if it's possible to set this more appropriately based on the run configuration's classpath
+                        ideaRun.moduleRef(project, project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
+                        ideaRun.setJvmArgs(StringUtils.join(run.allJvmArgumentProviders(), true));
+                        ideaRun.setProgramParameters(StringUtils.join(run.allArgumentProviders(), false));
+                    });
+                });
+
+            }
+
+            @Override
+            public void eclipse(final Project project, final EclipseModel eclipse) {
+                // TODO: Eclipse run configuration XMLs
+            }
+        });
+    }
+
+    private void createRunTasks(final MinecraftExtension extension, final TaskContainer tasks, final JavaToolchainService service) {
+        extension.getRuns().all(config -> {
+            tasks.register(config.getName(), JavaExec.class, exec -> {
+                exec.setGroup(Constants.TASK_GROUP + " runs");
+                if (config.displayName().isPresent()) {
+                    exec.setDescription(config.displayName().get());
+                }
+                exec.setStandardInput(System.in);
+                exec.getMainClass().set(config.mainClass());
+                exec.getMainModule().set(config.mainModule());
+                exec.classpath(config.classpath());
+                exec.setWorkingDir(config.workingDirectory());
+                exec.getJvmArgumentProviders().addAll(config.allJvmArgumentProviders());
+                exec.getArgumentProviders().addAll(config.allArgumentProviders());
+                if (config.requiresAssetsAndNatives().get()) {
+                    exec.dependsOn(Constants.Tasks.DOWNLOAD_ASSETS);
+                    exec.dependsOn(Constants.Tasks.COLLECT_NATIVES);
+                }
+
+                exec.doFirst(task -> {
+                    final JavaExec je = (JavaExec) task;
+                    je.getWorkingDir().mkdirs();
+                });
+            });
         });
     }
 

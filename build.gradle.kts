@@ -142,7 +142,7 @@ license {
     val projectUrl: String by project
 
     (this as ExtensionAware).extra.apply {
-        this["name"] = name
+        this["name"] = "VanillaGradle"
         this["organization"] = organization
         this["url"] = projectUrl
     }
