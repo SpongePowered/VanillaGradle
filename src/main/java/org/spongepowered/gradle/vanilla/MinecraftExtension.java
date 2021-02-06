@@ -30,7 +30,6 @@ import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.invocation.Gradle;
@@ -103,6 +102,8 @@ public abstract class MinecraftExtension {
         this.filteredDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
         this.decompiledDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
         this.minecraftClasspath = project.getConfigurations().create(Constants.Configurations.MINECRAFT_CLASSPATH);
+        this.minecraftClasspath.setCanBeResolved(false);
+        this.minecraftClasspath.setCanBeConsumed(false);
 
         final Path cacheDir = rootDirectory.resolve(Constants.Directories.MANIFESTS);
         // Create a version repository. If Gradle is in offline mode, read only from cache

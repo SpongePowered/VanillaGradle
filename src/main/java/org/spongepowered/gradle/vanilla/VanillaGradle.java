@@ -31,6 +31,8 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.plugins.ide.eclipse.EclipsePlugin;
@@ -42,9 +44,12 @@ import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
+import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
@@ -65,18 +70,15 @@ public final class VanillaGradle implements Plugin<Project> {
         final MinecraftExtension minecraft = project.getExtensions().getByType(MinecraftExtension.class);
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
             final NamedDomainObjectProvider<Configuration> minecraftConfig = this.project.getConfigurations().named(Constants.Configurations.MINECRAFT);
-            Stream.of(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME).forEach(config -> {
-                project.getConfigurations().named(config, instance -> instance.extendsFrom(minecraftConfig.get()));
+            Stream.of(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME).forEach(config -> {
+                final Map<String, String> deps = new HashMap<>();
+                deps.put("path", project.getPath());
+                deps.put("configuration", minecraftConfig.getName());
+                project.getDependencies().add(config, project.getDependencies().project(deps));
             });
 
-            Stream.of(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME,
-                JavaPlugin.TEST_COMPILE_CLASSPATH_CONFIGURATION_NAME,
-                JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME).forEach( config -> {
-                project.getConfigurations().named(config).configure(path -> path.extendsFrom(minecraft.minecraftClasspathConfiguration()));
-            });
-
-            final NamedDomainObjectProvider<Configuration> runtimeClasspath = project.getConfigurations().named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
-            minecraft.getRuns().configureEach(run -> run.classpath().from(runtimeClasspath));
+            final NamedDomainObjectProvider<SourceSet> mainSourceSet = project.getExtensions().getByType(SourceSetContainer.class).named(SourceSet.MAIN_SOURCE_SET_NAME);
+            minecraft.getRuns().configureEach(run -> run.classpath().from(mainSourceSet.map(SourceSet::getRuntimeClasspath), mainSourceSet.map(SourceSet::getOutput)));
         });
 
         this.createDisplayMinecraftVersions(minecraft, project.getTasks());
@@ -96,7 +98,11 @@ public final class VanillaGradle implements Plugin<Project> {
                 throw new GradleException("No minecraft version has been set! Did you set the version() property in the 'minecraft' extension");
             }
 
-            this.configureIDEIntegrations(project, minecraft, p.getTasks().named(Constants.Tasks.PREPARE_WORKSPACE));
+            this.configureIDEIntegrations(
+                project,
+                p.getTasks().named(Constants.Tasks.PREPARE_WORKSPACE),
+                p.getTasks().named(Constants.Tasks.DECOMPILE, DecompileJarTask.class)
+            );
         });
     }
 
@@ -108,7 +114,11 @@ public final class VanillaGradle implements Plugin<Project> {
         });
     }
 
-    private void configureIDEIntegrations(final Project project, final MinecraftExtension extension, final TaskProvider<?> prepareWorkspaceTask) {
+    private void configureIDEIntegrations(
+        final Project project,
+        final TaskProvider<?> prepareWorkspaceTask,
+        final TaskProvider<DecompileJarTask> decompiledSourcesProvider
+    ) {
         project.getPlugins().apply(IdeaExtPlugin.class);
         project.getPlugins().apply(EclipsePlugin.class);
 
@@ -121,6 +131,9 @@ public final class VanillaGradle implements Plugin<Project> {
 
                 // Automatically prepare a workspace after importing
                 taskTriggers.afterSync(prepareWorkspaceTask);
+
+                // Add Minecraft sources as a generated source directory
+                idea.getModule().getGeneratedSourceDirs().add(decompiledSourcesProvider.get().getOutputJar().get().getAsFile().getParentFile());
             }
 
             @Override

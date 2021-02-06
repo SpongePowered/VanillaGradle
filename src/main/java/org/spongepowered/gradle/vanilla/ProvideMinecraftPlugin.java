@@ -34,7 +34,7 @@ import org.gradle.api.artifacts.repositories.MavenRepositoryContentDescriptor;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.LibraryElements;
-import org.gradle.api.attributes.Usage;
+import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.FileCollection;
@@ -89,17 +89,17 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
         AtlasTransformTask.registerExecutionCompleteListener(this.project.getGradle());
         final MinecraftExtension minecraft = target.getExtensions().create("minecraft", MinecraftExtension.class, target);
-        final NamedDomainObjectProvider<Configuration>
-            minecraftConfig = target.getConfigurations().register(Constants.Configurations.MINECRAFT, config -> {
+        final NamedDomainObjectProvider<Configuration> minecraftConfig = target.getConfigurations().register(Constants.Configurations.MINECRAFT, config -> {
             config.setCanBeResolved(true);
             config.setCanBeConsumed(true);
             config.attributes(attributes -> {
                 attributes.attribute(Category.CATEGORY_ATTRIBUTE, target.getObjects().named(Category.class, Category.LIBRARY));
-                attributes.attribute(Usage.USAGE_ATTRIBUTE, target.getObjects().named(Usage.class, Usage.JAVA_API));
                 attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, target.getObjects().named(Bundling.class, Bundling.EXTERNAL));
                 attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, target.getObjects().named(LibraryElements.class,
                     LibraryElements.JAR));
+                attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 8);
             });
+            config.extendsFrom(minecraft.minecraftClasspathConfiguration());
         });
 
         final TaskProvider<AtlasTransformTask> remapClientJar = this.createSidedTasks(MinecraftSide.CLIENT, target.getTasks(), minecraft);
@@ -122,11 +122,10 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         target.getPlugins().withType(JavaPlugin.class, $ -> {
             this.createRunTasks(minecraft, target.getTasks(), target.getExtensions().getByType(JavaToolchainService.class));
 
-            minecraft.getRuns().configureEach(run -> run.classpath().from(minecraftConfig, minecraft.minecraftClasspathConfiguration()));
+            minecraft.getRuns().configureEach(run -> run.classpath().from(minecraftConfig, minecraftConfig.map(conf -> conf.getOutgoing().getArtifacts().getFiles())));
         });
 
         target.afterEvaluate(p -> {
-
             // Only add repositories if selected in extension
             this.configureRepositories(minecraft, p.getRepositories());
             minecraft.createMinecraftClasspath(p);
@@ -184,11 +183,9 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                         return new File(output.getParentFile(), nameWithoutExtension + "-sources" + extension);
                     })));
                 });
+                minecraftConfig.configure(mc -> mc.getOutgoing().artifact(actualDependency));
 
-                p.getDependencies().add(
-                    minecraftConfig.getName(),
-                    p.getObjects().fileCollection().from(actualDependency)
-                );
+                this.configureIDEIntegrations(p, minecraft);
             }
 
             this.configureIDEIntegrations(p, minecraft);
@@ -238,9 +235,9 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         final Configuration forgeFlower = this.project.getConfigurations().maybeCreate(Constants.Configurations.FORGE_FLOWER);
         forgeFlower.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.FORGE_FLOWER)));
         final FileCollection forgeFlowerClasspath = forgeFlower.getIncoming().getFiles();
-        final FileCollection minecraftClasspath = minecraft.minecraftClasspathConfiguration().getIncoming().getFiles();
+        final FileCollection minecraftClasspath = this.project.getConfigurations().getByName(Constants.Configurations.MINECRAFT).getIncoming().getFiles();
 
-        return this.project.getTasks().register("decompile", DecompileJarTask.class, task -> {
+        return this.project.getTasks().register(Constants.Tasks.DECOMPILE, DecompileJarTask.class, task -> {
             task.getDecompileClasspath().from(minecraftClasspath);
             task.setWorkerClasspath(forgeFlowerClasspath);
         });

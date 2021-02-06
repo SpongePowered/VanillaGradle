@@ -38,6 +38,15 @@ import org.jetbrains.gradle.ext.ProjectSettings;
 public final class IdeConfigurer {
 
     /**
+     * Get whether this is an idea project import.
+     *
+     * @return whether this is an IntelliJ project import in progress
+     */
+    public static boolean isIdeaImport() {
+        return Boolean.getBoolean("idea.active");
+    }
+
+    /**
      * Applies the specified configuration action to configure IDE projects.
      *
      * <p>This does not apply the IDEs' respective plugins, but will perform
@@ -49,7 +58,7 @@ public final class IdeConfigurer {
     public static void apply(final Project project, final IdeImportAction toPerform) {
         project.getPlugins().withType(IdeaExtPlugin.class, plugin -> {
             final IdeaModel model = project.getExtensions().findByType(IdeaModel.class);
-            if (model == null || model.getProject() == null) {
+            if (!IdeConfigurer.isIdeaImport() || model == null || model.getProject() == null) {
                 return;
             }
             final ProjectSettings ideaExt = ((ExtensionAware) model.getProject()).getExtensions().getByType(ProjectSettings.class);
