@@ -47,7 +47,7 @@ public final class LocalVariableNamer extends MethodVisitor {
         if (index == 0 && !this.isStatic) {
             varName = "this";
         } else if (index < paramSlotOffset) {
-            varName = "param" + index;
+            varName = "param" + (index - (this.isStatic ? 0 : 1));
         } else {
             varName = "var" + (index - paramSlotOffset);
         }
