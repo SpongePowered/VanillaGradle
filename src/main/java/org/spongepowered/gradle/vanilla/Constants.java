@@ -51,6 +51,7 @@ public final class Constants {
         public static final String MAPPINGS = "mappings";
         public static final String FILTERED = "filtered";
         public static final String MANIFESTS = "manifests";
+        public static final String ACCESS_WIDENED = "aw";
 
         private Directories() {
         }

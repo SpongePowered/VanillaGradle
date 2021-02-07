@@ -97,7 +97,7 @@ public abstract class AccessWidenJarTask extends DefaultTask implements Processe
     public abstract Property<String> getExpectedNamespace();
 
     @Internal
-    public abstract Property<String> getArchiveClassifier();
+    public abstract Property<String> getVersionMetadata();
 
     @InputFiles
     @PathSensitive(PathSensitivity.RELATIVE)
@@ -108,7 +108,14 @@ public abstract class AccessWidenJarTask extends DefaultTask implements Processe
         return this.accessWidenerHash;
     }
 
-
+    /**
+     * The destination directory for all access-widened jars.
+     *
+     * <p>The actual jar will be placed within a hashed directory in this folder.</p>
+     *
+     * @return the destination directory property
+     * @see #getDestination() for the final output file
+     */
     @Internal
     public abstract DirectoryProperty getDestinationDirectory();
 
@@ -138,10 +145,11 @@ public abstract class AccessWidenJarTask extends DefaultTask implements Processe
         this.accessWidenerHash.finalizeValueOnRead();
 
         this.getDestination().set(this.getDestinationDirectory().zip(this.getAccessWidenerHash(), (dir, hash) -> {
-            final String classifier = this.getArchiveClassifier().get();
-            return dir.file(hash + "-" + classifier + ".jar");
+            final String classifier = this.getVersionMetadata().get();
+            final String appendable = classifier.isEmpty() ? "" : "-" + classifier;
+            return dir.dir(hash + appendable).file("aw" + appendable + ".jar");
         }));
-        this.getArchiveClassifier().convention("aw");
+        this.getVersionMetadata().convention("");
     }
 
     @TaskAction

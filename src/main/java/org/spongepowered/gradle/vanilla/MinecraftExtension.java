@@ -72,6 +72,7 @@ public abstract class MinecraftExtension {
     private final DirectoryProperty mappingsDirectory;
     private final DirectoryProperty filteredDirectory;
     private final DirectoryProperty decompiledDirectory;
+    private final DirectoryProperty accessWidenedDirectory;
 
     private final RunConfigurationContainer runConfigurations;
     private final Configuration minecraftClasspath;
@@ -88,6 +89,7 @@ public abstract class MinecraftExtension {
         this.mappingsDirectory = factory.directoryProperty();
         this.filteredDirectory = factory.directoryProperty();
         this.decompiledDirectory = factory.directoryProperty();
+        this.accessWidenedDirectory = factory.directoryProperty();
 
         final Path gradleHomeDirectory = gradle.getGradleUserHomeDir().toPath();
         final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.Directories.CACHES);
@@ -101,6 +103,7 @@ public abstract class MinecraftExtension {
         this.remappedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.REMAPPED).toFile());
         this.filteredDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
         this.decompiledDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
+        this.accessWidenedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.ACCESS_WIDENED).toFile());
         this.minecraftClasspath = project.getConfigurations().create(Constants.Configurations.MINECRAFT_CLASSPATH);
         this.minecraftClasspath.setCanBeResolved(false);
         this.minecraftClasspath.setCanBeConsumed(false);
@@ -172,7 +175,7 @@ public abstract class MinecraftExtension {
             final Configuration accessWidener = this.project.getConfigurations().maybeCreate(Constants.Configurations.ACCESS_WIDENER);
             accessWidener.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.ACCESS_WIDENER)));
             final FileCollection widenerClasspath = accessWidener.getIncoming().getFiles();
-            final Directory destinationDir = this.project.getLayout().getProjectDirectory().dir(".gradle").dir(Constants.NAME).dir("aw-minecraft");
+            final DirectoryProperty destinationDir = this.accessWidenedDirectory;
 
             awTask = tasks.register(Constants.Tasks.ACCESS_WIDENER, AccessWidenJarTask.class, task -> {
                 task.setWorkerClasspath(widenerClasspath);

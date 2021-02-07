@@ -52,6 +52,7 @@ import org.gradle.api.tasks.TaskProvider;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
+import org.gradle.plugins.ide.idea.model.ProjectLibrary;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.GradleTask;
 import org.jetbrains.gradle.ext.ProjectSettings;
@@ -72,7 +73,11 @@ import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 import org.spongepowered.gradle.vanilla.util.StringUtils;
 
 import java.io.File;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * A plugin that creates the necessary tasks and configurations to provide the
@@ -136,7 +141,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 }
             });
 
-            TaskProvider<? extends ProcessedJarTask> resultJar = null;
+            final TaskProvider<? extends ProcessedJarTask> resultJar;
             switch (minecraft.platform().get()) {
                 case CLIENT:
                     resultJar = remapClientJar;
@@ -147,6 +152,9 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 case JOINED:
                     resultJar = mergedJars;
                     break;
+                default:
+                    resultJar = null;
+                    break;
             }
 
             if (resultJar != null) {
@@ -156,14 +164,13 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                         Constants.Tasks.ACCESS_WIDENER,
                         AccessWidenJarTask.class
                     );
-                    final TaskProvider<?> finalResultJar = resultJar;
                     awTask.configure(task -> {
                         // Configure source
-                        task.getSource().from(finalResultJar);
+                        task.getSource().from(resultJar);
                         // Set suffix based on target platform
-                        task.getArchiveClassifier().set(minecraft.platform().zip(
+                        task.getVersionMetadata().set(minecraft.platform().zip(
                             minecraft.targetVersion(),
-                            (pm, v) -> "aw-" + pm.name().toLowerCase(Locale.ROOT) + "-" + v.id()));
+                            (pm, v) -> pm.name().toLowerCase(Locale.ROOT) + "-" + v.id()));
                     });
                     actualDependency = awTask;
                     prepareWorkspace.configure(task -> task.dependsOn(actualDependency)); // todo: this is a bit ugly
@@ -185,10 +192,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 });
                 minecraftConfig.configure(mc -> mc.getOutgoing().artifact(actualDependency));
 
-                this.configureIDEIntegrations(p, minecraft);
+                this.configureIDEIntegrations(p, minecraft, actualDependency, decompileJar);
             }
-
-            this.configureIDEIntegrations(p, minecraft);
         });
     }
 
@@ -364,7 +369,12 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         });
     }
 
-    private void configureIDEIntegrations(final Project project, final MinecraftExtension extension) {
+    private void configureIDEIntegrations(
+        final Project project,
+        final MinecraftExtension extension,
+        final TaskProvider<? extends ProcessedJarTask> minecraftJarProvider,
+        final TaskProvider<DecompileJarTask> decompiledSourcesProvider
+    ) {
         IdeConfigurer.apply(project, new IdeConfigurer.IdeImportAction() {
             @Override
             public void idea(final Project project, final IdeaModel idea, final ProjectSettings ideaExtension) {
@@ -399,6 +409,23 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                         ideaRun.setJvmArgs(StringUtils.join(run.allJvmArgumentProviders(), true));
                         ideaRun.setProgramParameters(StringUtils.join(run.allArgumentProviders(), false));
                     });
+
+                    // Add Minecraft sources as a project library, to enable source lookup
+                    //idea.getModule().getGeneratedSourceDirs().add(decompiledSourcesProvider.get().getOutputJar().get().getAsFile().getParentFile());
+                    final String projectLibraryName = "VanillaGradle-MC-" + project.getName();
+                    idea.getProject().getProjectLibraries().removeIf(projectLibrary -> Objects.equals(projectLibrary.getName(), projectLibraryName));
+                    final ProjectLibrary library = new ProjectLibrary();
+                    library.setName(projectLibraryName);
+                    // library.setType("java"); // This doesn't seem to be necessary?
+                    library.setClasses(Collections.singleton(minecraftJarProvider.flatMap(ProcessedJarTask::outputJar).get().getAsFile()));
+                    library.setSources(Collections.singleton(decompiledSourcesProvider.get().getOutputJar().get().getAsFile()));
+                    final Set<File> minecraftClasspath = new HashSet<>();
+                    for (final File file : extension.minecraftClasspathConfiguration()) {
+                        minecraftClasspath.add(file);
+                    }
+
+                    library.setCompilerClasspath(minecraftClasspath);
+                    idea.getProject().getProjectLibraries().add(library);
                 });
 
             }

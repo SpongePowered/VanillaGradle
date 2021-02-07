@@ -44,7 +44,6 @@ import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
-import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 
@@ -100,8 +99,7 @@ public final class VanillaGradle implements Plugin<Project> {
 
             this.configureIDEIntegrations(
                 project,
-                p.getTasks().named(Constants.Tasks.PREPARE_WORKSPACE),
-                p.getTasks().named(Constants.Tasks.DECOMPILE, DecompileJarTask.class)
+                p.getTasks().named(Constants.Tasks.PREPARE_WORKSPACE)
             );
         });
     }
@@ -116,8 +114,7 @@ public final class VanillaGradle implements Plugin<Project> {
 
     private void configureIDEIntegrations(
         final Project project,
-        final TaskProvider<?> prepareWorkspaceTask,
-        final TaskProvider<DecompileJarTask> decompiledSourcesProvider
+        final TaskProvider<?> prepareWorkspaceTask
     ) {
         project.getPlugins().apply(IdeaExtPlugin.class);
         project.getPlugins().apply(EclipsePlugin.class);
@@ -131,9 +128,6 @@ public final class VanillaGradle implements Plugin<Project> {
 
                 // Automatically prepare a workspace after importing
                 taskTriggers.afterSync(prepareWorkspaceTask);
-
-                // Add Minecraft sources as a generated source directory
-                idea.getModule().getGeneratedSourceDirs().add(decompiledSourcesProvider.get().getOutputJar().get().getAsFile().getParentFile());
             }
 
             @Override
