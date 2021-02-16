@@ -123,12 +123,12 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.dependsOn(mergedJars);
         });
 
-        this.createCleanMinecraft(target.getTasks());
+        this.createCleanTasks(target.getTasks(), minecraft);
 
         target.getPlugins().withType(JavaPlugin.class, $ -> {
             this.createRunTasks(minecraft, target.getTasks(), target.getExtensions().getByType(JavaToolchainService.class));
 
-            // todo: this is not great, we should probably have a separate configuration for runs
+            // todo: this is not great, we should probably have a separate configuration for run classpath
             minecraft.getRuns().configureEach(run -> run.classpath().from(minecraftConfig, minecraftConfig.map(conf -> conf.getOutgoing().getArtifacts().getFiles())));
         });
 
@@ -357,7 +357,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         return downloadAssets;
     }
 
-    private void createCleanMinecraft(final TaskContainer tasks) {
+    private void createCleanTasks(final TaskContainer tasks, final MinecraftExtensionImpl minecraft) {
         tasks.register("cleanMinecraft", Delete.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.setDescription("Delete downloaded files for the current minecraft environment used for this project");
@@ -366,6 +366,16 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 tasks.withType(Download.class).matching(dl -> !dl.getName().equals("downloadAssetIndex")),
                 tasks.withType(AtlasTransformTask.class),
                 tasks.withType(MergeJarsTask.class)
+            );
+        });
+
+        tasks.register("cleanAllMinecraft", Delete.class, task -> {
+            // As a task that could potentially delete *a lot* of data, let's keep this out of the main task list.
+            // task.setGroup(Constants.TASK_GROUP);
+            task.setDescription("Delete all cached VanillaGradle data in this project and in shared caches. THIS MAY DELETE A LOT");
+            task.delete(
+                minecraft.sharedCache(),
+                minecraft.projectCache()
             );
         });
     }

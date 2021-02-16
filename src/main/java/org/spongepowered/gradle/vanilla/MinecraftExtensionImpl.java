@@ -77,6 +77,8 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     private final DirectoryProperty filteredDirectory;
     private final DirectoryProperty decompiledDirectory;
     private final DirectoryProperty accessWidenedDirectory;
+    private final Path sharedCache;
+    private final Path projectCache;
 
     private final RunConfigurationContainer runConfigurations;
     private final NamedDomainObjectProvider<Configuration> minecraftClasspath;
@@ -109,6 +111,8 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         this.decompiledDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
         this.accessWidenedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.ACCESS_WIDENED).toFile());
         this.minecraftClasspath = minecraftClasspath;
+        this.projectCache = projectLocalJarsDirectory;
+        this.sharedCache = rootDirectory;
 
         final Path cacheDir = rootDirectory.resolve(Constants.Directories.MANIFESTS);
         // Create a version repository. If Gradle is in offline mode, read only from cache
@@ -197,6 +201,14 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         } catch (final IOException ex) {
             throw new GradleException("Failed to load manifest", ex);
         }
+    }
+
+    Path projectCache() {
+        return this.projectCache;
+    }
+
+    Path sharedCache() {
+        return this.sharedCache;
     }
 
     public DirectoryProperty assetsDirectory() {
