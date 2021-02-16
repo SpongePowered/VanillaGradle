@@ -28,8 +28,10 @@ import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
+import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.invocation.Gradle;
@@ -51,6 +53,8 @@ import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import javax.inject.Inject;
@@ -75,10 +79,10 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     private final DirectoryProperty accessWidenedDirectory;
 
     private final RunConfigurationContainer runConfigurations;
-    private final Configuration minecraftClasspath;
+    private final NamedDomainObjectProvider<Configuration> minecraftClasspath;
 
     @Inject
-    public MinecraftExtensionImpl(final Gradle gradle, final ObjectFactory factory, final Project project) {
+    public MinecraftExtensionImpl(final Gradle gradle, final ObjectFactory factory, final NamedDomainObjectProvider<Configuration> minecraftClasspath, final Project project) {
         this.project = project;
         this.version = factory.property(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.JOINED);
@@ -104,9 +108,7 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         this.filteredDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
         this.decompiledDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
         this.accessWidenedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.ACCESS_WIDENED).toFile());
-        this.minecraftClasspath = project.getConfigurations().create(Constants.Configurations.MINECRAFT_CLASSPATH);
-        this.minecraftClasspath.setCanBeResolved(false);
-        this.minecraftClasspath.setCanBeConsumed(false);
+        this.minecraftClasspath = minecraftClasspath;
 
         final Path cacheDir = rootDirectory.resolve(Constants.Directories.MANIFESTS);
         // Create a version repository. If Gradle is in offline mode, read only from cache
@@ -137,31 +139,38 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         this.runConfigurations = factory.newInstance(RunConfigurationContainer.class, factory.domainObjectContainer(RunConfiguration.class), this);
     }
 
-    @Override public Property<Boolean> injectRepositories() {
+    @Override
+    public Property<Boolean> injectRepositories() {
         return this.injectRepositories;
     }
 
-    @Override public void injectRepositories(final boolean injectRepositories) {
+    @Override
+    public void injectRepositories(final boolean injectRepositories) {
         this.injectRepositories.set(injectRepositories);
     }
 
-    @Override public Property<String> version() {
+    @Override
+    public Property<String> version() {
         return this.version;
     }
 
-    @Override public void version(final String version) {
+    @Override
+    public void version(final String version) {
         this.version.set(version);
     }
 
-    @Override public Property<MinecraftPlatform> platform() {
+    @Override
+    public Property<MinecraftPlatform> platform() {
         return this.platform;
     }
 
-    @Override public void platform(final MinecraftPlatform platform) {
+    @Override
+    public void platform(final MinecraftPlatform platform) {
         this.platform.set(platform);
     }
 
-    @Override public void accessWidener(final Object file) {
+    @Override
+    public void accessWidener(final Object file) {
         final TaskProvider<AccessWidenJarTask> awTask;
         final TaskContainer tasks = this.project.getTasks();
         if (tasks.getNames().contains(Constants.Tasks.ACCESS_WIDENER)) {
@@ -238,20 +247,24 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         return this.targetVersion;
     }
 
-    protected void createMinecraftClasspath(final Project project) {
-        this.minecraftClasspath.withDependencies(a -> {
+    protected void populateMinecraftClasspath() {
+        this.minecraftClasspath.configure(config -> config.withDependencies(a -> {
             final RuleContext context = RuleContext.create();
             for (final MinecraftSide side : this.platform.get().activeSides()) {
                 side.applyLibraries(
-                    name -> a.add(project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
+                    name -> a.add(this.project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
                     this.targetVersion.get().libraries(),
                     context
                 );
             }
-        });
+        }));
     }
 
-    Configuration minecraftClasspathConfiguration() {
-        return this.minecraftClasspath;
+    @Override
+    public Dependency minecraftDependency() {
+        final Map<String, String> parameters = new HashMap<>();
+        parameters.put("path", this.project.getPath());
+        parameters.put("configuration", Constants.Configurations.MINECRAFT);
+        return this.project.getDependencies().project(parameters);
     }
 }

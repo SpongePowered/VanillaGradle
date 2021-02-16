@@ -28,6 +28,7 @@ import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.provider.Property;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 
@@ -131,4 +132,14 @@ public interface MinecraftExtension {
      * @param run an action operating on the run configuration container
      */
     void runs(Action<RunConfigurationContainer> run);
+
+    /**
+     * Create a dependency that can be added to any configuration that needs
+     * Minecraft.
+     *
+     * @return a dependency containing a Minecraft distribution of the chosen
+     *     {@link #platform() platform} and {@link #version() version}.
+     */
+    Dependency minecraftDependency();
+
 }

@@ -28,7 +28,6 @@ import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.SourceSet;
@@ -47,20 +46,14 @@ import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 public final class VanillaGradle implements Plugin<Project> {
     private static final AtomicBoolean VERSION_ANNOUNCED = new AtomicBoolean();
 
-    private Project project;
-
     @Override
     public void apply(final Project project) {
-        this.project = project;
-
         if (VanillaGradle.VERSION_ANNOUNCED.compareAndSet(false, true)) {
             project.getLogger().lifecycle(String.format("SpongePowered Vanilla 'GRADLE' Toolset Version '%s'", Constants.VERSION));
         }
@@ -68,12 +61,8 @@ public final class VanillaGradle implements Plugin<Project> {
         project.getPlugins().apply(ProvideMinecraftPlugin.class);
         final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) project.getExtensions().getByType(MinecraftExtension.class);
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
-            final NamedDomainObjectProvider<Configuration> minecraftConfig = this.project.getConfigurations().named(Constants.Configurations.MINECRAFT);
             Stream.of(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME).forEach(config -> {
-                final Map<String, String> deps = new HashMap<>();
-                deps.put("path", project.getPath());
-                deps.put("configuration", minecraftConfig.getName());
-                project.getDependencies().add(config, project.getDependencies().project(deps));
+                project.getDependencies().add(config, minecraft.minecraftDependency());
             });
 
             final NamedDomainObjectProvider<SourceSet> mainSourceSet = project.getExtensions().getByType(SourceSetContainer.class).named(SourceSet.MAIN_SOURCE_SET_NAME);

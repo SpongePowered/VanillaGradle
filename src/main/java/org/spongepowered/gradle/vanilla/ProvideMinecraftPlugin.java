@@ -52,7 +52,6 @@ import org.gradle.api.tasks.TaskProvider;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
-import org.gradle.plugins.ide.idea.model.ProjectLibrary;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.GradleTask;
 import org.jetbrains.gradle.ext.ProjectSettings;
@@ -73,11 +72,7 @@ import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 import org.spongepowered.gradle.vanilla.util.StringUtils;
 
 import java.io.File;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
 
 /**
  * A plugin that creates the necessary tasks and configurations to provide the
@@ -93,8 +88,10 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         this.project = target;
 
         AtlasTransformTask.registerExecutionCompleteListener(this.project.getGradle());
-        final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) target.getExtensions()
-            .create(MinecraftExtension.class, "minecraft", MinecraftExtensionImpl.class, target);
+        final NamedDomainObjectProvider<Configuration> minecraftClasspathConfig = target.getConfigurations().register(Constants.Configurations.MINECRAFT_CLASSPATH, config -> {
+            config.setCanBeConsumed(false);
+            config.setCanBeResolved(false);
+        });
         final NamedDomainObjectProvider<Configuration> minecraftConfig = target.getConfigurations().register(Constants.Configurations.MINECRAFT, config -> {
             config.setCanBeResolved(true);
             config.setCanBeConsumed(true);
@@ -105,8 +102,11 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                     LibraryElements.JAR));
                 attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 8);
             });
-            config.extendsFrom(minecraft.minecraftClasspathConfiguration());
+            config.extendsFrom(minecraftClasspathConfig.get());
         });
+
+        final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) target.getExtensions()
+            .create(MinecraftExtension.class, "minecraft", MinecraftExtensionImpl.class, minecraftClasspathConfig, target);
 
         final TaskProvider<AtlasTransformTask> remapClientJar = this.createSidedTasks(MinecraftSide.CLIENT, target.getTasks(), minecraft);
         final TaskProvider<AtlasTransformTask> remapServerJar = this.createSidedTasks(MinecraftSide.SERVER, target.getTasks(), minecraft);
@@ -114,7 +114,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         final TaskProvider<MergeJarsTask> mergedJars = this.createJarMerge(minecraft, remapClientJar, remapServerJar);
         final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, target.getTasks());
 
-        final TaskProvider<DecompileJarTask> decompileJar = this.createJarDecompile(minecraft);
+        final TaskProvider<DecompileJarTask> decompileJar = this.createJarDecompile();
 
         final TaskProvider<?> prepareWorkspace = target.getTasks().register(Constants.Tasks.PREPARE_WORKSPACE, task -> {
             task.setGroup(Constants.TASK_GROUP);
@@ -128,13 +128,14 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         target.getPlugins().withType(JavaPlugin.class, $ -> {
             this.createRunTasks(minecraft, target.getTasks(), target.getExtensions().getByType(JavaToolchainService.class));
 
+            // todo: this is not great, we should probably have a separate configuration for runs
             minecraft.getRuns().configureEach(run -> run.classpath().from(minecraftConfig, minecraftConfig.map(conf -> conf.getOutgoing().getArtifacts().getFiles())));
         });
 
         target.afterEvaluate(p -> {
             // Only add repositories if selected in extension
             this.configureRepositories(minecraft, p.getRepositories());
-            minecraft.createMinecraftClasspath(p);
+            minecraft.populateMinecraftClasspath();
 
             prepareWorkspace.configure(task -> {
                 if (minecraft.platform().get().activeSides().contains(MinecraftSide.CLIENT)) {
@@ -193,7 +194,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 });
                 minecraftConfig.configure(mc -> mc.getOutgoing().artifact(actualDependency));
 
-                this.configureIDEIntegrations(p, minecraft, actualDependency, decompileJar);
+                this.configureIDEIntegrations(p, minecraft);
             }
         });
     }
@@ -229,15 +230,13 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.getServerJar().set(server.get().getOutputJar());
             task.getMergedJar().set(
                 minecraft.remappedDirectory().zip(minecraft.versionDescriptor(), (dir, version) -> dir.dir(platformName)
-                    .dir(version.sha1())
-                    .file("minecraft-" + platformName + "-" + version.id() + ".jar"))
+                    .dir(version.id())
+                    .file("minecraft-" + platformName + "-" + version.id() + "-" + version.sha1() + ".jar"))
             );
         });
     }
 
-    private TaskProvider<DecompileJarTask> createJarDecompile(
-        final MinecraftExtension minecraft
-    ) {
+    private TaskProvider<DecompileJarTask> createJarDecompile() {
         final Configuration forgeFlower = this.project.getConfigurations().maybeCreate(Constants.Configurations.FORGE_FLOWER);
         forgeFlower.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.FORGE_FLOWER)));
         final FileCollection forgeFlowerClasspath = forgeFlower.getIncoming().getFiles();
@@ -258,8 +257,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             final Version targetVersion = minecraft.targetVersion().get();
             final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(side.executableArtifact());
             task.src(download.url());
-            task.dest(minecraft.originalDirectory().get().dir(sideName).dir(download.sha1())
-                .file("minecraft-" + sideName + "-" + targetVersion.id() + ".jar").getAsFile());
+            task.dest(minecraft.originalDirectory().get().dir(sideName).dir(targetVersion.id())
+                .file("minecraft-" + sideName + "-" + targetVersion.id() + "-" + download.sha1() + ".jar").getAsFile());
             task.overwrite(false);
         });
 
@@ -268,7 +267,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             final Version targetVersion = minecraft.targetVersion().get();
             final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(side.mappingsArtifact());
             task.src(download.url());
-            task.dest(minecraft.mappingsDirectory().get().dir(sideName).dir(download.sha1()).file(sideName + "-" + targetVersion.id() + ".txt").getAsFile());
+            task.dest(minecraft.mappingsDirectory().get().dir(sideName).dir(targetVersion.id())
+                .file(sideName + "-" + targetVersion.id() + "-" + download.sha1() + ".txt").getAsFile());
             task.overwrite(false);
         });
 
@@ -281,8 +281,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.getOutputJar().fileProvider(minecraft.remappedDirectory().zip(minecraft.targetVersion(),
                 (remapDir, version) -> {
                     final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(side.executableArtifact());
-                    return remapDir.getAsFile().toPath().resolve(sideName).resolve(download.sha1())
-                        .resolve("minecraft-" + sideName + "-" + version.id() + "-remapped.jar").toFile();
+                    return remapDir.getAsFile().toPath().resolve(sideName).resolve(version.id())
+                        .resolve("minecraft-" + sideName + "-" + version.id() + "-" + download.sha1() + "-remapped.jar").toFile();
                 }));
 
             if (!side.allowedPackages().isEmpty()) {
@@ -312,7 +312,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.getAssetsIndex().fileProvider(downloadIndex.map(Download::getDest));
         });
 
-        final NamedDomainObjectProvider<Configuration> natives = this.project.getConfigurations().register("minecraftNatives", config -> {
+        final NamedDomainObjectProvider<Configuration> natives = this.project.getConfigurations().register(Constants.Configurations.MINECRAFT_NATIVES, config -> {
             config.setVisible(false);
             config.setCanBeResolved(true);
             config.setCanBeConsumed(false);
@@ -372,9 +372,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
     private void configureIDEIntegrations(
         final Project project,
-        final MinecraftExtensionImpl extension,
-        final TaskProvider<? extends ProcessedJarTask> minecraftJarProvider,
-        final TaskProvider<DecompileJarTask> decompiledSourcesProvider
+        final MinecraftExtensionImpl extension
     ) {
         IdeConfigurer.apply(project, new IdeConfigurer.IdeImportAction() {
             @Override
