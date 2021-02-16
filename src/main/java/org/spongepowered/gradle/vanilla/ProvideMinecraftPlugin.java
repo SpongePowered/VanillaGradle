@@ -93,7 +93,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         this.project = target;
 
         AtlasTransformTask.registerExecutionCompleteListener(this.project.getGradle());
-        final MinecraftExtension minecraft = target.getExtensions().create("minecraft", MinecraftExtension.class, target);
+        final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) target.getExtensions()
+            .create(MinecraftExtension.class, "minecraft", MinecraftExtensionImpl.class, target);
         final NamedDomainObjectProvider<Configuration> minecraftConfig = target.getConfigurations().register(Constants.Configurations.MINECRAFT, config -> {
             config.setCanBeResolved(true);
             config.setCanBeConsumed(true);
@@ -208,7 +209,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
     }
 
     private TaskProvider<MergeJarsTask> createJarMerge(
-        final MinecraftExtension minecraft,
+        final MinecraftExtensionImpl minecraft,
         final TaskProvider<AtlasTransformTask> client,
         final TaskProvider<AtlasTransformTask> server
     ) {
@@ -248,7 +249,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         });
     }
 
-    private TaskProvider<AtlasTransformTask> createSidedTasks(final MinecraftSide side, final TaskContainer tasks, final MinecraftExtension minecraft) {
+    private TaskProvider<AtlasTransformTask> createSidedTasks(final MinecraftSide side, final TaskContainer tasks, final MinecraftExtensionImpl minecraft) {
         final String sideName = side.name().toLowerCase(Locale.ROOT);
         final String capitalizedSideName = Character.toUpperCase(sideName.charAt(0)) + sideName.substring(1);
 
@@ -293,7 +294,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         });
     }
 
-    private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtension minecraft, final TaskContainer tasks) {
+    private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtensionImpl minecraft, final TaskContainer tasks) {
         // TODO: Attempt to link assets to default client, or other common directories
 
         // Download asset index
@@ -371,7 +372,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
     private void configureIDEIntegrations(
         final Project project,
-        final MinecraftExtension extension,
+        final MinecraftExtensionImpl extension,
         final TaskProvider<? extends ProcessedJarTask> minecraftJarProvider,
         final TaskProvider<DecompileJarTask> decompiledSourcesProvider
     ) {
@@ -409,23 +410,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                         ideaRun.setJvmArgs(StringUtils.join(run.allJvmArgumentProviders(), true));
                         ideaRun.setProgramParameters(StringUtils.join(run.allArgumentProviders(), false));
                     });
-
-                    // Add Minecraft sources as a project library, to enable source lookup
-                    //idea.getModule().getGeneratedSourceDirs().add(decompiledSourcesProvider.get().getOutputJar().get().getAsFile().getParentFile());
-                    final String projectLibraryName = "VanillaGradle-MC-" + project.getName();
-                    idea.getProject().getProjectLibraries().removeIf(projectLibrary -> Objects.equals(projectLibrary.getName(), projectLibraryName));
-                    final ProjectLibrary library = new ProjectLibrary();
-                    library.setName(projectLibraryName);
-                    // library.setType("java"); // This doesn't seem to be necessary?
-                    library.setClasses(Collections.singleton(minecraftJarProvider.flatMap(ProcessedJarTask::outputJar).get().getAsFile()));
-                    library.setSources(Collections.singleton(decompiledSourcesProvider.get().getOutputJar().get().getAsFile()));
-                    final Set<File> minecraftClasspath = new HashSet<>();
-                    for (final File file : extension.minecraftClasspathConfiguration()) {
-                        minecraftClasspath.add(file);
-                    }
-
-                    library.setCompilerClasspath(minecraftClasspath);
-                    idea.getProject().getProjectLibraries().add(library);
                 });
 
             }

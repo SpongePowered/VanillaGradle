@@ -27,233 +27,108 @@ package org.spongepowered.gradle.vanilla;
 import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
 import org.gradle.api.Action;
-import org.gradle.api.GradleException;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.file.DirectoryProperty;
-import org.gradle.api.file.FileCollection;
-import org.gradle.api.invocation.Gradle;
-import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
-import org.gradle.api.provider.Provider;
-import org.gradle.api.tasks.TaskContainer;
-import org.gradle.api.tasks.TaskProvider;
-import org.gradle.util.ConfigureUtil;
-import org.spongepowered.gradle.vanilla.model.Version;
-import org.spongepowered.gradle.vanilla.model.VersionClassifier;
-import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
-import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
-import org.spongepowered.gradle.vanilla.model.VersionManifestV2;
-import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
-import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
-import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Objects;
+/**
+ * Properties that can configure how VanillaGradle applies minecraft
+ */
+public interface MinecraftExtension {
 
-import javax.inject.Inject;
+    /**
+     * Get whether repositories should be injected into the build.
+     *
+     * <p>For users who run their own proxying repositories or who want to
+     * manage repositories in another way, this property can be disabled.
+     * However, to function VanillaGradle must be able to resolve artifacts
+     * that are present in the following repositories:</p>
+     * <ul>
+     *     <li>Maven Central</li>
+     *     <li><a href="https://libraries.minecraft.net/">https://libraries.minecraft.net</a></li>
+     *     <li><a href="https://files.minecraftforge.net/maven/">https://files.minecraftforge.net/maven/</a></li>
+     * </ul>
+     *
+     * <p>This list is subject to change in any feature release without that
+     * release being marked as "breaking".</p>
+     *
+     * @return the inject repositories property
+     */
+    Property<Boolean> injectRepositories();
 
-public abstract class MinecraftExtension {
+    /**
+     * Set whether standard repositories should be added to the project.
+     *
+     * @param injectRepositories whether repositories should be injected
+     * @see #injectRepositories() for a list of repositories that are injected
+     */
+    void injectRepositories(boolean injectRepositories);
 
-    private final Project project;
-    private final Property<String> version;
-    private final Property<MinecraftPlatform> platform;
-    private final Property<Boolean> injectRepositories;
-    private final VersionManifestRepository versions;
+    /**
+     * Get a property pointing to the version of Minecraft to prepare.
+     *
+     * <p>Values of the property are unvalidated!</p>
+     *
+     * <p>There is no default value.</p>
+     *
+     * @return the version
+     */
+    Property<String> version();
 
-    private final Provider<VersionDescriptor> versionDescriptor;
-    private final Property<Version> targetVersion;
+    /**
+     * Set the version of Minecraft to prepare.
+     *
+     * <p>This version is only validated when the Minecraft development
+     * environment is prepared.</p>
+     *
+     * @param version the minecraft version
+     */
+    void version(String version);
 
-    private final DirectoryProperty assetsDirectory;
-    private final DirectoryProperty remappedDirectory;
-    private final DirectoryProperty originalDirectory;
-    private final DirectoryProperty mappingsDirectory;
-    private final DirectoryProperty filteredDirectory;
-    private final DirectoryProperty decompiledDirectory;
-    private final DirectoryProperty accessWidenedDirectory;
+    /**
+     * Get a property pointing to the Minecraft platform being prepared.
+     *
+     * <p><b>Default:</b> {@code JOINED}</p>
+     *
+     * @return the platform property
+     */
+    Property<MinecraftPlatform> platform();
 
-    private final RunConfigurationContainer runConfigurations;
-    private final Configuration minecraftClasspath;
-
-    @Inject
-    public MinecraftExtension(final Gradle gradle, final ObjectFactory factory, final Project project) throws IOException {
-        this.project = project;
-        this.version = factory.property(String.class);
-        this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.JOINED);
-        this.injectRepositories = factory.property(Boolean.class).convention(true);
-        this.assetsDirectory = factory.directoryProperty();
-        this.remappedDirectory = factory.directoryProperty();
-        this.originalDirectory = factory.directoryProperty();
-        this.mappingsDirectory = factory.directoryProperty();
-        this.filteredDirectory = factory.directoryProperty();
-        this.decompiledDirectory = factory.directoryProperty();
-        this.accessWidenedDirectory = factory.directoryProperty();
-
-        final Path gradleHomeDirectory = gradle.getGradleUserHomeDir().toPath();
-        final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.Directories.CACHES);
-        final Path rootDirectory = cacheDirectory.resolve(Constants.NAME);
-        final Path globalJarsDirectory = rootDirectory.resolve(Constants.Directories.JARS);
-        final Path projectLocalJarsDirectory = project.getProjectDir().toPath().resolve(".gradle").resolve(Constants.Directories.CACHES)
-                .resolve(Constants.NAME).resolve(Constants.Directories.JARS);
-        this.assetsDirectory.set(rootDirectory.resolve(Constants.Directories.ASSETS).toFile());
-        this.originalDirectory.set(globalJarsDirectory.resolve(Constants.Directories.ORIGINAL).toFile());
-        this.mappingsDirectory.set(rootDirectory.resolve(Constants.Directories.MAPPINGS).toFile());
-        this.remappedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.REMAPPED).toFile());
-        this.filteredDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
-        this.decompiledDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
-        this.accessWidenedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.ACCESS_WIDENED).toFile());
-        this.minecraftClasspath = project.getConfigurations().create(Constants.Configurations.MINECRAFT_CLASSPATH);
-        this.minecraftClasspath.setCanBeResolved(false);
-        this.minecraftClasspath.setCanBeConsumed(false);
-
-        final Path cacheDir = rootDirectory.resolve(Constants.Directories.MANIFESTS);
-        // Create a version repository. If Gradle is in offline mode, read only from cache
-        if (project.hasProperty(Constants.Manifests.SKIP_CACHE)) {
-            this.versions = VersionManifestRepository.direct();
-        } else {
-            this.versions = VersionManifestRepository.caching(cacheDir, !gradle.getStartParameter().isOffline());
-        }
-        this.versionDescriptor = this.version.map(version -> {
-            try {
-                return this.versions.manifest().findDescriptor(version)
-                    .orElseThrow(() -> new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was not found in the "
-                        + "manifest! Try '%s' instead.", this.version.get(), this.versions.latestVersion(VersionClassifier.RELEASE).orElse(null))));
-            } catch (final IOException ex) {
-                throw new GradleException("Failed to read version manifest", ex);
-            }
-        });
-        this.targetVersion = factory.property(Version.class)
-            .value(this.version.map(version -> {
-                try {
-                    return this.versions.fullVersion(version).orElse(null);
-                } catch (final IOException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }));
-        this.targetVersion.finalizeValueOnRead();
-
-        this.runConfigurations = factory.newInstance(RunConfigurationContainer.class, factory.domainObjectContainer(RunConfiguration.class), this);
-    }
-
-    public Property<Boolean> injectRepositories() {
-        return this.injectRepositories;
-    }
-
-    public void injectRepositories(final boolean injectRepositories) {
-        this.injectRepositories.set(injectRepositories);
-    }
-
-    public Property<String> version() {
-        return this.version;
-    }
-
-    public void version(final String version) {
-        this.version.set(version);
-    }
-
-    public Property<MinecraftPlatform> platform() {
-        return this.platform;
-    }
-
-    public void platform(final MinecraftPlatform platform) {
-        this.platform.set(platform);
-    }
+    /**
+     * Set the platform/environment of Minecraft to prepare.
+     *
+     * @param platform the platform
+     */
+    void platform(MinecraftPlatform platform);
 
     /**
      * Apply an access widener to the project.
      *
      * @param file any file that can be passed to {@link Project#file(Object)}
      */
-    public void accessWidener(final Object file) {
-        final TaskProvider<AccessWidenJarTask> awTask;
-        final TaskContainer tasks = this.project.getTasks();
-        if (tasks.getNames().contains(Constants.Tasks.ACCESS_WIDENER)) {
-            awTask = tasks.named(Constants.Tasks.ACCESS_WIDENER, AccessWidenJarTask.class);
-        } else {
-            final Configuration accessWidener = this.project.getConfigurations().maybeCreate(Constants.Configurations.ACCESS_WIDENER);
-            accessWidener.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.ACCESS_WIDENER)));
-            final FileCollection widenerClasspath = accessWidener.getIncoming().getFiles();
-            final DirectoryProperty destinationDir = this.accessWidenedDirectory;
+    void accessWidener(Object file);
 
-            awTask = tasks.register(Constants.Tasks.ACCESS_WIDENER, AccessWidenJarTask.class, task -> {
-                task.setWorkerClasspath(widenerClasspath);
-                task.getExpectedNamespace().set("named");
-                task.getDestinationDirectory().set(destinationDir);
-            });
-        }
+    /**
+     * Get run configurations configured for this project.
+     *
+     * <p>Every run configuration will automatically have Minecraft on its classpath.</p>
+     *
+     * @return the run configuration.
+     */
+    RunConfigurationContainer getRuns();
 
-        awTask.configure(task -> task.getAccessWideners().from(file));
-    }
-
-    protected VersionManifestV2 versionManifest() {
-        try {
-            return this.versions.manifest();
-        } catch (final IOException ex) {
-            throw new GradleException("Failed to load manifest", ex);
-        }
-    }
-
-    public DirectoryProperty assetsDirectory() {
-        return this.assetsDirectory;
-    }
-
-    protected DirectoryProperty remappedDirectory() {
-        return this.remappedDirectory;
-    }
-
-    protected DirectoryProperty originalDirectory() {
-        return this.originalDirectory;
-    }
-
-    protected DirectoryProperty mappingsDirectory() {
-        return this.mappingsDirectory;
-    }
-
-    protected DirectoryProperty filteredDirectory() {
-        return this.filteredDirectory;
-    }
-
-    protected DirectoryProperty decompiledDirectory() {
-        return this.decompiledDirectory;
-    }
-
-    public RunConfigurationContainer getRuns() {
-        return this.runConfigurations;
-    }
-
+    /**
+     * Operate on the available run configurations.
+     *
+     * @param run a closure operating on the run configuration container
+     */
     @SuppressWarnings("rawtypes")
-    public void runs(final @DelegatesTo(value = RunConfigurationContainer.class, strategy = Closure.DELEGATE_FIRST) Closure run) {
-        ConfigureUtil.configure(run, this.runConfigurations);
-    }
+    void runs(@DelegatesTo(value = RunConfigurationContainer.class, strategy = Closure.DELEGATE_FIRST) Closure run);
 
-    public void runs(final Action<RunConfigurationContainer> run) {
-        Objects.requireNonNull(run, "run").execute(this.runConfigurations);
-    }
-
-    protected Provider<VersionDescriptor> versionDescriptor() {
-        return this.versionDescriptor;
-    }
-
-    public Provider<Version> targetVersion() {
-        return this.targetVersion;
-    }
-
-    protected void createMinecraftClasspath(final Project project) {
-        this.minecraftClasspath.withDependencies(a -> {
-            final RuleContext context = RuleContext.create();
-            for (final MinecraftSide side : this.platform.get().activeSides()) {
-                side.applyLibraries(
-                    name -> a.add(project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
-                    this.targetVersion.get().libraries(),
-                    context
-                );
-            }
-        });
-    }
-
-    Configuration minecraftClasspathConfiguration() {
-        return this.minecraftClasspath;
-    }
+    /**
+     * Operate on the available run configurations.
+     *
+     * @param run an action operating on the run configuration container
+     */
+    void runs(Action<RunConfigurationContainer> run);
 }

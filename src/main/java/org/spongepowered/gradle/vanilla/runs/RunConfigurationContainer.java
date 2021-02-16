@@ -40,7 +40,7 @@ import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.util.ConfigureUtil;
-import org.spongepowered.gradle.vanilla.MinecraftExtension;
+import org.spongepowered.gradle.vanilla.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 
@@ -57,10 +57,10 @@ import javax.inject.Inject;
 
 public class RunConfigurationContainer implements NamedDomainObjectContainer<RunConfiguration> {
     private final NamedDomainObjectContainer<RunConfiguration> delegate;
-    private final MinecraftExtension extension;
+    private final MinecraftExtensionImpl extension;
 
     @Inject
-    public RunConfigurationContainer(final NamedDomainObjectContainer<RunConfiguration> delegate, final MinecraftExtension extension) {
+    public RunConfigurationContainer(final NamedDomainObjectContainer<RunConfiguration> delegate, final MinecraftExtensionImpl extension) {
         this.delegate = delegate;
         this.extension = extension;
     }

@@ -66,7 +66,7 @@ public final class VanillaGradle implements Plugin<Project> {
         }
 
         project.getPlugins().apply(ProvideMinecraftPlugin.class);
-        final MinecraftExtension minecraft = project.getExtensions().getByType(MinecraftExtension.class);
+        final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) project.getExtensions().getByType(MinecraftExtension.class);
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
             final NamedDomainObjectProvider<Configuration> minecraftConfig = this.project.getConfigurations().named(Constants.Configurations.MINECRAFT);
             Stream.of(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME).forEach(config -> {
@@ -104,7 +104,7 @@ public final class VanillaGradle implements Plugin<Project> {
         });
     }
 
-    private void createDisplayMinecraftVersions(final MinecraftExtension extension, final TaskContainer tasks) {
+    private void createDisplayMinecraftVersions(final MinecraftExtensionImpl extension, final TaskContainer tasks) {
         tasks.register("displayMinecraftVersions", DisplayMinecraftVersionsTask.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.setDescription("Displays all Minecraft versions that can be targeted");
