@@ -32,11 +32,18 @@ public final class LocalVariableNamer extends MethodVisitor {
 
     private final boolean isStatic;
     private final int paramSlotCount;
+    private int parameterCount = 0;
 
     public LocalVariableNamer(final boolean isStatic, final int paramSlotCount, final MethodVisitor methodVisitor) {
         super(Constants.ASM_VERSION, methodVisitor);
         this.isStatic = isStatic;
         this.paramSlotCount = paramSlotCount;
+    }
+
+    @Override
+    public void visitParameter(final String name, final int access) {
+        // Normalize parameter attributes
+        super.visitParameter("param" + this.parameterCount++, access);
     }
 
     @Override

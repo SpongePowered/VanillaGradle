@@ -41,6 +41,7 @@ import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.objectweb.asm.commons.ClassRemapper;
+import org.spongepowered.gradle.vanilla.asm.EnhancedClassRemapper;
 import org.spongepowered.gradle.vanilla.asm.LocalVariableNamingClassVisitor;
 import org.spongepowered.gradle.vanilla.asm.SyntheticParameterAnnotationsFix;
 
@@ -187,7 +188,7 @@ public class AtlasTransformCollection {
             final MappingSet mappings = scratchMappings.reverse();
 
             atlas.install(ctx -> new JarEntryRemappingTransformer(new LorenzRemapper(mappings, ctx.inheritanceProvider()), (parent, mapper) ->
-                new ClassRemapper(new SyntheticParameterAnnotationsFix(new LocalVariableNamingClassVisitor(parent)), mapper)));
+                new EnhancedClassRemapper(new SyntheticParameterAnnotationsFix(new LocalVariableNamingClassVisitor(parent)), mapper)));
 
         }
     }
