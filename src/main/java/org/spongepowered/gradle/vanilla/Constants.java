@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla;
 
+import org.gradle.util.GradleVersion;
 import org.objectweb.asm.Opcodes;
 
 import java.util.Arrays;
@@ -35,6 +36,7 @@ public final class Constants {
 
     public static final String NAME = "VanillaGradle";
     public static final String VERSION = Constants.version();
+    public static final String USER_AGENT = String.format("%s/%s Gradle/%s", Constants.NAME, Constants.VERSION, GradleVersion.current().getVersion());
     public static final String MINECRAFT_RESOURCES_URL = "https://resources.download.minecraft.net/";
     public static final String TASK_GROUP = "vanilla gradle";
     public static final int ASM_VERSION = Opcodes.ASM9;

@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla;
 
 import de.undercouch.gradle.tasks.download.Download;
+import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -56,7 +57,6 @@ import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.GradleTask;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
-import org.spongepowered.gradle.vanilla.model.AssetIndexReference;
 import org.spongepowered.gradle.vanilla.model.Library;
 import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
@@ -252,24 +252,22 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         final String sideName = side.name().toLowerCase(Locale.ROOT);
         final String capitalizedSideName = Character.toUpperCase(sideName.charAt(0)) + sideName.substring(1);
 
-        final TaskProvider<Download> downloadJar = tasks.register("download" + capitalizedSideName, Download.class, task -> {
+        final TaskProvider<Download> downloadJar = this.createDownload(tasks, "download" + capitalizedSideName, task -> {
             task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
             final Version targetVersion = minecraft.targetVersion().get();
             final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(side.executableArtifact());
             task.src(download.url());
             task.dest(minecraft.originalDirectory().get().dir(sideName).dir(targetVersion.id())
                 .file("minecraft-" + sideName + "-" + targetVersion.id() + "-" + download.sha1() + ".jar").getAsFile());
-            task.overwrite(false);
         });
 
-        final TaskProvider<Download> downloadMappings = tasks.register("download" + capitalizedSideName + "Mappings", Download.class, task -> {
+        final TaskProvider<Download> downloadMappings = this.createDownload(tasks, "download" + capitalizedSideName + "Mappings", task -> {
             task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
             final Version targetVersion = minecraft.targetVersion().get();
             final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(side.mappingsArtifact());
             task.src(download.url());
             task.dest(minecraft.mappingsDirectory().get().dir(sideName).dir(targetVersion.id())
                 .file(sideName + "-" + targetVersion.id() + "-" + download.sha1() + ".txt").getAsFile());
-            task.overwrite(false);
         });
 
         return tasks.register("remap" + capitalizedSideName + "Jar", AtlasTransformTask.class, task -> {
@@ -298,14 +296,11 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         // TODO: Attempt to link assets to default client, or other common directories
 
         // Download asset index
-        final TaskProvider<Download> downloadIndex = tasks.register("downloadAssetIndex", Download.class, task -> {
-            final AssetIndexReference index = minecraft.targetVersion().get().assetIndex();
-            task.src(index.url());
-            task.dest(minecraft.assetsDirectory().dir("indexes").get().file(index.id() + ".json").getAsFile());
-            task.overwrite(false);
-
-            task.doFirst(t2 -> ((Download) t2).getDest().getParentFile().mkdirs());
-        });
+        final TaskProvider<Download> downloadIndex = this.createDownload(tasks, "downloadAssetIndex",
+            minecraft.targetVersion().map(it -> it.assetIndex().url()),
+            minecraft.assetsDirectory().dir("indexes")
+                .zip(minecraft.targetVersion().map(Version::assetIndex), (indexDir, assetIndex) -> indexDir.file(assetIndex.id() + ".json").getAsFile())
+        );
 
         final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register(Constants.Tasks.DOWNLOAD_ASSETS, DownloadAssetsTask.class, task -> {
             task.getAssetsDirectory().set(minecraft.assetsDirectory().dir("objects"));
@@ -453,6 +448,27 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                     je.getWorkingDir().mkdirs();
                 });
             });
+        });
+    }
+
+
+    private TaskProvider<Download> createDownload(final TaskContainer tasks, final String name, final Action<Download> extraConfig) {
+        return tasks.register(name, Download.class, download -> {
+            download.header("User-Agent", Constants.USER_AGENT);
+            download.onlyIfModified(true);
+            download.quiet(true);
+            extraConfig.execute(download);
+        });
+    }
+
+    private TaskProvider<Download> createDownload(final TaskContainer tasks, final String name, final Provider<?> source, final Provider<?> destination) {
+        return tasks.register(name, Download.class, download -> {
+            download.header("User-Agent", Constants.USER_AGENT);
+            download.onlyIfModified(true);
+            download.quiet(true);
+            download.src(source.get());
+            download.dest(destination.get());
+            download.doFirst(t2 -> ((Download) t2).getDest().getParentFile().mkdirs());
         });
     }
 

@@ -1,7 +1,7 @@
 plugins {
     id("com.gradle.plugin-publish") version "0.12.0"
     `java-gradle-plugin`
-    val indraVersion = "1.3.0"
+    val indraVersion = "1.3.1"
     id("net.kyori.indra") version indraVersion
     id("net.kyori.indra.license-header") version indraVersion
     id("net.kyori.indra.publishing.gradle-plugin") version indraVersion
