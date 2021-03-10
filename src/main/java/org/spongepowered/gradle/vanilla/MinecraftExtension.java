@@ -87,6 +87,22 @@ public interface MinecraftExtension {
     void version(String version);
 
     /**
+     * Set the version of Minecraft used to the latest release.
+     *
+     * <p>This should only be used in development workspaces or for
+     * analysis tools.</p>
+     */
+    void latestRelease();
+
+    /**
+     * Set the version of Minecraft used to the latest snapshot.
+     *
+     * <p>This should only be used in development workspaces or for
+     * analysis tools.</p>
+     */
+    void latestSnapshot();
+
+    /**
      * Get a property pointing to the Minecraft platform being prepared.
      *
      * <p><b>Default:</b> {@code JOINED}</p>

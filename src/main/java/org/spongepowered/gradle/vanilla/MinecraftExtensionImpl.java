@@ -164,6 +164,18 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     }
 
     @Override
+    public void latestRelease() {
+        this.version.set(this.project.provider(() -> this.versions.latestVersion(VersionClassifier.RELEASE)
+            .orElseThrow(() -> new IllegalArgumentException("Could not find any latest release!"))));
+    }
+
+    @Override
+    public void latestSnapshot() {
+        this.version.set(this.project.provider(() -> this.versions.latestVersion(VersionClassifier.SNAPSHOT)
+            .orElseThrow(() -> new IllegalArgumentException("Could not find any latest snapshot!"))));
+    }
+
+    @Override
     public Property<MinecraftPlatform> platform() {
         return this.platform;
     }
