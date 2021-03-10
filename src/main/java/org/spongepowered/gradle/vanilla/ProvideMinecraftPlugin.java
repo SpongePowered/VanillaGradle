@@ -389,16 +389,16 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                     final String displayName = run.displayName().getOrNull();
                     runConfigurations.create(displayName == null ? run.getName() + " (" + project.getName() + ")" : displayName, Application.class, ideaRun -> {
                         if (project.getTasks().getNames().contains(JavaPlugin.PROCESS_RESOURCES_TASK_NAME)) {
-                            ideaRun.getBeforeRun().create(JavaPlugin.PROCESS_RESOURCES_TASK_NAME, GradleTask.class,
+                            ideaRun.getBeforeRun().create(project.getPath() + JavaPlugin.PROCESS_RESOURCES_TASK_NAME, GradleTask.class,
                                 action -> action.setTask(project.getTasks().getByName(JavaPlugin.PROCESS_RESOURCES_TASK_NAME))
                             );
                         }
 
                         if (run.requiresAssetsAndNatives().get()) {
-                            ideaRun.getBeforeRun().register(Constants.Tasks.DOWNLOAD_ASSETS, GradleTask.class,
+                            ideaRun.getBeforeRun().register(project.getPath() + "_" + Constants.Tasks.DOWNLOAD_ASSETS, GradleTask.class,
                                 action -> action.setTask(project.getTasks().getByName(Constants.Tasks.DOWNLOAD_ASSETS))
                             );
-                            ideaRun.getBeforeRun().register(Constants.Tasks.COLLECT_NATIVES, GradleTask.class,
+                            ideaRun.getBeforeRun().register(project.getPath() + "_" + Constants.Tasks.COLLECT_NATIVES, GradleTask.class,
                                 action -> action.setTask(project.getTasks().getByName(Constants.Tasks.COLLECT_NATIVES))
                             );
                         }

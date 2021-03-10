@@ -57,12 +57,19 @@ public final class IdeConfigurer {
      */
     public static void apply(final Project project, final IdeImportAction toPerform) {
         project.getPlugins().withType(IdeaExtPlugin.class, plugin -> {
-            final IdeaModel model = project.getExtensions().findByType(IdeaModel.class);
-            if (!IdeConfigurer.isIdeaImport() || model == null || model.getProject() == null) {
+            if (!IdeConfigurer.isIdeaImport()) {
                 return;
             }
-            final ProjectSettings ideaExt = ((ExtensionAware) model.getProject()).getExtensions().getByType(ProjectSettings.class);
-            toPerform.idea(project, model, ideaExt);
+            final Project rootProject = project.getRootProject();
+            if (project != rootProject) {
+                rootProject.getPlugins().apply(IdeaExtPlugin.class);
+                final IdeaModel model = rootProject.getExtensions().findByType(IdeaModel.class);
+                if (model == null || model.getProject() == null) {
+                    return;
+                }
+                final ProjectSettings ideaExt = ((ExtensionAware) model.getProject()).getExtensions().getByType(ProjectSettings.class);
+                toPerform.idea(project, model, ideaExt);
+            }
         });
         project.getPlugins().withType(EclipsePlugin.class, plugin -> {
             final EclipseModel model = project.getExtensions().findByType(EclipseModel.class);
