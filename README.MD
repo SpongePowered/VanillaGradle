@@ -11,7 +11,7 @@ For additional help use the channel `#vanillagradle` on the [Sponge Discord serv
 
 Otherwise, to get a workspace up and going immediately it is as simple as
 
-```
+```gradle
 plugins {
     java
     id("org.spongepowered.gradle.vanilla") version "0.1"
