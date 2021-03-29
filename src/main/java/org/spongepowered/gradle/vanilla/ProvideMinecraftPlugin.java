@@ -38,10 +38,12 @@ import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
+import org.gradle.api.file.DuplicatesStrategy;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemLocation;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.Delete;
@@ -342,6 +344,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.setGroup(Constants.TASK_GROUP);
             task.from(extractedNatives);
             task.into(nativesDir.get());
+            task.exclude("META-INF/**");
+            task.setDuplicatesStrategy(DuplicatesStrategy.WARN); // just in case Mojang change things up on us!
         });
 
         minecraft.getRuns().configureEach(run -> {
@@ -431,6 +435,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 if (config.displayName().isPresent()) {
                     exec.setDescription(config.displayName().get());
                 }
+                exec.getJavaLauncher().convention(service.launcherFor(this.project.getExtensions().getByType(JavaPluginExtension.class).getToolchain()));
                 exec.setStandardInput(System.in);
                 exec.getMainClass().set(config.mainClass());
                 exec.getMainModule().set(config.mainModule());
