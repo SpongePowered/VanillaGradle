@@ -27,10 +27,15 @@ package org.spongepowered.gradle.vanilla;
 import org.gradle.util.GradleVersion;
 import org.objectweb.asm.Opcodes;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class Constants {
 
@@ -54,6 +59,16 @@ public final class Constants {
         public static final String FILTERED = "filtered";
         public static final String MANIFESTS = "manifests";
         public static final String ACCESS_WIDENED = "aw";
+        public static final List<Path> SHARED_ASSET_LOCATIONS = Collections.unmodifiableList(Stream.of(
+            ".minecraft/assets", // linux, default launcher
+            ".local/share/multimc/assets/", // linux, MultiMC
+            "Library/Application Support/minecraft/assets/", // macOS, default launcher
+            "scoop/persist/multimc/assets/", // Windows, MultiMC via Scoop
+            "AppData/Roaming/.minecraft/assets/" // Windows, default launcher
+            // Do you have another location? Add it here!
+        )
+            .map(relative -> Paths.get(System.getProperty("user.home")).resolve(relative))
+            .collect(Collectors.toList()));
 
         private Directories() {
         }

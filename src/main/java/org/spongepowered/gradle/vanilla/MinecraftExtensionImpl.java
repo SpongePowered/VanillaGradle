@@ -51,6 +51,7 @@ import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -102,7 +103,20 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         final Path globalJarsDirectory = rootDirectory.resolve(Constants.Directories.JARS);
         final Path projectLocalJarsDirectory = project.getProjectDir().toPath().resolve(".gradle").resolve(Constants.Directories.CACHES)
                 .resolve(Constants.NAME).resolve(Constants.Directories.JARS);
-        this.assetsDirectory.set(rootDirectory.resolve(Constants.Directories.ASSETS).toFile());
+
+        // Test common assets directory locations and use those instead, if they exist
+        boolean found = false;
+        for (final Path candidate : Constants.Directories.SHARED_ASSET_LOCATIONS) {
+            if (Files.isDirectory(candidate)) {
+                this.assetsDirectory.set(candidate.toFile());
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            this.assetsDirectory.set(rootDirectory.resolve(Constants.Directories.ASSETS).toFile());
+        }
+
         this.originalDirectory.set(globalJarsDirectory.resolve(Constants.Directories.ORIGINAL).toFile());
         this.mappingsDirectory.set(rootDirectory.resolve(Constants.Directories.MAPPINGS).toFile());
         this.remappedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.REMAPPED).toFile());

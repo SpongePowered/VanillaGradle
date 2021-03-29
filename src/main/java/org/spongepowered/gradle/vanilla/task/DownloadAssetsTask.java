@@ -99,6 +99,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
         }
 
         final Path assetsDirectory = this.getAssetsDirectory().get().getAsFile().toPath();
+
         try {
             // Validate existing assets in the output directory
             // Because the same assets directory is used by multiple game versions,
