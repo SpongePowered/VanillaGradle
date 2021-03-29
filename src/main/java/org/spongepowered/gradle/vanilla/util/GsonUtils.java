@@ -35,6 +35,8 @@ import org.spongepowered.gradle.vanilla.model.rule.RuleDeclarationTypeAdapter;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -74,6 +76,12 @@ public final class GsonUtils {
 
     public static <T> T parseFromJson(final Path path, final Class<T> type) throws IOException {
         try (final BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            return GsonUtils.GSON.fromJson(reader, type);
+        }
+    }
+
+    public static <T> T parseFromJson(final File file, final Class<T> type) throws IOException {
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             return GsonUtils.GSON.fromJson(reader, type);
         }
     }

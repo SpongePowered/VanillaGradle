@@ -47,13 +47,9 @@ import org.spongepowered.gradle.vanilla.storage.HttpClientService;
 import org.spongepowered.gradle.vanilla.util.DigestUtils;
 import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -89,11 +85,8 @@ public abstract class DownloadAssetsTask extends DefaultTask {
     public void execute() {
         // Load assets index from file
         final AssetIndex index;
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(
-            this.getAssetsIndex().get().getAsFile()),
-            StandardCharsets.UTF_8
-        ))) {
-            index = GsonUtils.GSON.fromJson(reader, AssetIndex.class);
+        try {
+            index = GsonUtils.parseFromJson(this.getAssetsIndex().get().getAsFile(), AssetIndex.class);
         } catch (final IOException ex) {
             throw new GradleException("Failed to read asset index", ex);
         }
