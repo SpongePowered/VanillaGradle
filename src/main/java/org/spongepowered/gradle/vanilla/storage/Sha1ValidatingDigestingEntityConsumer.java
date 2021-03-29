@@ -22,37 +22,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.model;
+package org.spongepowered.gradle.vanilla.storage;
 
-import org.immutables.gson.Gson;
-import org.immutables.value.Value;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpException;
+import org.apache.hc.core5.http.nio.AsyncEntityConsumer;
+import org.apache.hc.core5.http.nio.entity.DigestingEntityConsumer;
+import org.spongepowered.gradle.vanilla.util.DigestUtils;
 
-import java.util.Map;
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
-@Value.Immutable
-@Gson.TypeAdapters
-public interface AssetIndex {
+final class Sha1ValidatingDigestingEntityConsumer<V> extends DigestingEntityConsumer<V> {
+    private final String expected;
 
-    Map<String, Asset> objects();
-
-    @Value.Immutable
-    @Gson.TypeAdapters
-    interface Asset {
-
-        /**
-         * The SHA-1 hash of an asset.
-         *
-         * @return the asset's hash as a string
-         */
-        @Value.Parameter
-        String hash();
-
-        @Value.Parameter
-        int size();
-
-        default String fileName() {
-            return this.hash().substring(0, 2) + "/" + this.hash();
-        }
+    public Sha1ValidatingDigestingEntityConsumer(final AsyncEntityConsumer<V> wrapped, final String expected)
+        throws NoSuchAlgorithmException {
+        super("SHA-1", wrapped);
+        this.expected = expected;
     }
 
+    @Override
+    public void streamEnd(final List<? extends Header> trailers) throws HttpException, IOException {
+        super.streamEnd(trailers);
+        final String actual = DigestUtils.toHexString(this.getDigest());
+        if (!DigestUtils.toHexString(this.getDigest()).equals(this.expected)) {
+            throw new IOException("Failed to validate SHA-1 hash. Expected " + this.expected + ", but got " + actual);
+        }
+    }
 }

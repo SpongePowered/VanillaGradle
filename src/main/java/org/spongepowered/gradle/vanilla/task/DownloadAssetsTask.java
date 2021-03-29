@@ -24,24 +24,27 @@
  */
 package org.spongepowered.gradle.vanilla.task;
 
+import org.apache.hc.client5.http.async.methods.SimpleHttpRequests;
+import org.apache.hc.client5.http.async.methods.SimpleRequestProducer;
+import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.core5.concurrent.FutureCallback;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.core5.http.Message;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.Console;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.workers.WorkAction;
-import org.gradle.workers.WorkParameters;
-import org.gradle.workers.WorkQueue;
-import org.gradle.workers.WorkerExecutor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.AssetIndex;
+import org.spongepowered.gradle.vanilla.storage.HttpClientService;
+import org.spongepowered.gradle.vanilla.util.DigestUtils;
 import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
 import java.io.BufferedReader;
@@ -49,15 +52,22 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Iterator;
-
-import javax.inject.Inject;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.AbstractMap;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 public abstract class DownloadAssetsTask extends DefaultTask {
 
@@ -67,19 +77,17 @@ public abstract class DownloadAssetsTask extends DefaultTask {
     @OutputDirectory
     public abstract DirectoryProperty getAssetsDirectory();
 
-    @Console
-    public abstract Property<Integer> getConnectionCount();
-
-    @Inject
-    protected abstract WorkerExecutor getWorkerFactory();
+    @Internal
+    public abstract Property<HttpClientService> getHttpClient();
 
     public DownloadAssetsTask() {
         this.setGroup(Constants.TASK_GROUP);
-        this.getConnectionCount().convention(Runtime.getRuntime().availableProcessors());
+        this.getOutputs().upToDateWhen(t -> false);
     }
 
     @TaskAction
     public void execute() {
+        // Load assets index from file
         final AssetIndex index;
         try (final BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(
             this.getAssetsIndex().get().getAsFile()),
@@ -90,69 +98,142 @@ public abstract class DownloadAssetsTask extends DefaultTask {
             throw new GradleException("Failed to read asset index", ex);
         }
 
-        // Create groups based on number of workers
-        final int workerCount = this.getConnectionCount().get();
-        final WorkQueue queue = this.getWorkerFactory().noIsolation();
-        final int countPerWorker = (int) Math.ceil(index.objects().size() / (float) workerCount);
-        final Iterator<AssetIndex.Asset> assets = index.objects().values().iterator();
-        for (int i = 0; i < workerCount; i++) {
-            queue.submit(DownloadAssetsAction.class, action -> {
-                action.getAssetsDirectory().set(this.getAssetsDirectory());
-                final ListProperty<AssetIndex.Asset> elements = action.getAssets();
-
-                // Split work
-                int addedCount = 0;
-                while (assets.hasNext() && addedCount++ < countPerWorker) {
-                    elements.add(assets.next());
-                }
-            });
-        }
-
-        if (assets.hasNext()) {
-            throw new IllegalStateException("Finished asset download tasks with leftover assets!");
+        final Path assetsDirectory = this.getAssetsDirectory().get().getAsFile().toPath();
+        try {
+            // Validate existing assets in the output directory
+            // Because the same assets directory is used by multiple game versions,
+            // we only want to delete assets that fail validation, not assets that
+            // are just not present in the index.
+            final Map<String, AssetIndex.Asset> toDownload = this.validateAssets(index, assetsDirectory);
+            // Then, download any remaining assets
+            if (!toDownload.isEmpty()) {
+                this.downloadAssets(toDownload, assetsDirectory);
+                this.setDidWork(true);
+            } else {
+                this.setDidWork(false);
+            }
+        } catch (final IOException | URISyntaxException ex) {
+            this.getLogger().error("Failed to download assets", ex);
+            throw new GradleException("Failed to download assets");
         }
     }
 
-    interface DownloadAssetsParameters extends WorkParameters {
-        DirectoryProperty getAssetsDirectory();
-        ListProperty<AssetIndex.Asset> getAssets();
-    }
+    /**
+     * Validate a directory of assets.
+     *
+     * @param index the index to validate
+     * @param assetsDirectory the directory of assets
+     * @return a map of all objects that must be downloaded to create a valid asset state
+     * @throws IOException if any error occurs while attempting to traverse the file tree
+     */
+    private Map<String, AssetIndex.Asset> validateAssets(final AssetIndex index, final Path assetsDirectory) throws IOException {
+        final Map<String, AssetIndex.Asset> inputObjects = index.objects();
+        if (!Files.exists(assetsDirectory)) {
+            return inputObjects;
+        }
 
-    public static abstract class DownloadAssetsAction implements WorkAction<DownloadAssetsParameters> {
-        private static final Logger LOGGER = LoggerFactory.getLogger(DownloadAssetsAction.class);
-        private static final int TRIES = 3;
+        final Map<String, String> assetNamesByPath = new HashMap<>();
+        for (final Map.Entry<String, AssetIndex.Asset> entry : inputObjects.entrySet()) {
+            assetNamesByPath.put(entry.getValue().fileName(), entry.getKey());
+        }
 
-        @Override
-        public void execute() {
-            final Path destinationDirectory = this.getParameters().getAssetsDirectory().get().getAsFile().toPath();
-            for (final AssetIndex.Asset asset : this.getParameters().getAssets().get()) {
-                final Path destinationPath = destinationDirectory.resolve(asset.fileName());
-                if (Files.exists(destinationPath)) {
-                    // TODO: validate
-                    continue;
-                }
+        Files.walkFileTree(assetsDirectory, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE, new FileVisitor<Path>() {
+            @Override public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) { return FileVisitResult.CONTINUE; }
+            @Override public FileVisitResult postVisitDirectory(final Path dir, final IOException exc) { return FileVisitResult.CONTINUE; }
 
-                // Try to download each file
-                for (int attempt = 0; attempt < TRIES; attempt++) {
-                    try {
-                        Files.createDirectories(destinationPath.getParent());
-                        final URLConnection conn = new URL(Constants.MINECRAFT_RESOURCES_URL + asset.fileName()).openConnection();
-                        try (final InputStream is = conn.getInputStream();
-                             final OutputStream os = Files.newOutputStream(destinationPath)) {
-                            final byte[] buf = new byte[4096];
-                            int read;
-                            while ((read = is.read(buf)) != -1) {
-                                os.write(buf, 0, read);
-                            }
+            @Override
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
+                // Validate
+                final String relativePath = assetsDirectory.relativize(file).toString().replace('\\', '/');
+                final @Nullable String assetId = assetNamesByPath.get(relativePath);
+                if (assetId != null) {
+                    // We can verify
+                    final AssetIndex.Asset asset = inputObjects.get(assetId);
+                    assert asset != null;
+
+                    try (final InputStream is = Files.newInputStream(file)) {
+                        if (DigestUtils.validateSha1(asset.hash(), is)) {
+                            assetNamesByPath.remove(relativePath);
+                        } else {
+                            DownloadAssetsTask.this.getLogger().warn("Failed to validate asset {} (expected hash: {})", assetId, asset.hash());
                         }
-                        break;
-                    } catch (final IOException ex) {
-                        ex.printStackTrace();
-                        DownloadAssetsAction.LOGGER.warn("Failed to download asset {} (try ({}/{})", asset.hash(), attempt, TRIES);
                     }
                 }
+
+                return FileVisitResult.CONTINUE;
             }
+
+            @Override
+            public FileVisitResult visitFileFailed(final Path file, final IOException exc) throws IOException {
+                // Warn
+                DownloadAssetsTask.this.getLogger().warn("Failed to read file attributes for asset {}", file);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+
+        if (assetNamesByPath.isEmpty()) { // All assets were found
+            return Collections.emptyMap();
+        } else {
+            // Only return assets that need to be downloaded
+            final Map<String, AssetIndex.Asset> remainingAssets = new ConcurrentHashMap<>(inputObjects);
+            remainingAssets.keySet().retainAll(assetNamesByPath.values());
+            return remainingAssets;
         }
+    }
+
+    private void downloadAssets(final Map<String, AssetIndex.Asset> toDownload, final Path assetsDirectory) throws URISyntaxException, IOException {
+        final CloseableHttpAsyncClient client = this.getHttpClient().get().client();
+
+        final HttpHost host = HttpHost.create(Constants.MINECRAFT_RESOURCES_URL);
+        final CountDownLatch latch = new CountDownLatch(toDownload.size());
+        final Set<Map.Entry<String, Exception>> errors = ConcurrentHashMap.newKeySet();
+        for (final Map.Entry<String, AssetIndex.Asset> entry : toDownload.entrySet()) {
+            final String fileName = entry.getValue().fileName();
+            final Path destinationFile = assetsDirectory.resolve(fileName);
+            Files.createDirectories(destinationFile.getParent());
+            client.execute(
+                SimpleRequestProducer.create(SimpleHttpRequests.get(host, '/' + fileName)),
+                HttpClientService.responseToFileValidating(destinationFile, entry.getValue().hash()),
+                new FutureCallback<Message<HttpResponse, Path>>() {
+                    @Override
+                    public void completed(final Message<HttpResponse, Path> result) {
+                        latch.countDown();
+                        final long count = latch.getCount();
+                        if ((count & 0xf)  == 0) {
+                            final int total = toDownload.size();
+                            DownloadAssetsTask.this.getLogger().lifecycle("{}/{} assets downloaded", total - count, total);
+                        }
+                    }
+
+                    @Override
+                    public void failed(final Exception ex) {
+                        errors.add(new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), ex));
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void cancelled() {
+                        latch.countDown();
+                    }
+                }
+            );
+        }
+
+        try {
+            latch.await();
+        } catch (final InterruptedException ex) {
+            throw new GradleException("Interrupted while downloading files");
+        }
+
+        if (!errors.isEmpty()) {
+            this.getLogger().error("Some errors occurred while downloading assets:");
+            for (final Map.Entry<String, Exception> error : errors) {
+                this.getLogger().error("While downloading {}", error.getKey(), error.getValue());
+            }
+
+            throw new GradleException("Asset download failed");
+        }
+        this.getLogger().lifecycle("Successfully downloaded {} assets!", toDownload.size());
     }
 
 }

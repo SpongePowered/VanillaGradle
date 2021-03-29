@@ -59,6 +59,8 @@ dependencies {
     compileOnlyApi("org.immutables:value:2.8.8:annotations")
     api("org.immutables:gson:2.8.8")
 
+    implementation("org.apache.httpcomponents.client5:httpclient5:5.0.3")
+
     // IDE support
     implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:0.10")
 
@@ -99,6 +101,11 @@ tasks.withType(Jar::class).configureEach {
             "Implementation-Version" to project.version,
             "Implementation-Vendor" to "SpongePowered"
     )
+}
+
+tasks.withType(JavaCompile::class).configureEach {
+    options.compilerArgs.add("-Xlint:-processing")
+
 }
 
 indra {

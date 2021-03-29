@@ -64,6 +64,7 @@ import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
+import org.spongepowered.gradle.vanilla.storage.HttpClientService;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 import org.spongepowered.gradle.vanilla.task.AtlasTransformTask;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
@@ -88,6 +89,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
     @Override
     public void apply(final Project target) {
         this.project = target;
+        final Provider<HttpClientService> httpClient = target.getGradle().getSharedServices()
+            .registerIfAbsent("httpclient", HttpClientService.class, spec -> {});
 
         AtlasTransformTask.registerExecutionCompleteListener(this.project.getGradle());
         final NamedDomainObjectProvider<Configuration> minecraftClasspathConfig = target.getConfigurations().register(Constants.Configurations.MINECRAFT_CLASSPATH, config -> {
@@ -114,7 +117,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         final TaskProvider<AtlasTransformTask> remapServerJar = this.createSidedTasks(MinecraftSide.SERVER, target.getTasks(), minecraft);
 
         final TaskProvider<MergeJarsTask> mergedJars = this.createJarMerge(minecraft, remapClientJar, remapServerJar);
-        final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, target.getTasks());
+        final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, httpClient, target.getTasks());
 
         final TaskProvider<DecompileJarTask> decompileJar = this.createJarDecompile();
 
@@ -294,7 +297,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         });
     }
 
-    private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtensionImpl minecraft, final TaskContainer tasks) {
+    private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtensionImpl minecraft, final Provider<HttpClientService> httpClient, final TaskContainer tasks) {
         // TODO: Attempt to link assets to default client, or other common directories
 
         // Download asset index
@@ -307,6 +310,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register(Constants.Tasks.DOWNLOAD_ASSETS, DownloadAssetsTask.class, task -> {
             task.getAssetsDirectory().set(minecraft.assetsDirectory().dir("objects"));
             task.getAssetsIndex().fileProvider(downloadIndex.map(Download::getDest));
+            task.getHttpClient().set(httpClient);
         });
 
         final NamedDomainObjectProvider<Configuration> natives = this.project.getConfigurations().register(Constants.Configurations.MINECRAFT_NATIVES, config -> {
