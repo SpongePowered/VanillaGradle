@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
@@ -35,8 +36,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import javax.annotation.Nullable;
-
 final class DirectVersionManifestRepository implements VersionManifestRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(DirectVersionManifestRepository.class);
 
@@ -44,15 +43,16 @@ final class DirectVersionManifestRepository implements VersionManifestRepository
 
     @Override
     public VersionManifestV2 manifest() throws IOException {
-        if (this.manifest == null) {
+        @Nullable VersionManifestV2 manifest = this.manifest;
+        if (manifest == null) {
             final URL url = new URL(Constants.Manifests.API_V2_ENDPOINT);
-            return this.manifest = GsonUtils.parseFromJson(url, VersionManifestV2.class);
+            this.manifest = manifest = GsonUtils.parseFromJson(url, VersionManifestV2.class);
         }
-        return this.manifest;
+        return manifest;
     }
 
     @Override
-    public List<VersionDescriptor> availableVersions() {
+    public List<? extends VersionDescriptor> availableVersions() {
         try {
             return this.manifest().versions();
         } catch (final IOException ex) {
@@ -72,13 +72,13 @@ final class DirectVersionManifestRepository implements VersionManifestRepository
     }
 
     @Override
-    public Optional<Version> fullVersion(final String versionId) throws IOException {
-        final VersionDescriptor result = this.manifest()
+    public Optional<VersionDescriptor.Full> fullVersion(final String versionId) throws IOException {
+        final VersionDescriptor.@Nullable Reference result = this.manifest()
             .findDescriptor(versionId).orElse(null);
         if (result == null) { // no such version
             return Optional.empty();
         }
 
-        return Optional.of(GsonUtils.parseFromJson(result.url(), Version.class));
+        return Optional.of(GsonUtils.parseFromJson(result.url(), VersionDescriptor.Full.class));
     }
 }

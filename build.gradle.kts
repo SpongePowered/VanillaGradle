@@ -54,6 +54,11 @@ dependencies {
 
     implementation("org.cadixdev:lorenz-io-proguard:0.5.6")
 
+    compileOnlyApi("org.checkerframework:checker-qual:3.11.0")
+    annotationProcessor("org.immutables:value:2.8.8")
+    compileOnlyApi("org.immutables:value:2.8.8:annotations")
+    api("org.immutables:gson:2.8.8")
+
     // IDE support
     implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:0.10")
 

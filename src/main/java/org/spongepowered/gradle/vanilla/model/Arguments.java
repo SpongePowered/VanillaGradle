@@ -24,21 +24,26 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
-import java.io.Serializable;
+import org.immutables.gson.Gson;
+import org.immutables.value.Value;
+
 import java.util.List;
 
-public final class Arguments implements Serializable {
+/**
+ * Arguments for the game itself and the JVM it runs in.
+ */
+@Value.Immutable
+@Gson.TypeAdapters
+public interface Arguments {
 
-    private static final long serialVersionUID = 1L;
-
-    private List<Argument> game;
-    private List<Argument> jvm;
-
-    public List<Argument> game() {
-        return this.game;
+    static Arguments arguments(final List<Argument> game, final List<Argument> jvm) {
+        return new ArgumentsImpl(game, jvm);
     }
 
-    public List<Argument> jvm() {
-        return this.jvm;
-    }
+    @Value.Parameter
+    List<Argument> game();
+
+    @Value.Parameter
+    List<Argument> jvm();
+
 }

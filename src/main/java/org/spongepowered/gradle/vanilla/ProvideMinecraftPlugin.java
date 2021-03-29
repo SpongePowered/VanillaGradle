@@ -60,7 +60,7 @@ import org.jetbrains.gradle.ext.GradleTask;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.model.Library;
-import org.spongepowered.gradle.vanilla.model.Version;
+import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
@@ -256,7 +256,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
         final TaskProvider<Download> downloadJar = this.createDownload(tasks, "download" + capitalizedSideName, task -> {
             task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
-            final Version targetVersion = minecraft.targetVersion().get();
+            final VersionDescriptor.Full targetVersion = minecraft.targetVersion().get();
             final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(side.executableArtifact());
             task.src(download.url());
             task.dest(minecraft.originalDirectory().get().dir(sideName).dir(targetVersion.id())
@@ -265,7 +265,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
         final TaskProvider<Download> downloadMappings = this.createDownload(tasks, "download" + capitalizedSideName + "Mappings", task -> {
             task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
-            final Version targetVersion = minecraft.targetVersion().get();
+            final VersionDescriptor.Full targetVersion = minecraft.targetVersion().get();
             final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(side.mappingsArtifact());
             task.src(download.url());
             task.dest(minecraft.mappingsDirectory().get().dir(sideName).dir(targetVersion.id())
@@ -301,7 +301,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         final TaskProvider<Download> downloadIndex = this.createDownload(tasks, "downloadAssetIndex",
             minecraft.targetVersion().map(it -> it.assetIndex().url()),
             minecraft.assetsDirectory().dir("indexes")
-                .zip(minecraft.targetVersion().map(Version::assetIndex), (indexDir, assetIndex) -> indexDir.file(assetIndex.id() + ".json").getAsFile())
+                .zip(minecraft.targetVersion().map(VersionDescriptor.Full::assetIndex), (indexDir, assetIndex) -> indexDir.file(assetIndex.id() + ".json").getAsFile())
         );
 
         final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register(Constants.Tasks.DOWNLOAD_ASSETS, DownloadAssetsTask.class, task -> {
@@ -318,7 +318,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 final RuleContext context = RuleContext.create();
                 final String osName = OperatingSystemRule.normalizeOsName(System.getProperty("os.name"));
                 for (final Library library : minecraft.targetVersion().get().libraries()) {
-                    final String nativeClassifier = library.natives().get(osName);
+                    final String nativeClassifier = library.natives().get(osName); // TODO: Parse this for tokens (ex. natives-windows-${arch})
                     if (nativeClassifier != null && library.rules().test(context) && !library.name().artifact().equals("java-objc-bridge")) {
                         set.add(this.project.getDependencies().create(
                             library.name().group()

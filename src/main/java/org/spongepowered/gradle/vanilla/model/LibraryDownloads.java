@@ -24,21 +24,32 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
-import java.io.Serializable;
+import org.immutables.gson.Gson;
+import org.immutables.value.Value;
+
+import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
-public final class LibraryDownloads implements Serializable {
+@Value.Immutable
+@Gson.TypeAdapters
+public abstract class LibraryDownloads {
 
-    private static final long serialVersionUID = 1L;
-
-    private Download artifact;
-    private Map<String, Download> classifiers;
-
-    public Download artifact() {
-        return this.artifact;
+    LibraryDownloads() {
     }
 
+    public abstract Optional<Download> artifact();
+
+    @Value.Default
     public Map<String, Download> classifiers() {
-        return this.classifiers;
+        return Collections.emptyMap();
     }
+
+    @Value.Check
+    protected void eitherArtifactOrDownloads() {
+        if (!this.artifact().isPresent() && this.classifiers().isEmpty()) {
+            throw new IllegalStateException("A download must have at least one of a primary artifact or some classifiers");
+        }
+    }
+
 }

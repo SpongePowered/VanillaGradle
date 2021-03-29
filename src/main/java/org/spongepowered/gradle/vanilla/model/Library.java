@@ -24,31 +24,33 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
+import org.immutables.gson.Gson;
+import org.immutables.value.Value;
 import org.spongepowered.gradle.vanilla.model.rule.RuleDeclaration;
 
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
 
-public final class Library implements Serializable {
+@Value.Immutable
+@Gson.TypeAdapters
+public interface Library {
 
-    private static final long serialVersionUID = 1L;
+    LibraryDownloads downloads();
 
-    private LibraryDownloads downloads;
-    private GroupArtifactVersion name;
-    private Map<String, String> natives = Collections.emptyMap();
-    private RuleDeclaration rules = RuleDeclaration.empty();
+    GroupArtifactVersion name();
 
-    public LibraryDownloads downloads() {
-        return this.downloads;
-    }
-
-    public GroupArtifactVersion name() {
-        return this.name;
-    }
-
-    public Map<String, String> natives() {
-        return this.natives;
+    /**
+     * A map of OS name to classifier.
+     *
+     * <p>The value classifier may include the {@code ${arch}} token, which can
+     * be either {@code 32} or {@code 64}.</p>
+     *
+     * @return the natives this artifact may have
+     */
+    @Value.Default
+    default Map<String, String> natives() {
+        return Collections.emptyMap();
     }
 
     /**
@@ -61,11 +63,12 @@ public final class Library implements Serializable {
      *
      * @return whether this is a natives dependency
      */
-    public boolean isNatives() {
-        return !this.natives.isEmpty();
+    default boolean isNatives() {
+        return !this.natives().isEmpty();
     }
 
-    public RuleDeclaration rules() {
-        return this.rules;
+    @Value.Default
+    default RuleDeclaration rules() {
+        return RuleDeclaration.empty();
     }
 }

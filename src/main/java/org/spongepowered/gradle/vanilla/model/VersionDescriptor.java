@@ -24,51 +24,114 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
-import org.spongepowered.gradle.vanilla.util.GsonUtils;
+import com.google.gson.JsonObject;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.immutables.gson.Gson;
+import org.immutables.value.Value;
 
-import java.io.IOException;
-import java.io.Serializable;
 import java.net.URL;
 import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalInt;
 
-public final class VersionDescriptor implements Serializable {
+@Value.Enclosing
+@Gson.TypeAdapters
+public interface VersionDescriptor {
 
-    private static final long serialVersionUID = 1L;
+    /**
+     * A unique identifier for this version.
+     *
+     * <p>Versions may be updated over time, though there will be only one
+     * descriptor for each key in the manifest at any given time.</p>
+     *
+     * @return the version ID
+     */
+    String id();
 
-    private String id;
-    private VersionClassifier type;
-    private URL url;
-    private ZonedDateTime time;
-    private ZonedDateTime releaseTime;
-    private String sha1;
-    private int complianceLevel;
+    VersionClassifier type();
 
-    public String id() {
-        return this.id;
+    ZonedDateTime time();
+
+    ZonedDateTime releaseTime();
+
+    OptionalInt complianceLevel();
+
+    /**
+     * A reference to a full version.
+     */
+    @Value.Immutable
+    interface Reference extends VersionDescriptor {
+
+        /**
+         * A url where the {@link Full} version descriptor can be found.
+         *
+         * @return a URL for the full descriptor
+         */
+        URL url();
+
+        String sha1();
+
     }
 
-    public VersionClassifier type() {
-        return this.type;
-    }
+    /**
+     * The full descriptor for a <em>Minecraft: Java Edition</em> version.
+     *
+     * Most fields are common across versions.
+     */
+    @Value.Immutable
+    interface Full extends VersionDescriptor {
 
-    public URL url() {
-        return this.url;
-    }
+        Optional<Arguments> arguments();
 
-    public ZonedDateTime time() {
-        return this.time;
-    }
+        @Gson.Named("minecraftArguments")
+        Optional<String> legacyArguments();
 
-    public ZonedDateTime releaseTime() {
-        return this.releaseTime;
-    }
+        @Value.Check
+        default void checkArguments() {
+            if (!this.arguments().isPresent() && !this.legacyArguments().isPresent()) {
+                throw new IllegalStateException("Either legacy or modern arguments must be set");
+            } else if (this.arguments().isPresent() && this.legacyArguments().isPresent()) {
+                throw new IllegalStateException("Only one of legacy or modern arguments can be set");
+            }
+        }
 
-    public String sha1() {
-        return this.sha1;
-    }
+        AssetIndexReference assetIndex();
 
-    public int complianceLevel() {
-        return this.complianceLevel;
-    }
+        String assets();
 
+        Map<DownloadClassifier, Download> downloads();
+
+        List<Library> libraries();
+
+        Optional<JsonObject> logging();
+
+        String mainClass();
+
+        int minimumLauncherVersion();
+
+        /**
+         * Get the Java version this Minecraft version is designed for.
+         *
+         * <p>Older version manifests may not include this property. For those,
+         * Java 8 should be assumed.</p>
+         *
+         * @return the java version to use
+         */
+        @Nullable JavaRuntimeVersion javaVersion();
+
+        default Optional<Download> download(final DownloadClassifier classifier) {
+            Objects.requireNonNull(classifier, "classifier");
+
+            return Optional.ofNullable(this.downloads().get(classifier));
+        }
+
+        default Download requireDownload(final DownloadClassifier classifier) {
+            return this.download(classifier)
+                    .orElseThrow(() -> new RuntimeException("No " + classifier + " download information was within the manifest!"));
+        }
+
+    }
 }

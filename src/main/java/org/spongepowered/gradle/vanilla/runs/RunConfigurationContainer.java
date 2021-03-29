@@ -41,10 +41,14 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.MinecraftExtensionImpl;
-import org.spongepowered.gradle.vanilla.model.Version;
+import org.spongepowered.gradle.vanilla.model.Argument;
+import org.spongepowered.gradle.vanilla.model.Arguments;
+import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -114,11 +118,11 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
 
     private Action<RunConfiguration> configureClientRun() {
         return config -> {
-            config.mainClass().set(this.extension.targetVersion().map(Version::mainClass));
+            config.mainClass().set(this.extension.targetVersion().map(VersionDescriptor.Full::mainClass));
             config.requiresAssetsAndNatives().set(true);
             final MapProperty<String, String> launcherTokens = config.parameterTokens();
-            launcherTokens.put(ClientRunParameterTokens.VERSION_NAME, this.extension.targetVersion().map(Version::id));
-            launcherTokens.put(ClientRunParameterTokens.ASSETS_INDEX_NAME, this.extension.targetVersion().map(Version::assets));
+            launcherTokens.put(ClientRunParameterTokens.VERSION_NAME, this.extension.targetVersion().map(VersionDescriptor.Full::id));
+            launcherTokens.put(ClientRunParameterTokens.ASSETS_INDEX_NAME, this.extension.targetVersion().map(VersionDescriptor.Full::assets));
             launcherTokens.put(ClientRunParameterTokens.AUTH_ACCESS_TOKEN, "0");
             launcherTokens.put(ClientRunParameterTokens.GAME_DIRECTORY, config.workingDirectory().map(x -> x.getAsFile().getAbsolutePath()));
             launcherTokens.put(ClientRunParameterTokens.USER_TYPE, "legacy"); // or mojang
@@ -129,12 +133,13 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
             final RuleContext context = RuleContext.create();
             config.allArgumentProviders().add(new ManifestDerivedArgumentProvider(
                     launcherTokens,
-                    this.extension.targetVersion().map(v -> v.arguments().game()),
+                    this.extension.targetVersion().map(v -> v.arguments().map(Arguments::game)
+                        .orElseGet(() -> Collections.singletonList(Argument.of(Arrays.asList(v.legacyArguments().get().split(" ")))))),
                     context
             ));
             config.allJvmArgumentProviders().add(new ManifestDerivedArgumentProvider(
                     launcherTokens,
-                    this.extension.targetVersion().map(v -> v.arguments().jvm()),
+                    this.extension.targetVersion().map(v -> v.arguments().map(Arguments::jvm).orElseGet(Collections::emptyList)),
                     context
             ));
         };

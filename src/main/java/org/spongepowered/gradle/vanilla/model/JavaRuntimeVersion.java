@@ -24,21 +24,26 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
-import java.io.Serializable;
+import org.immutables.gson.Gson;
+import org.immutables.value.Value;
 
-public class JavaRuntimeVersion implements Serializable {
+@Value.Immutable
+@Gson.TypeAdapters
+public interface JavaRuntimeVersion {
 
-    private static final long serialVersionUID = -1L;
+    /**
+     * A component identifier for locating this JVM version in the launcher's
+     * manifest for java versions.
+     *
+     * @return a reference key into the JVM manifest
+     */
+    String component();
 
-    private String component;
-    private int majorVersion;
-
-    public String component() {
-        return this.component;
-    }
-
-    public int majorVersion() {
-        return this.majorVersion;
-    }
+    /**
+     * Get the major version of java to use.
+     *
+     * @return the Java major version
+     */
+    int majorVersion();
 
 }

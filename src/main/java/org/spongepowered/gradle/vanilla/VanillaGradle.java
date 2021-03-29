@@ -41,8 +41,8 @@ import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
-import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
+import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 
@@ -72,7 +72,7 @@ public final class VanillaGradle implements Plugin<Project> {
         this.createDisplayMinecraftVersions(minecraft, project.getTasks());
         project.afterEvaluate(p -> {
             if (minecraft.targetVersion().isPresent()) {
-                final Version version = minecraft.targetVersion().get();
+                final VersionDescriptor.Full version = minecraft.targetVersion().get();
                 if (!version.download(DownloadClassifier.CLIENT_MAPPINGS).isPresent() && !version.download(DownloadClassifier.SERVER_MAPPINGS)
                     .isPresent()) {
                     throw new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was released before Mojang "

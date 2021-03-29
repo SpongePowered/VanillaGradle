@@ -66,7 +66,7 @@ public final class GsonSerializers {
 
         @Override
         public void write(final JsonWriter out, final GroupArtifactVersion value) throws IOException {
-            throw new UnsupportedOperationException("unnecessary");
+            out.value(value.toString());
         }
 
         @Override
@@ -76,7 +76,7 @@ public final class GsonSerializers {
             if (split.length < 2) {
                 throw new IOException("Invalid group:artifact:version string " + gav);
             }
-            return new GroupArtifactVersion(split[0], split[1], split.length > 2 ? split[2] : null);
+            return GroupArtifactVersion.of(split[0], split[1], split.length > 2 ? split[2] : null);
         }
     }.nullSafe();
 

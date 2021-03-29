@@ -24,36 +24,52 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
+import org.immutables.gson.Gson;
+import org.immutables.value.Value;
+
 import java.io.Serializable;
 import java.net.URL;
 
-public final class AssetIndexReference implements Serializable {
+/**
+ * A reference to a downloadable {@link AssetIndex}.
+ */
+@Value.Immutable
+@Gson.TypeAdapters
+public interface AssetIndexReference {
 
-    private static final long serialVersionUID = 1L;
+    /**
+     * An id used to refer to this asset index.
+     *
+     * @return the id
+     */
+    String id();
 
-    private String id;
-    private String sha1;
-    private int size;
-    private int totalSize;
-    private URL url;
+    /**
+     * The sha1 hash of this asset index.
+     *
+     * @return the asset index hash
+     */
+    String sha1();
 
-    public String id() {
-        return this.id;
-    }
+    /**
+     * The size of the asset index file, in bytes.
+     *
+     * @return the file size
+     */
+    int size();
 
-    public String sha1() {
-        return this.sha1;
-    }
+    /**
+     * The total size of assets described by the index file, in bytes.
+     *
+     * @return the total size
+     */
+    int totalSize();
 
-    public int size() {
-        return this.size;
-    }
+    /**
+     * A url to download the asset index from.
+     *
+     * @return the download URL
+     */
+    URL url();
 
-    public int totalSize() {
-        return this.totalSize;
-    }
-
-    public URL url() {
-        return this.url;
-    }
 }

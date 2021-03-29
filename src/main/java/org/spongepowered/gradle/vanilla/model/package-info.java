@@ -22,32 +22,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+@DefaultQualifier(NonNull.class)
+@Value.Style(
+    with = "*",
+    of = "new",
+    typeImmutable = "*Impl",
+    typeImmutableEnclosing = "*Impl",
+    typeImmutableNested = "*Impl",
+    overshadowImplementation = true,
+    visibility = Value.Style.ImplementationVisibility.PACKAGE,
+    builderVisibility = Value.Style.BuilderVisibility.PACKAGE,
+    set = "*",
+    depluralize = true,
+    deferCollectionAllocation = true,
+    jdkOnly = true
+)
 package org.spongepowered.gradle.vanilla.model;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.framework.qual.DefaultQualifier;
 import org.immutables.value.Value;
-
-@Value.Immutable(builder = false)
-public abstract class GroupArtifactVersion {
-
-    public static GroupArtifactVersion of(final String group, final String artifact, final @Nullable String version) {
-        return new GroupArtifactVersionImpl(group, artifact, version);
-    }
-
-    GroupArtifactVersion() {
-    }
-
-    @Value.Parameter
-    public abstract String group();
-
-    @Value.Parameter
-    public abstract String artifact();
-
-    @Value.Parameter
-    public abstract @Nullable String version();
-
-    @Override
-    public final String toString() {
-        return this.group() + ':' + this.artifact() + (this.version() == null ? "" : ':' + this.version());
-    }
-}

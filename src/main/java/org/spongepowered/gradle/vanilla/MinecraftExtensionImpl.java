@@ -41,7 +41,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.util.ConfigureUtil;
-import org.spongepowered.gradle.vanilla.model.Version;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
@@ -67,8 +66,8 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     private final Property<Boolean> injectRepositories;
     private final VersionManifestRepository versions;
 
-    private final Provider<VersionDescriptor> versionDescriptor;
-    private final Property<Version> targetVersion;
+    private final Provider<VersionDescriptor.Reference> versionDescriptor;
+    private final Property<VersionDescriptor.Full> targetVersion;
 
     private final DirectoryProperty assetsDirectory;
     private final DirectoryProperty remappedDirectory;
@@ -130,7 +129,7 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
                 throw new GradleException("Failed to read version manifest", ex);
             }
         });
-        this.targetVersion = factory.property(Version.class)
+        this.targetVersion = factory.property(VersionDescriptor.Full.class)
             .value(this.version.map(version -> {
                 try {
                     return this.versions.fullVersion(version).orElse(null);
@@ -263,11 +262,11 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         Objects.requireNonNull(run, "run").execute(this.runConfigurations);
     }
 
-    protected Provider<VersionDescriptor> versionDescriptor() {
+    protected Provider<VersionDescriptor.Reference> versionDescriptor() {
         return this.versionDescriptor;
     }
 
-    public Provider<Version> targetVersion() {
+    public Provider<VersionDescriptor.Full> targetVersion() {
         return this.targetVersion;
     }
 

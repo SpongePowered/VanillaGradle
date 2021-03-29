@@ -32,6 +32,7 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import org.immutables.value.Value;
 import org.spongepowered.gradle.vanilla.model.rule.RuleDeclaration;
 
 import java.io.IOException;
@@ -39,24 +40,34 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public final class Argument {
-    private final List<String> value;
-    private final RuleDeclaration rules;
+import javax.annotation.Nullable;
 
-    public Argument(final List<String> value, final RuleDeclaration rules) {
-        this.value = value;
-        this.rules = rules;
+@Value.Immutable
+public interface Argument {
+
+    static Argument of(final List<String> value) {
+        return new ArgumentImpl(value, RuleDeclaration.empty());
     }
 
-    public List<String> value() {
-        return this.value;
+    static Argument of(final List<String> value, final RuleDeclaration rules) {
+        return new ArgumentImpl(value, rules);
     }
 
-    public RuleDeclaration rules() {
-        return this.rules == null ? RuleDeclaration.empty() : this.rules;
+    /**
+     * The argument value.
+     *
+     * @return the value of the argument
+     */
+    @Value.Parameter
+    List<String> value();
+
+    @Value.Default
+    @Value.Parameter
+    default RuleDeclaration rules() {
+        return RuleDeclaration.empty();
     }
 
-    public static final class ArgumentTypeAdapter extends TypeAdapter<Argument> {
+    final class ArgumentTypeAdapter extends TypeAdapter<Argument> {
         private static final String VALUE = "value";
         private static final String RULES = "rules";
         private final TypeAdapter<RuleDeclaration> declaration;
@@ -74,9 +85,9 @@ public final class Argument {
         public Argument read(final JsonReader in) throws IOException {
             switch (in.peek()) {
                 case STRING: // literal argument
-                    return new Argument(Collections.singletonList(in.nextString()), RuleDeclaration.empty());
+                    return new ArgumentImpl(Collections.singletonList(in.nextString()), RuleDeclaration.empty());
                 case BEGIN_OBJECT: // argument with a rule
-                    List<String> value = null;
+                    @Nullable List<String> value = null;
                     RuleDeclaration declaration = RuleDeclaration.empty();
                     in.beginObject();
                     while (in.peek() != JsonToken.END_OBJECT) {
@@ -105,7 +116,7 @@ public final class Argument {
                     if (value == null) {
                         throw new JsonSyntaxException("Exited argument declaration without finding argument values");
                     }
-                    return new Argument(value, declaration);
+                    return new ArgumentImpl(value, declaration);
                 default:
                     throw new JsonSyntaxException("Expected either a literal argument or a rule, but got " + in.peek() + " at " + in.getPath());
 

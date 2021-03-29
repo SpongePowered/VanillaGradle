@@ -24,34 +24,47 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
-import java.io.Serializable;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.immutables.gson.Gson;
+import org.immutables.value.Value;
+
 import java.net.URL;
 
-import javax.annotation.Nullable;
+/**
+ * A single file download in the version manifest.
+ */
+@Value.Immutable
+@Gson.TypeAdapters
+public interface Download {
 
-public final class Download implements Serializable {
+    /**
+     * Path identifying the standard destination for this download.
+     *
+     * <p>Not always included.</p>
+     *
+     * @return the download path
+     */
+    @Nullable String path();
 
-    private static final long serialVersionUID = 1L;
+    /**
+     * Get the SHA-1 hash expected for the download.
+     *
+     * @return the hash
+     */
+    String sha1();
 
-    private String path;
-    private String sha1;
-    private int size;
-    private URL url;
+    /**
+     * Expected size of the download, in bytes.
+     *
+     * @return the file size
+     */
+    int size();
 
-    @Nullable
-    public String path() {
-        return this.path;
-    }
+    /**
+     * The URL to download from.
+     *
+     * @return file download URL
+     */
+    URL url();
 
-    public String sha1() {
-        return this.sha1;
-    }
-
-    public int size() {
-        return this.size;
-    }
-
-    public URL url() {
-        return this.url;
-    }
 }

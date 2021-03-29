@@ -24,43 +24,29 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
-import java.io.Serializable;
+import org.immutables.gson.Gson;
+import org.immutables.value.Value;
+
 import java.util.Map;
 
-public class AssetIndex {
+@Value.Immutable
+@Gson.TypeAdapters
+public interface AssetIndex {
 
-    private final Map<String, Asset> objects;
+    Map<String, Asset> objects();
 
-    public AssetIndex(final Map<String, Asset> objects) {
-        this.objects = objects;
-    }
+    @Value.Immutable
+    @Gson.TypeAdapters
+    interface Asset {
 
-    public Map<String, Asset> objects() {
-        return this.objects;
-    }
+        @Value.Parameter
+        String hash();
 
-    public static final class Asset implements Serializable {
+        @Value.Parameter
+        int size();
 
-        private static final long serialVersionUID = 1L;
-
-        private final String hash;
-        private final int size;
-
-        public Asset(final String hash, final int size) {
-            this.hash = hash;
-            this.size = size;
-        }
-
-        public String hash() {
-            return this.hash;
-        }
-
-        public int size() {
-            return this.size;
-        }
-
-        public String fileName() {
-            return this.hash.substring(0, 2) + "/" + this.hash;
+        default String fileName() {
+            return this.hash().substring(0, 2) + "/" + this.hash();
         }
     }
 

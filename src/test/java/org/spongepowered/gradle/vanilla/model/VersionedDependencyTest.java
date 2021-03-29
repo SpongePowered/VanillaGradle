@@ -31,6 +31,7 @@ import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 
 class VersionedDependencyTest {
 
@@ -40,7 +41,7 @@ class VersionedDependencyTest {
         final VersionManifestRepository repo = VersionManifestRepository.direct();
 
         final String latestName = repo.latestVersion(VersionClassifier.RELEASE).orElseThrow(() -> new IllegalStateException("No latest release!"));
-        final Version actual = repo.fullVersion(latestName).orElseThrow(AssertionFailedError::new);
+        final VersionDescriptor.Full actual = repo.fullVersion(latestName).orElseThrow(AssertionFailedError::new);
 
         final RuleContext context = RuleContext.create();
         OperatingSystemRule.setOsName(context, "osx");
@@ -48,6 +49,17 @@ class VersionedDependencyTest {
             if (library.rules().test(context)) {
                 System.out.println(library.name());
             }
+        }
+    }
+
+    @Test
+    @Disabled("Fairly resource-intensive, takes a while to download all uncached")
+    void testLoadAllManifests() throws IOException {
+        final VersionManifestRepository repo = VersionManifestRepository.caching(Paths.get("test-cache"), true);
+
+        for (final VersionDescriptor version : repo.availableVersions()) {
+            System.out.println(version);
+            repo.fullVersion(version.id()).orElseThrow(() -> new IllegalStateException("Unable to resolve version " + version.id()));
         }
     }
 }

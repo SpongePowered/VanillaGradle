@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla.model;
 
 import com.google.gson.JsonParseException;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
@@ -58,15 +59,15 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
 
     private final Path cacheDir;
     private final boolean queryRemote;
-    private volatile VersionManifestV2 manifest;
-    private final Map<String, Version> loadedVersions = new ConcurrentHashMap<>();
+    private volatile @Nullable VersionManifestV2 manifest;
+    private final Map<String, VersionDescriptor.Full> loadedVersions = new ConcurrentHashMap<>();
 
     public CachingVersionManifestRepository(final Path cacheDir, final boolean queryRemote) {
         this.cacheDir = cacheDir;
         this.queryRemote = queryRemote;
     }
 
-    private <V> V fetchIfPresent(final Path expected, final String expectedSha1, final Class<V> type) throws IOException {
+    private <V> @Nullable V fetchIfPresent(final Path expected, final @Nullable String expectedSha1, final Class<V> type) throws IOException {
         final BasicFileAttributes attributes;
         try {
             attributes = Files.readAttributes(expected, BasicFileAttributes.class);
@@ -109,20 +110,21 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
 
     @Override
     public VersionManifestV2 manifest() throws IOException {
-        if (this.manifest == null) {
-            this.manifest = this.fetchManifest(true);
+        @Nullable VersionManifestV2 manifest = this.manifest;
+        if (manifest == null) {
+            this.manifest = manifest = this.fetchManifest(true);
         }
 
-        if (this.manifest != null) {
-            return this.manifest;
+        if (manifest != null) {
+            return manifest;
         }
 
         throw new IOException("No version manifest is available!");
     }
 
-    private VersionManifestV2 fetchManifest(final boolean useCache) throws IOException {
-        final Path versionManifest = this.cacheDir.resolve(VERSION_MANIFEST_FILE);
-        VersionManifestV2 manifest;
+    private @Nullable VersionManifestV2 fetchManifest(final boolean useCache) throws IOException {
+        final Path versionManifest = this.cacheDir.resolve(CachingVersionManifestRepository.VERSION_MANIFEST_FILE);
+        @Nullable VersionManifestV2 manifest;
         if (useCache) {
             manifest = this.fetchIfPresent(versionManifest, null, VersionManifestV2.class);
         } else {
@@ -137,7 +139,7 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
     }
 
     @Override
-    public List<VersionDescriptor> availableVersions() {
+    public List<? extends VersionDescriptor> availableVersions() {
         try {
             return this.manifest().versions();
         } catch (final IOException ex) {
@@ -156,16 +158,16 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
     }
 
     @Override
-    public Optional<Version> fullVersion(final String versionId) throws IOException {
+    public Optional<VersionDescriptor.Full> fullVersion(final String versionId) throws IOException {
         // Cache version if it exists
-        Version cachedVersion = this.loadedVersions.get(versionId);
+        VersionDescriptor.Full cachedVersion = this.loadedVersions.get(versionId);
         if (cachedVersion != null) {
             return Optional.of(cachedVersion);
         }
 
-        final Path cacheLocation = this.cacheDir.resolve(VERSIONS_DIRECTORY).resolve(versionId + ".json");
+        final Path cacheLocation = this.cacheDir.resolve(CachingVersionManifestRepository.VERSIONS_DIRECTORY).resolve(versionId + ".json");
         // Otherwise, find a descriptor in cached manifest
-        VersionDescriptor descriptor = this.manifest().findDescriptor(versionId).orElse(null);
+        VersionDescriptor.@Nullable Reference descriptor = this.manifest().findDescriptor(versionId).orElse(null);
         if (descriptor == null) {
             // If we can't find a descriptor in the cached manifest, clear cache and try again
             if (this.queryRemote) {
@@ -183,9 +185,9 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
             }
         }
 
-        cachedVersion = this.fetchIfPresent(cacheLocation, descriptor.sha1(), Version.class);
+        cachedVersion = this.fetchIfPresent(cacheLocation, descriptor.sha1(), VersionDescriptor.Full.class);
         if (cachedVersion == null && this.queryRemote) {
-            cachedVersion = this.updateCache(cacheLocation, descriptor.url(), Version.class);
+            cachedVersion = this.updateCache(cacheLocation, descriptor.url(), VersionDescriptor.Full.class);
         }
 
         if (cachedVersion == null) {

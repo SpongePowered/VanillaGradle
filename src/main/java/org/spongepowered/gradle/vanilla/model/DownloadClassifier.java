@@ -34,5 +34,13 @@ public enum DownloadClassifier {
     @SerializedName("server")
     SERVER,
     @SerializedName("server_mappings")
-    SERVER_MAPPINGS
+    SERVER_MAPPINGS,
+    /**
+     * The server distributed as an {@code exe} for Windows users.
+     *
+     * <p>This type of download has been discontinued since {@code 16w05a}
+     * (a snapshot for 1.9).</p>
+     */
+    @SerializedName("windows_server")
+    WINDOWS_SERVER
 }

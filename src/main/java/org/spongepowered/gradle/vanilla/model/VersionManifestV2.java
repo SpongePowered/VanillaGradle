@@ -24,36 +24,53 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
-import org.spongepowered.gradle.vanilla.Constants;
-import org.spongepowered.gradle.vanilla.util.GsonUtils;
+import org.immutables.gson.Gson;
+import org.immutables.value.Value;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-public final class VersionManifestV2 implements Serializable {
+/**
+ * A V2 version manifest.
+ *
+ * @see VersionManifestRepository to fetch versions
+ */
+@Value.Immutable
+@Gson.TypeAdapters
+public interface VersionManifestV2 {
 
-    private static final long serialVersionUID = 1L;
+    /**
+     * Get the latest version for classifiers.
+     *
+     * <p>No latest version is provided for certain classifiers such as
+     * {@link VersionClassifier#OLD_ALPHA} or {@link VersionClassifier#OLD_BETA}.</p>
+     *
+     * @return an unmodifiable map of classifier to version ID
+     */
+    Map<VersionClassifier, String> latest();
 
-    private Map<VersionClassifier, String> latest;
-    private List<VersionDescriptor> versions;
+    /**
+     * Get descriptors for all available versions.
+     *
+     * @return the version descriptor
+     */
+    List<VersionDescriptor.Reference> versions();
 
-    public Map<VersionClassifier, String> latest() {
-        return this.latest;
-    }
-
-    public List<VersionDescriptor> versions() {
-        return this.versions;
-    }
-
-    public Optional<VersionDescriptor> findDescriptor(final String id) {
+    /**
+     * Attempt to find a version descriptor for a certain version ID.
+     *
+     * <p>This will only provide information contained in the manifest, without
+     * performing network requests.</p>
+     *
+     * @param id the version ID
+     * @return a short descriptor, if any is present
+     */
+    default Optional<VersionDescriptor.Reference> findDescriptor(final String id) {
         Objects.requireNonNull(id, "id");
 
-        for (final VersionDescriptor version : this.versions) {
+        for (final VersionDescriptor.Reference version : this.versions()) {
             if (version.id().equals(id)) {
                 return Optional.of(version);
             }
@@ -62,8 +79,4 @@ public final class VersionManifestV2 implements Serializable {
         return Optional.empty();
     }
 
-    public static VersionManifestV2 load() throws IOException {
-        final URL url = new URL(Constants.Manifests.API_V2_ENDPOINT);
-        return GsonUtils.parseFromJson(url, VersionManifestV2.class);
-    }
 }

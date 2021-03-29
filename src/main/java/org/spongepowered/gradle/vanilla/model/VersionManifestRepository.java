@@ -77,7 +77,7 @@ public interface VersionManifestRepository {
      *
      * @return the collection of available versions
      */
-    List<VersionDescriptor> availableVersions();
+    List<? extends VersionDescriptor> availableVersions();
 
     /**
      * Get the identifier for the latest version of a particular type.
@@ -95,6 +95,27 @@ public interface VersionManifestRepository {
      * @param versionId the ID of the version to query
      * @return a version descriptor
      */
-    Optional<Version> fullVersion(final String versionId) throws IOException;
+    Optional<VersionDescriptor.Full> fullVersion(final String versionId) throws IOException;
+
+    /**
+     * Promote a reference to a full version description.
+     *
+     * <p>If the passed descriptor is a reference, a network lookup may occur to
+     * resolve a full descriptor.</p>
+     *
+     * <p>Behaviour is undefined when attempting to fetch a result for a
+     * {@link VersionDescriptor} not obtained from this repository.</p>
+     *
+     * @param unknown a version descriptor of unknown type
+     * @return a full version
+     */
+    default VersionDescriptor.Full promote(final VersionDescriptor unknown) throws IOException {
+        if (unknown instanceof VersionDescriptor.Full) {
+            return (VersionDescriptor.Full) unknown;
+        } else {
+            return this.fullVersion(unknown.id())
+                .orElseThrow(() -> new IllegalArgumentException("Version descriptor " + unknown.id() + " was not found in this repository!"));
+        }
+    }
 
 }
