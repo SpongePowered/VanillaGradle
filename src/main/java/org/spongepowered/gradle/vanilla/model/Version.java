@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import javax.annotation.Nullable;
+
 public final class Version implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -50,6 +52,7 @@ public final class Version implements Serializable {
     private ZonedDateTime releaseTime;
     private ZonedDateTime time;
     private VersionClassifier type;
+    private JavaRuntimeVersion javaVersion;
 
     public Arguments arguments() {
         return this.arguments;
@@ -101,6 +104,18 @@ public final class Version implements Serializable {
 
     public VersionClassifier type() {
         return this.type;
+    }
+
+    /**
+     * Get the Java version this Minecraft version is designed for.
+     *
+     * <p>Older version manifests may not include this property. For those,
+     * Java 8 should be assumed.</p>
+     *
+     * @return the java version to use
+     */
+    public @Nullable JavaRuntimeVersion javaVersion() {
+        return this.javaVersion;
     }
 
     public Optional<Download> download(final DownloadClassifier classifier) {
