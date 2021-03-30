@@ -24,39 +24,70 @@
  */
 package org.spongepowered.gradle.vanilla.storage;
 
+import static java.util.Objects.requireNonNull;
+
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.nio.entity.AbstractBinAsyncEntityConsumer;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.WritableByteChannel;
+import java.nio.channels.FileChannel;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * An entity consumer that will write the provided data to a file
  */
 final class ToPathEntityConsumer extends AbstractBinAsyncEntityConsumer<Path> {
-    private final Path target;
-    private @Nullable WritableByteChannel output;
     private static final int CHUNK_SIZE = 8192;
+    private static final int MAX_TRIES = 2;
+
+    private final Path target;
+    private Path unwrappedTarget;
+    private Path targetTemp;
+    private @Nullable FileChannel output;
 
     public ToPathEntityConsumer(final Path target) {
         this.target = target;
     }
 
+    private static Path temporaryPath(final Path parent, final String key) {
+        final String fileName = "." + System.nanoTime() + ThreadLocalRandom.current().nextInt()
+            + requireNonNull(key, "key").replaceAll("[\\\\/:]", "-") + ".tmp";
+        return parent.resolve(fileName);
+    }
+
     @Override
     protected void streamStart(final ContentType contentType) throws IOException {
-       if (this.output != null)  {
-           throw new IOException("Tried to begin a stream while one was already in progress!");
-       }
-       this.output = Files.newByteChannel(this.target, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        if (this.output != null)  {
+            throw new IOException("Tried to begin a stream while one was already in progress!");
+        }
+        Path unwrappedTarget = this.target.toAbsolutePath();
+
+        // unwrap any symbolic links
+        try {
+            while (Files.isSymbolicLink(unwrappedTarget)) {
+                unwrappedTarget = Files.readSymbolicLink(unwrappedTarget);
+            }
+        } catch (final UnsupportedOperationException | IOException ex) {
+            // ignore
+        }
+        this.unwrappedTarget = unwrappedTarget;
+
+        this.targetTemp = ToPathEntityConsumer.temporaryPath(unwrappedTarget.getParent(), unwrappedTarget.getFileName().toString());
+        this.output = FileChannel.open(this.targetTemp, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     @Override
     protected Path generateContent() {
+        if (this.output != null) {
+            throw new IllegalStateException("Tried to get written path before output has been closed");
+        }
         return this.target;
     }
 
@@ -73,8 +104,33 @@ final class ToPathEntityConsumer extends AbstractBinAsyncEntityConsumer<Path> {
 
         this.output.write(src);
         if (endOfStream) { // no more data coming
+            // Since we've successfully completed, we can safely move the result over to the proper destination
+            this.output.force(true);
             this.output.close();
-            this.output = null;
+            try {
+                Files.move(this.targetTemp, this.unwrappedTarget, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (final AccessDeniedException ex) {
+                // Sometimes because of file locking this will fail... Let's just try again and hope for the best
+                // Thanks Windows!
+                for (int tries = 0; tries < ToPathEntityConsumer.MAX_TRIES; ++tries) {
+                    // Pause for a bit
+                    try {
+                        Thread.sleep(5 * tries);
+                        Files.move(this.targetTemp, this.unwrappedTarget, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                    } catch (final AccessDeniedException ex2) {
+                        if (tries == ToPathEntityConsumer.MAX_TRIES - 1) {
+                            throw ex;
+                        }
+                    } catch (final InterruptedException exInterrupt) {
+                        Thread.currentThread().interrupt();
+                        throw ex;
+                    }
+                }
+            } finally {
+                this.output = null;
+                this.targetTemp = null;
+                this.unwrappedTarget = null;
+            }
         }
     }
 
