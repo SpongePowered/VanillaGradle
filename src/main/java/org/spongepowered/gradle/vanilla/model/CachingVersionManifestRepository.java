@@ -44,10 +44,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 final class CachingVersionManifestRepository implements VersionManifestRepository {
@@ -61,6 +65,7 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
     private final boolean queryRemote;
     private volatile @Nullable VersionManifestV2 manifest;
     private final Map<String, VersionDescriptor.Full> loadedVersions = new ConcurrentHashMap<>();
+    private final Set<VersionDescriptor.Full> injectedVersions = new HashSet<>(); // all injected versions are also in loadedVersions
 
     public CachingVersionManifestRepository(final Path cacheDir, final boolean queryRemote) {
         this.cacheDir = cacheDir;
@@ -141,7 +146,13 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
     @Override
     public List<? extends VersionDescriptor> availableVersions() {
         try {
-            return this.manifest().versions();
+            if (this.injectedVersions.isEmpty()) {
+                return this.manifest().versions();
+            } else {
+                final List<VersionDescriptor> descriptors = new ArrayList<>(this.manifest().versions());
+                descriptors.addAll(this.injectedVersions);
+                return descriptors;
+            }
         } catch (final IOException ex) {
             CachingVersionManifestRepository.LOGGER.warn("Failed to retrieve available Minecraft versions", ex);
             return Collections.emptyList();
@@ -197,5 +208,14 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
         // Then store back in cache
         this.loadedVersions.put(versionId, cachedVersion);
         return Optional.of(cachedVersion);
+    }
+
+    @Override
+    public String inject(final Path localDescriptor) throws IOException {
+        Objects.requireNonNull(localDescriptor, "localDescriptor");
+        final VersionDescriptor.Full version = GsonUtils.parseFromJson(localDescriptor, VersionDescriptor.Full.class);
+        this.loadedVersions.put(version.id(), version);
+        this.injectedVersions.add(version);
+        return version.id();
     }
 }

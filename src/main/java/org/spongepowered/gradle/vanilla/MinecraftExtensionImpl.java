@@ -50,6 +50,7 @@ import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -67,7 +68,6 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     private final Property<Boolean> injectRepositories;
     private final VersionManifestRepository versions;
 
-    private final Provider<VersionDescriptor.Reference> versionDescriptor;
     private final Property<VersionDescriptor.Full> targetVersion;
 
     private final DirectoryProperty assetsDirectory;
@@ -134,21 +134,14 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         } else {
             this.versions = VersionManifestRepository.caching(cacheDir, !gradle.getStartParameter().isOffline());
         }
-        this.versionDescriptor = this.version.map(version -> {
-            try {
-                return this.versions.manifest().findDescriptor(version)
-                    .orElseThrow(() -> new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was not found in the "
-                        + "manifest! Try '%s' instead.", this.version.get(), this.versions.latestVersion(VersionClassifier.RELEASE).orElse(null))));
-            } catch (final IOException ex) {
-                throw new GradleException("Failed to read version manifest", ex);
-            }
-        });
         this.targetVersion = factory.property(VersionDescriptor.Full.class)
             .value(this.version.map(version -> {
                 try {
-                    return this.versions.fullVersion(version).orElse(null);
+                    return this.versions.fullVersion(version)
+                        .orElseThrow(() -> new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was not found in the "
+                            + "manifest! Try '%s' instead.", this.version.get(), this.versions.latestVersion(VersionClassifier.RELEASE).orElse(null))));
                 } catch (final IOException ex) {
-                    throw new RuntimeException(ex);
+                    throw new GradleException("Failed to read version manifest", ex);
                 }
             }));
         this.targetVersion.finalizeValueOnRead();
@@ -174,6 +167,17 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     @Override
     public void version(final String version) {
         this.version.set(version);
+    }
+
+    @Override
+    public void injectedVersion(final Object versionFile) {
+        final File resolved = this.project.file(versionFile);
+        try {
+            final String versionId = this.versions.inject(resolved);
+            this.version.set(versionId);
+        } catch (final IOException ex) {
+            throw new GradleException("Failed to read injected version manifest from " + resolved, ex);
+        }
     }
 
     @Override
@@ -220,12 +224,8 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         awTask.configure(task -> task.getAccessWideners().from(file));
     }
 
-    protected VersionManifestV2 versionManifest() {
-        try {
-            return this.versions.manifest();
-        } catch (final IOException ex) {
-            throw new GradleException("Failed to load manifest", ex);
-        }
+    VersionManifestRepository versions() {
+        return this.versions;
     }
 
     Path projectCache() {
@@ -274,10 +274,6 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     @Override
     public void runs(final Action<RunConfigurationContainer> run) {
         Objects.requireNonNull(run, "run").execute(this.runConfigurations);
-    }
-
-    protected Provider<VersionDescriptor.Reference> versionDescriptor() {
-        return this.versionDescriptor;
     }
 
     public Provider<VersionDescriptor.Full> targetVersion() {

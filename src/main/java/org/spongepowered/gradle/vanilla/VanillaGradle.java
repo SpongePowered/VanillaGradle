@@ -76,8 +76,8 @@ public final class VanillaGradle implements Plugin<Project> {
                 if (!version.download(DownloadClassifier.CLIENT_MAPPINGS).isPresent() && !version.download(DownloadClassifier.SERVER_MAPPINGS)
                     .isPresent()) {
                     throw new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was released before Mojang "
-                        + "provided official mappings! Try '%s' instead.", minecraft.version().get(), minecraft.versionManifest().latest()
-                        .get(VersionClassifier.RELEASE)));
+                        + "provided official mappings! Try '%s' instead.", minecraft.version().get(),
+                        minecraft.versions().latestVersion(VersionClassifier.RELEASE).orElse("<unknown>")));
                 }
                 p.getLogger().lifecycle(String.format("Targeting Minecraft '%s' on a '%s' platform", version.id(),
                     minecraft.platform().get().name()
@@ -97,7 +97,7 @@ public final class VanillaGradle implements Plugin<Project> {
         tasks.register("displayMinecraftVersions", DisplayMinecraftVersionsTask.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.setDescription("Displays all Minecraft versions that can be targeted");
-            task.getManifest().set(extension.versionManifest());
+            task.getVersions().set(task.getProject().getProviders().provider(() -> extension.versions().availableVersions()));
         });
     }
 

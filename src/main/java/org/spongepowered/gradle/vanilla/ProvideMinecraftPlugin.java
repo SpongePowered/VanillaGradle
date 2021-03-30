@@ -234,9 +234,9 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.getClientJar().set(client.get().getOutputJar());
             task.getServerJar().set(server.get().getOutputJar());
             task.getMergedJar().set(
-                minecraft.remappedDirectory().zip(minecraft.versionDescriptor(), (dir, version) -> dir.dir(platformName)
+                minecraft.remappedDirectory().zip(minecraft.targetVersion(), (dir, version) -> dir.dir(platformName)
                     .dir(version.id())
-                    .file("minecraft-" + platformName + "-" + version.id() + "-" + version.sha1() + ".jar"))
+                    .file("minecraft-" + platformName + "-" + version.id() + "-" + version.releaseTime().toInstant().getEpochSecond() + ".jar"))
             );
         });
     }

@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -96,6 +97,38 @@ public interface VersionManifestRepository {
      * @return a version descriptor
      */
     Optional<VersionDescriptor.Full> fullVersion(final String versionId) throws IOException;
+
+    /**
+     * Inject a pre-existing local version descriptor.
+     *
+     * <p>This can be used to target out-of-band releases not available via the
+     * normal metadata API.</p>
+     *
+     * <p>Injected versions will not be tracked by any caching storage that a
+     * repository may implement, but must be stored in-memory. To continue
+     * making an injected version available, it must be provided on
+     * every run.</p>
+     *
+     * @param localDescriptor the local file containing the JSON representation
+     *     of a {@link VersionDescriptor.Full}
+     * @throws IOException any errors that occur loading the descriptor.
+     * @return the {@link VersionDescriptor#id()} of the loaded version
+     */
+    String inject(final Path localDescriptor) throws IOException;
+
+    /**
+     * Inject a pre-existing local version descriptor.
+     *
+     * @param localDescriptor the local file containing the JSON representation
+     *     of a {@link VersionDescriptor.Full}
+     * @throws IOException if any errors occur while attempting to load the
+     *     descriptor.
+     * @return the {@link VersionDescriptor#id()} of the loaded version
+     * @see #inject(Path) for more details
+     */
+    default String inject(final File localDescriptor) throws IOException {
+        return this.inject(localDescriptor.toPath());
+    }
 
     /**
      * Promote a reference to a full version description.

@@ -34,5 +34,10 @@ public enum VersionClassifier {
     @SerializedName("old_beta")
     OLD_BETA,
     @SerializedName("old_alpha")
-    OLD_ALPHA
+    OLD_ALPHA,
+    /**
+     * Used for out-of-band releases.
+     */
+    @SerializedName("pending")
+    PENDING
 }

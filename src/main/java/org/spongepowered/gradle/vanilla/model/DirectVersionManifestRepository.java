@@ -32,14 +32,19 @@ import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 final class DirectVersionManifestRepository implements VersionManifestRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(DirectVersionManifestRepository.class);
 
     private volatile @Nullable VersionManifestV2 manifest;
+    private final Map<String, VersionDescriptor.Full> injectedVersions = new ConcurrentHashMap<>();
 
     @Override
     public VersionManifestV2 manifest() throws IOException {
@@ -54,7 +59,14 @@ final class DirectVersionManifestRepository implements VersionManifestRepository
     @Override
     public List<? extends VersionDescriptor> availableVersions() {
         try {
-            return this.manifest().versions();
+            final List<VersionDescriptor.Reference> manifestVersions = this.manifest().versions();
+            if (this.injectedVersions.isEmpty()) {
+                return manifestVersions;
+            } else {
+                final List<VersionDescriptor> versions = new ArrayList<>(manifestVersions);
+                versions.addAll(this.injectedVersions.values());
+                return versions;
+            }
         } catch (final IOException ex) {
             DirectVersionManifestRepository.LOGGER.error("Failed to query Minecraft version manifest: ", ex);
             return Collections.emptyList();
@@ -73,6 +85,10 @@ final class DirectVersionManifestRepository implements VersionManifestRepository
 
     @Override
     public Optional<VersionDescriptor.Full> fullVersion(final String versionId) throws IOException {
+        if (this.injectedVersions.containsKey(versionId)) {
+            return Optional.of(this.injectedVersions.get(versionId));
+        }
+
         final VersionDescriptor.@Nullable Reference result = this.manifest()
             .findDescriptor(versionId).orElse(null);
         if (result == null) { // no such version
@@ -80,5 +96,12 @@ final class DirectVersionManifestRepository implements VersionManifestRepository
         }
 
         return Optional.of(GsonUtils.parseFromJson(result.url(), VersionDescriptor.Full.class));
+    }
+
+    @Override
+    public String inject(final Path localDescriptor) throws IOException {
+        final VersionDescriptor.Full descriptor = GsonUtils.parseFromJson(localDescriptor, VersionDescriptor.Full.class);
+        this.injectedVersions.put(descriptor.id(), descriptor);
+        return descriptor.id();
     }
 }

@@ -87,6 +87,17 @@ public interface MinecraftExtension {
     void version(String version);
 
     /**
+     * Use a version derived from a provided file.
+     *
+     * <p>This allows building against Minecraft versions that may not be
+     * available in the ordinary version list, such as combat snapshots.</p>
+     *
+     * @param versionFile a file-like object that can be handled
+     *     by {@link Project#file(Object)}
+     */
+    void injectedVersion(Object versionFile);
+
+    /**
      * Set the version of Minecraft used to the latest release.
      *
      * <p>This should only be used in development workspaces or for

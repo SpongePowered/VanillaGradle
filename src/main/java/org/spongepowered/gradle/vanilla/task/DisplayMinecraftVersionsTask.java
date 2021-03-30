@@ -25,24 +25,22 @@
 package org.spongepowered.gradle.vanilla.task;
 
 import org.gradle.api.DefaultTask;
-import org.gradle.api.provider.Property;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
-import org.spongepowered.gradle.vanilla.model.VersionManifestV2;
 
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 public abstract class DisplayMinecraftVersionsTask extends DefaultTask {
-    private static final Logger logger = LoggerFactory.getLogger(DisplayMinecraftVersionsTask.class);
 
     @Input
-    public abstract Property<VersionManifestV2> getManifest();
+    public abstract ListProperty<VersionDescriptor> getVersions();
 
     @TaskAction
     public void execute() {
@@ -50,14 +48,14 @@ public abstract class DisplayMinecraftVersionsTask extends DefaultTask {
         final DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
         final Date earliestDate = Date.from(Instant.from(formatter.parse(Constants.FIRST_TARGETABLE_RELEASE_TIMESTAMP)));
 
-        for (final VersionDescriptor version : this.getManifest().get().versions()) {
+        for (final VersionDescriptor version : this.getVersions().get()) {
             final Date versionDate = Date.from(version.releaseTime().toInstant());
             if (versionDate.before(earliestDate)) {
                 continue;
             }
-            DisplayMinecraftVersionsTask.logger.warn(version.id());
+            this.getLogger().lifecycle(version.id());
         }
 
-        DisplayMinecraftVersionsTask.logger.warn(Constants.OUT_OF_BAND_RELEASE);
+        this.getLogger().lifecycle(Constants.OUT_OF_BAND_RELEASE);
     }
 }
