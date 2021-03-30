@@ -99,8 +99,15 @@ public abstract class DownloadAssetsTask extends DefaultTask {
             // we only want to delete assets that fail validation, not assets that
             // are just not present in the index.
             final Map<String, AssetIndex.Asset> toDownload = this.validateAssets(index, assetsDirectory);
-            // Then, download any remaining assets
+            // Then, download any remaining assets as long as gradle isn't in offline mode
             if (!toDownload.isEmpty()) {
+                if (this.getProject().getGradle().getStartParameter().isOffline()) {
+                    this.getLogger().warn(
+                        "There were {} assets to download, but Gradle is in offline mode. Will proceed without downloading, beware!",
+                        toDownload.size()
+                    );
+                    return;
+                }
                 this.downloadAssets(toDownload, assetsDirectory);
                 this.setDidWork(true);
             } else {
