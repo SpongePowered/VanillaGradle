@@ -51,19 +51,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.AbstractMap;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.stream.Stream;
 
 public abstract class DownloadAssetsTask extends DefaultTask {
 
@@ -138,39 +135,31 @@ public abstract class DownloadAssetsTask extends DefaultTask {
             assetNamesByPath.put(entry.getValue().fileName(), entry.getKey());
         }
 
-        Files.walkFileTree(assetsDirectory, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE, new FileVisitor<Path>() {
-            @Override public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) { return FileVisitResult.CONTINUE; }
-            @Override public FileVisitResult postVisitDirectory(final Path dir, final IOException exc) { return FileVisitResult.CONTINUE; }
+        try (final Stream<Path> files = Files.walk(assetsDirectory, FileVisitOption.FOLLOW_LINKS)) {
+            files
+                .parallel()
+                .filter(path -> path.toFile().isFile())
+                .forEach(file -> {
+                    // Validate
+                    final String relativePath = assetsDirectory.relativize(file).toString().replace('\\', '/');
+                    final @Nullable String assetId = assetNamesByPath.get(relativePath);
+                    if (assetId != null) {
+                        // We can verify
+                        final AssetIndex.Asset asset = inputObjects.get(assetId);
+                        assert asset != null;
 
-            @Override
-            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
-                // Validate
-                final String relativePath = assetsDirectory.relativize(file).toString().replace('\\', '/');
-                final @Nullable String assetId = assetNamesByPath.get(relativePath);
-                if (assetId != null) {
-                    // We can verify
-                    final AssetIndex.Asset asset = inputObjects.get(assetId);
-                    assert asset != null;
-
-                    try (final InputStream is = Files.newInputStream(file)) {
-                        if (DigestUtils.validateSha1(asset.hash(), is)) {
-                            assetNamesByPath.remove(relativePath);
-                        } else {
-                            DownloadAssetsTask.this.getLogger().warn("Failed to validate asset {} (expected hash: {})", assetId, asset.hash());
+                        try (final InputStream is = Files.newInputStream(file)) {
+                            if (DigestUtils.validateSha1(asset.hash(), is)) {
+                                assetNamesByPath.remove(relativePath);
+                            } else {
+                                DownloadAssetsTask.this.getLogger().warn("Failed to validate asset {} (expected hash: {})", assetId, asset.hash());
+                            }
+                        } catch (final IOException ex) {
+                            DownloadAssetsTask.this.getLogger().warn("Failed to validate asset {} due to an exception", assetId, ex);
                         }
                     }
-                }
-
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(final Path file, final IOException exc) throws IOException {
-                // Warn
-                DownloadAssetsTask.this.getLogger().warn("Failed to read file attributes for asset {}", file);
-                return FileVisitResult.CONTINUE;
-            }
-        });
+                });
+        }
 
         if (assetNamesByPath.isEmpty()) { // All assets were found
             return Collections.emptyMap();
