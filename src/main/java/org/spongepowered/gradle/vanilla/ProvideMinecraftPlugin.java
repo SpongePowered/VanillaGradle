@@ -307,12 +307,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 .zip(minecraft.targetVersion().map(VersionDescriptor.Full::assetIndex), (indexDir, assetIndex) -> indexDir.file(assetIndex.id() + ".json").getAsFile())
         );
 
-        final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register(Constants.Tasks.DOWNLOAD_ASSETS, DownloadAssetsTask.class, task -> {
-            task.getAssetsDirectory().set(minecraft.assetsDirectory().dir("objects"));
-            task.getAssetsIndex().fileProvider(downloadIndex.map(Download::getDest));
-            task.getHttpClient().set(httpClient);
-        });
-
         final NamedDomainObjectProvider<Configuration> natives = this.project.getConfigurations().register(Constants.Configurations.MINECRAFT_NATIVES, config -> {
             config.setVisible(false);
             config.setCanBeResolved(true);
@@ -350,6 +344,13 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.into(nativesDir.get());
             task.exclude("META-INF/**");
             task.setDuplicatesStrategy(DuplicatesStrategy.WARN); // just in case Mojang change things up on us!
+        });
+
+        final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register(Constants.Tasks.DOWNLOAD_ASSETS, DownloadAssetsTask.class, task -> {
+            task.dependsOn(gatherNatives);
+            task.getAssetsDirectory().set(minecraft.assetsDirectory().dir("objects"));
+            task.getAssetsIndex().fileProvider(downloadIndex.map(Download::getDest));
+            task.getHttpClient().set(httpClient);
         });
 
         minecraft.getRuns().configureEach(run -> {
@@ -402,22 +403,19 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                             );
                         }
 
-                        if (run.requiresAssetsAndNatives().get()) {
-                            ideaRun.getBeforeRun().register(project.getPath() + "_" + Constants.Tasks.DOWNLOAD_ASSETS, GradleTask.class,
-                                action -> action.setTask(project.getTasks().getByName(Constants.Tasks.DOWNLOAD_ASSETS))
-                            );
-                            ideaRun.getBeforeRun().register(project.getPath() + "_" + Constants.Tasks.COLLECT_NATIVES, GradleTask.class,
-                                action -> action.setTask(project.getTasks().getByName(Constants.Tasks.COLLECT_NATIVES))
-                            );
-                        }
-
                         ideaRun.setMainClass(run.mainClass().get());
                         final File runDirectory = run.workingDirectory().get().getAsFile();
                         ideaRun.setWorkingDirectory(runDirectory.getAbsolutePath());
                         runDirectory.mkdirs();
 
                         // TODO: Figure out if it's possible to set this more appropriately based on the run configuration's classpath
-                        ideaRun.moduleRef(project, project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
+                        final SourceSet moduleSet;
+                        if (run.ideaRunSourceSet().isPresent()) {
+                            moduleSet = run.ideaRunSourceSet().get();
+                        } else {
+                            moduleSet = project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+                        }
+                        ideaRun.moduleRef(project, moduleSet);
                         ideaRun.setJvmArgs(StringUtils.join(run.allJvmArgumentProviders(), true));
                         ideaRun.setProgramParameters(StringUtils.join(run.allArgumentProviders(), false));
                     });

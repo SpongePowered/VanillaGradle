@@ -32,6 +32,7 @@ import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.spongepowered.gradle.vanilla.Constants;
 
@@ -63,6 +64,7 @@ public class RunConfiguration implements Named {
     private final Property<String> mainModule;
     private final MapProperty<String, String> parameterTokens;
     private final Property<Boolean> requiresAssetsAndNatives;
+    private final Property<SourceSet> ideaSourceSet;
 
     @Inject
     public RunConfiguration(final String name, final ProjectLayout layout, final ObjectFactory objects) {
@@ -80,6 +82,7 @@ public class RunConfiguration implements Named {
         this.mainModule = objects.property(String.class);
         this.parameterTokens = objects.mapProperty(String.class, String.class);
         this.requiresAssetsAndNatives = objects.property(Boolean.class).convention(false);
+        this.ideaSourceSet = objects.property(SourceSet.class);
 
         // Apply global environment here
         this.parameterTokens.put(ClientRunParameterTokens.LAUNCHER_NAME, Constants.NAME);
@@ -134,6 +137,16 @@ public class RunConfiguration implements Named {
      */
     public ConfigurableFileCollection classpath() {
         return this.classpath;
+    }
+
+    /**
+     * Get the source set to be used when generating IDEA runs.
+     *
+     * @return the source set to use
+     * @since 0.2
+     */
+    public Property<SourceSet> ideaRunSourceSet() {
+        return this.ideaSourceSet;
     }
 
     public List<CommandLineArgumentProvider> allArgumentProviders() {
