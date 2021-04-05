@@ -106,7 +106,7 @@ public final class Constants {
     public static final class WorkerDependencies {
         public static final String MERGE_TOOL = "net.minecraftforge:mergetool:1.1.1";
         public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:1.0.2";
-        public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:1.5.478.18";
+        public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:1.5.498.2";
 
         private WorkerDependencies() {
         }

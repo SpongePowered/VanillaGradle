@@ -71,7 +71,7 @@ dependencies {
     implementation(jarMerge.output)
 
     // Jar decompile worker (match with Constants)
-    "jarDecompileCompileOnly"("net.minecraftforge:forgeflower:1.5.478.18")
+    "jarDecompileCompileOnly"("net.minecraftforge:forgeflower:1.5.498.2")
     implementation(jarDecompile.output)
 
     // Access widener worker (match with Constants)
