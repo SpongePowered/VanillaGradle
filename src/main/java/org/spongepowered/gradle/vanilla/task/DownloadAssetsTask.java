@@ -194,7 +194,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
             Files.createDirectories(destinationFile.getParent());
             client.execute(
                 SimpleRequestProducer.create(SimpleHttpRequests.get(host, '/' + fileName)),
-                HttpClientService.responseToFileValidating(destinationFile, entry.getValue().hash()),
+                HttpClientService.responseToFileValidating(destinationFile, "SHA-1", entry.getValue().hash()),
                 new FutureCallback<Message<HttpResponse, Path>>() {
                     @Override
                     public void completed(final Message<HttpResponse, Path> result) {

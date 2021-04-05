@@ -22,10 +22,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-@DefaultQualifier(NonNull.class)
-@ImmutablesStyle
-package org.spongepowered.gradle.vanilla.model;
+package org.spongepowered.gradle.vanilla.util;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.framework.qual.DefaultQualifier;
-import org.spongepowered.gradle.vanilla.util.ImmutablesStyle;
+import org.immutables.value.Value;
+
+/**
+ * Configure standard style for use with {@link Value.Immutable}-annotated classes.
+ */
+@Value.Style(
+    with = "*",
+    of = "new",
+    typeImmutable = "*Impl",
+    typeImmutableEnclosing = "*Impl",
+    typeImmutableNested = "*Impl",
+    overshadowImplementation = true,
+    visibility = Value.Style.ImplementationVisibility.PACKAGE,
+    builderVisibility = Value.Style.BuilderVisibility.PACKAGE,
+    set = "*",
+    depluralize = true,
+    deferCollectionAllocation = true,
+    jdkOnly = true
+)
+public @interface ImmutablesStyle {
+}

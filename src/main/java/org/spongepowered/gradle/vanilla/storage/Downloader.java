@@ -24,31 +24,17 @@
  */
 package org.spongepowered.gradle.vanilla.storage;
 
-import org.apache.hc.core5.http.Header;
-import org.apache.hc.core5.http.HttpException;
-import org.apache.hc.core5.http.nio.AsyncEntityConsumer;
-import org.apache.hc.core5.http.nio.entity.DigestingEntityConsumer;
-import org.spongepowered.gradle.vanilla.util.DigestUtils;
+import java.net.URL;
+import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
 
-import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-import java.util.List;
+/**
+ * Some sort of downloader for files
+ */
+public interface Downloader {
 
-final class Sha1ValidatingDigestingEntityConsumer<V> extends DigestingEntityConsumer<V> {
-    private final String expected;
+    CompletableFuture<Path> download(final URL source, final Path path);
 
-    public Sha1ValidatingDigestingEntityConsumer(final AsyncEntityConsumer<V> wrapped, final String expected)
-        throws NoSuchAlgorithmException {
-        super("SHA-1", wrapped);
-        this.expected = expected;
-    }
+    CompletableFuture<Path> downloadAndValidate(final URL source, final Path path, final String algorithm, final String hash);
 
-    @Override
-    public void streamEnd(final List<? extends Header> trailers) throws HttpException, IOException {
-        super.streamEnd(trailers);
-        final String actual = DigestUtils.toHexString(this.getDigest());
-        if (!DigestUtils.toHexString(this.getDigest()).equals(this.expected)) {
-            throw new IOException("Failed to validate SHA-1 hash. Expected " + this.expected + ", but got " + actual);
-        }
-    }
 }

@@ -22,10 +22,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-@DefaultQualifier(NonNull.class)
-@ImmutablesStyle
-package org.spongepowered.gradle.vanilla.model;
+/**
+ * A service that handles artifact resolution and caching.
+ *
+ * <p>The basic types of artifact are:</p>
+ * <ul>
+ *     <li>Flat URL file</li>
+ *     <li>Maven-style (has metadata attached)</li>
+ *     <li>Minecraft version (has metadata attached in the form of its {@link VersionDescriptor.Full})</li>
+ *     <li>Deserialized JSON object via a URL (or file) endpoint</li>
+ * </ul>
+ *
+ * <h2>Caching</h2>
+ * <p>Caches can resolve any sort of artifact. They support a parent cache.
+ * To be safe for use across multiple processes, caches will be write-locked
+ * while a single process is performing its writes.</p>
+ *
+ * <h2>Resolution</h2>
+ * <p>Artifacts are resolved in several stages. These are:</p>
+ * <ol>
+ *     <li>(optional) Resolve metadata. Metadata is an artifact type like any other.</li>
+ *     <li>(optional) Resolve dependencies</li>
+ * </ol>
+ */
+package org.spongepowered.gradle.vanilla.storage;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.framework.qual.DefaultQualifier;
-import org.spongepowered.gradle.vanilla.util.ImmutablesStyle;
+import org.spongepowered.gradle.vanilla.model.VersionDescriptor;

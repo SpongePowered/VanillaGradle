@@ -22,10 +22,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-@DefaultQualifier(NonNull.class)
-@ImmutablesStyle
-package org.spongepowered.gradle.vanilla.model;
+package org.spongepowered.gradle.vanilla.storage;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.framework.qual.DefaultQualifier;
-import org.spongepowered.gradle.vanilla.util.ImmutablesStyle;
+import org.apache.hc.core5.concurrent.FutureCallback;
+
+import java.util.concurrent.CompletableFuture;
+
+public class FutureToCompletable<V> implements FutureCallback<V> {
+    private final CompletableFuture<V> future = new CompletableFuture<>();
+
+    @Override
+    public void completed(final V result) {
+        this.future.complete(result);
+    }
+
+    @Override
+    public void failed(final Exception ex) {
+        this.future.completeExceptionally(ex);
+    }
+
+    @Override
+    public void cancelled() {
+        this.future.cancel(true);
+    }
+
+    CompletableFuture<V> future() {
+        return this.future;
+    }
+}
