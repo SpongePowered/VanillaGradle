@@ -44,7 +44,7 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.workers.WorkerExecutor;
-import org.spongepowered.gradle.vanilla.util.DigestUtils;
+import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.worker.AccessWidenerWorker;
 
 import java.io.File;
@@ -137,7 +137,7 @@ public abstract class AccessWidenJarTask extends DefaultTask implements Processe
                                 }
                             }
                         }
-                        return DigestUtils.toHexString(digest.digest());
+                        return HashAlgorithm.toHexString(digest.digest());
                     } catch (final IOException | NoSuchAlgorithmException ex) {
                         throw new RuntimeException(ex);
                     }

@@ -44,7 +44,7 @@ final class SignatureStripperTransformer implements JarEntryTransformer {
         // Remove all signature entries
         for (final Iterator<Map.Entry<String, Attributes>> it = entry.getManifest().getEntries().entrySet().iterator(); it.hasNext();) {
             final Map.Entry<String, Attributes> section = it.next();
-            if (section.getValue().remove(SHA_256_DIGEST) != null) {
+            if (section.getValue().remove(SignatureStripperTransformer.SHA_256_DIGEST) != null) {
                 if (section.getValue().isEmpty()) {
                     it.remove();
                 }

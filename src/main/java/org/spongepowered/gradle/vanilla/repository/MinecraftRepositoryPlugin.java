@@ -1,0 +1,208 @@
+/*
+ * This file is part of VanillaGradle, licensed under the MIT License (MIT).
+ *
+ * Copyright (c) SpongePowered <https://www.spongepowered.org>
+ * Copyright (c) contributors
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+package org.spongepowered.gradle.vanilla.repository;
+
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.gradle.api.Plugin;
+import org.gradle.api.Project;
+import org.gradle.api.artifacts.ModuleVersionSelector;
+import org.gradle.api.artifacts.ResolutionStrategy;
+import org.gradle.api.artifacts.dsl.ComponentMetadataHandler;
+import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
+import org.gradle.api.initialization.Settings;
+import org.gradle.api.invocation.Gradle;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.provider.Provider;
+import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.repository.rule.JoinedProvidesClientAndServerRule;
+import org.spongepowered.gradle.vanilla.repository.rule.MinecraftIvyModuleExtraDataApplierRule;
+
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+
+/**
+ * The minimum plugin to add the minecraft repository to projects or globally.
+ */
+public class MinecraftRepositoryPlugin implements Plugin<Object> {
+
+    private @Nullable Provider<MinecraftProviderService> service;
+
+    @Override
+    public void apply(final Object target) {
+        if (target instanceof Project) {
+            this.applyToProject((Project) target);
+        } else if (target instanceof Settings) {
+            this.applyToSettings((Settings) target);
+        } else if (target instanceof Gradle) {
+            // no-op marker left by our settings plugin
+        } else {
+            throw new IllegalArgumentException("Expected target to be a Project or Settings, but was a " + target.getClass());
+        }
+    }
+
+    public Provider<MinecraftProviderService> service() {
+        final @Nullable Provider<MinecraftProviderService> service = this.service;
+        if (service == null) {
+            throw new IllegalStateException("No service is available on this plugin");
+        }
+        return service;
+    }
+
+    private void applyToProject(final Project project) {
+        // Setup
+        final Path sharedCacheDirectory = MinecraftRepositoryPlugin.resolveCache(project.getGradle().getGradleUserHomeDir().toPath());
+        final Path rootProjectCache = MinecraftRepositoryPlugin.resolveCache(project.getRootDir().toPath().resolve(".gradle"));
+        final Provider<MinecraftProviderService> service = this.registerService(project.getGradle(), sharedCacheDirectory, rootProjectCache);
+
+        // Apply vanillagradle caches
+        if (!project.getGradle().getPlugins().hasPlugin(MinecraftRepositoryPlugin.class)) {
+            this.createRepositories(project.getRepositories(), service, sharedCacheDirectory, rootProjectCache);
+            this.registerComponentMetadataRules(service, project.getDependencies().getComponents());
+        }
+
+        // Register tool configurations
+        for (final ResolvableTool tool : ResolvableTool.values()) {
+            project.getConfigurations().register(tool.id(), config -> {
+                config.defaultDependencies(deps -> {
+                    deps.add(project.getDependencies().create(tool.notation()));
+                });
+            });
+        }
+
+        // Hook into resolution to provide the Minecraft artifact
+        project.getConfigurations().configureEach(configuration -> this.configureResolutionStrategy(project.getLogger(), service, project, configuration.getResolutionStrategy()));
+    }
+
+    private void configureResolutionStrategy(final Logger logger, final Provider<MinecraftProviderService> service, final Project project, final ResolutionStrategy strategy) {
+        JoinedProvidesClientAndServerRule.configureResolution(strategy.getCapabilitiesResolution());
+        strategy.eachDependency(dependency -> {
+            final ModuleVersionSelector dep = dependency.getTarget();
+            final Optional<MinecraftPlatform> platform = MinecraftPlatform.byId(dep.getName());
+            if (platform.isPresent() && MinecraftPlatform.GROUP.equals(dep.getGroup())) {
+                // could be:
+                // <an actual version>
+                // <latest.release_type (release, snapshot)>
+                // another gradle range
+                // or will Gradle just give us the actual version? please??
+                // compute which version of MC is desired, then produce that into a local maven repository in the global cache
+                // minecraftService.prepare(version).get();
+                final @Nullable String version = dep.getVersion();
+                logger.info("Attempting to resolve minecraft {} version {}", dep.getName(), version);
+                if (version != null) {
+                    try {
+                        // Request the appropriate jar, block until it's provided
+                        service.get().resolver(project).provide(platform.get(), version).get();
+                    } catch (final InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    } catch (final ExecutionException ex) {
+                        // log exception but don't throw, dependency resolution failure will come when expected.
+                        logger.error("Failed to resolve Minecraft {} version {}:", platform.get(), version, ex);
+                    }
+                }
+            }
+        });
+    }
+
+    private void applyToSettings(final Settings settings) {
+        // Setup
+        final Path sharedCacheDirectory = MinecraftRepositoryPlugin.resolveCache(settings.getGradle().getGradleUserHomeDir().toPath());
+        final Path rootProjectCache = MinecraftRepositoryPlugin.resolveCache(settings.getRootDir().toPath().resolve(".gradle"));
+        final Provider<MinecraftProviderService> service = this.registerService(settings.getGradle(), sharedCacheDirectory, rootProjectCache);
+
+        // Apply VanillaGradle caches
+        this.createRepositories(settings.getDependencyResolutionManagement().getRepositories(), service, sharedCacheDirectory, rootProjectCache);
+        this.registerComponentMetadataRules(service, settings.getDependencyResolutionManagement().getComponents());
+
+        // Leave a marker so projects don't try to override these
+        settings.getGradle().getPluginManager().apply(MinecraftRepositoryPlugin.class);
+    }
+
+    // Common handling //
+
+    private static Path resolveCache(final Path root) {
+        return root.resolve(Constants.Directories.CACHES).resolve(Constants.NAME);
+    }
+
+    private void createRepositories(final RepositoryHandler repositories, final Provider<MinecraftProviderService> service, final Path sharedCache, final Path rootProjectCache) {
+        repositories.ivy(ivy -> {
+            ivy.setName("VanillaGradle Global Cache");
+            ivy.setUrl(sharedCache.toUri());
+            /*ivy.patternLayout(layout -> {
+                layout.artifact(IvyArtifactRepository.MAVEN_ARTIFACT_PATTERN);
+                layout.ivy(IvyArtifactRepository.MAVEN_IVY_PATTERN);
+                layout.setM2compatible(true);
+            });*/
+            ivy.layout("maven");
+            ivy.content(content -> {
+                for (final MinecraftPlatform platform : MinecraftPlatform.all()) {
+                     content.includeModule(MinecraftPlatform.GROUP, platform.artifactId());
+                }
+            });
+            ivy.setComponentVersionsLister(LauncherMetaVersionLister.class, params -> params.params(service));
+            ivy.setMetadataSupplier(LauncherMetaMetadataSupplier.class, params -> params.params(service));
+            ivy.setAllowInsecureProtocol(true);
+            ivy.getResolve().setDynamicMode(false);
+            ivy.metadataSources(sources -> {
+                sources.ivyDescriptor();
+                sources.artifact();
+            });
+        });
+        // TODO: how to handle AWs nicely?
+        /* repositories.ivy(ivy -> {
+            ivy.setName("VanillaGradle Project Cache");
+            ivy.setUrl(rootProjectCache.toUri());
+            ivy.layout("maven");
+            ivy.content(content -> {
+                content.includeModule("net.minecraft", "client");
+                content.includeModule("net.minecraft", "joined");
+                content.includeModule("net.minecraft", "server");
+            });
+            final Provider<VersionManifestRepository> versions = service.map(MinecraftProviderService::versions);
+            ivy.setComponentVersionsLister(LauncherMetaVersionLister.class, params -> params.params(versions));
+            ivy.setMetadataSupplier(LauncherMetaMetadataSupplier.class, params -> params.params(versions));
+        });*/
+    }
+
+    private void registerComponentMetadataRules(final Provider<MinecraftProviderService> service, final ComponentMetadataHandler handler) {
+        handler.withModule(MinecraftPlatform.JOINED.moduleName(), JoinedProvidesClientAndServerRule.class);
+
+        for (final MinecraftPlatform platform : MinecraftPlatform.all()) {
+            handler.withModule(platform.moduleName(), MinecraftIvyModuleExtraDataApplierRule.class);
+        }
+    }
+
+    private Provider<MinecraftProviderService> registerService(final Gradle gradle, final Path sharedCacheDir, final Path rootProjectCacheDir) {
+        return this.service = gradle.getSharedServices().registerIfAbsent("vanillaGradleMinecraft", MinecraftProviderService.class, params -> {
+            final MinecraftProviderService.Parameters options = params.getParameters();
+            options.getSharedCache().set(sharedCacheDir.toFile());
+            options.getRootProjectCache().set(rootProjectCacheDir.toFile());
+            options.getOfflineMode().set(gradle.getStartParameter().isOffline());
+            options.getRefreshDependencies().set(gradle.getStartParameter().isRefreshDependencies());
+        });
+    }
+}

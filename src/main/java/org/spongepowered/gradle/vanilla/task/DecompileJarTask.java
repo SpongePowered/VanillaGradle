@@ -26,21 +26,30 @@ package org.spongepowered.gradle.vanilla.task;
 
 import com.sun.management.OperatingSystemMXBean;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.GradleException;
+import org.gradle.api.InvalidUserDataException;
+import org.gradle.api.artifacts.ArtifactCollection;
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
+import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.FileCollection;
-import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
-import org.gradle.api.tasks.InputFile;
-import org.gradle.api.tasks.OutputFile;
-import org.gradle.api.tasks.PathSensitive;
-import org.gradle.api.tasks.PathSensitivity;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
+import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.workers.WorkerExecutor;
 import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
+import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.worker.JarDecompileWorker;
 
-
+import java.io.File;
 import java.lang.management.ManagementFactory;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.inject.Inject;
 
@@ -63,33 +72,75 @@ public abstract class DecompileJarTask extends DefaultTask {
 
     public abstract void setWorkerClasspath(final FileCollection collection);
 
-    @Classpath
-    public abstract ConfigurableFileCollection getDecompileClasspath();
+    @Input
+    public abstract Property<ArtifactCollection> getInputArtifacts();
 
-    @InputFile
-    @PathSensitive(PathSensitivity.RELATIVE)
-    public abstract RegularFileProperty getInputJar();
+    @Input
+    public abstract Property<MinecraftPlatform> getMinecraftPlatform();
 
-    @OutputFile
-    public abstract RegularFileProperty getOutputJar();
+    @Input
+    public abstract Property<String> getMinecraftVersion();
+
+    @Internal
+    public abstract Property<MinecraftProviderService> getMinecraftProvider();
+
+    @Input
+    @Optional
+    public abstract Property<JavaLauncher> getJavaLauncher();
 
     @Inject
-    public abstract WorkerExecutor getWorkerExecutor();
+    protected abstract WorkerExecutor getWorkerExecutor();
 
     @TaskAction
-    public void execute() {
-        // Execute in an isolated class loader that can access our customized classpath
-        final long totalSystemMemoryBytes =
-                ((OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getTotalPhysicalMemorySize() / (1024L * 1024L);
-        this.getWorkerExecutor().processIsolation(spec -> {
-            spec.forkOptions(options -> {
-                options.setMaxHeapSize(Math.max(totalSystemMemoryBytes / 4, 4096) + "M");
+    public void execute() throws Exception {
+        this.getMinecraftProvider().get().resolver(this.getProject())
+            .produceAssociatedArtifactSync(this.getMinecraftPlatform().get(), this.getMinecraftVersion().get(), "sources", (env, output) -> {
+
+                // Determine which parts of the configuration are MC, and which are its dependencies
+                final Set<File> dependencies = new HashSet<>();
+                File minecraftArtifact = null;
+                for (final ResolvedArtifactResult artifact : this.getInputArtifacts().get()) {
+                    if (artifact.getId() instanceof ModuleComponentArtifactIdentifier) {
+                        final ModuleComponentArtifactIdentifier id = (ModuleComponentArtifactIdentifier) artifact.getId();
+                        if (id.getComponentIdentifier().getGroup().equals(MinecraftPlatform.GROUP)
+                            && MinecraftPlatform.byId(id.getComponentIdentifier().getModule()).isPresent()) {
+                            minecraftArtifact = artifact.getFile();
+                            continue;
+                        }
+                    }
+                    dependencies.add(artifact.getFile());
+                }
+
+                if (minecraftArtifact == null) {
+                    throw new InvalidUserDataException("Minecraft could not be found among the resolved dependencies provided to this task");
+                }
+
+                if (dependencies.isEmpty()) {
+                    throw new GradleException("No dependencies were found as part of the classpath");
+                }
+
+                // Execute in an isolated JVM that can access our customized classpath
+                // This actually performs the decompile
+                final long totalSystemMemoryBytes =
+                    ((OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getTotalPhysicalMemorySize() / (1024L * 1024L);
+                final File finalMinecraftArtifact = minecraftArtifact;
+                this.getWorkerExecutor().processIsolation(spec -> {
+                    spec.forkOptions(options -> {
+                        options.setMaxHeapSize(Math.max(totalSystemMemoryBytes / 4, 4096) + "M");
+                        // Enable toolchain support
+                        if (this.getJavaLauncher().isPresent()) {
+                            final JavaLauncher launcher = this.getJavaLauncher().get();
+                            options.setExecutable(launcher.getExecutablePath());
+                        }
+                    });
+                    spec.getClasspath().from(this.getWorkerClasspath());
+                }).submit(JarDecompileWorker.class, parameters -> {
+                    parameters.getDecompileClasspath().from(dependencies);
+                    parameters.getInputJar().set(finalMinecraftArtifact);
+                    parameters.getOutputJar().set(output.toFile());
+                });
+                this.getWorkerExecutor().await();
             });
-            spec.getClasspath().from(this.getWorkerClasspath());
-        }).submit(JarDecompileWorker.class, parameters -> {
-            parameters.getDecompileClasspath().from(this.getDecompileClasspath());
-            parameters.getInputJar().set(this.getInputJar());
-            parameters.getOutputJar().set(this.getOutputJar());
-        });
+
     }
 }

@@ -28,7 +28,6 @@ import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
-import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
@@ -44,8 +43,8 @@ import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
-import org.spongepowered.gradle.vanilla.model.VersionManifestV2;
-import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
+import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
@@ -57,16 +56,17 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
 
 public abstract class MinecraftExtensionImpl implements MinecraftExtension {
 
     private final Project project;
+    private final Provider<MinecraftProviderService> providerService;
     private final Property<String> version;
     private final Property<MinecraftPlatform> platform;
     private final Property<Boolean> injectRepositories;
-    private final VersionManifestRepository versions;
 
     private final Property<VersionDescriptor.Full> targetVersion;
 
@@ -81,11 +81,11 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     private final Path projectCache;
 
     private final RunConfigurationContainer runConfigurations;
-    private final NamedDomainObjectProvider<Configuration> minecraftClasspath;
 
     @Inject
-    public MinecraftExtensionImpl(final Gradle gradle, final ObjectFactory factory, final NamedDomainObjectProvider<Configuration> minecraftClasspath, final Project project) {
+    public MinecraftExtensionImpl(final Gradle gradle, final ObjectFactory factory, final Project project, final Provider<MinecraftProviderService> providerService) {
         this.project = project;
+        this.providerService = providerService;
         this.version = factory.property(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.JOINED);
         this.injectRepositories = factory.property(Boolean.class).convention(true);
@@ -123,24 +123,23 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         this.filteredDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
         this.decompiledDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
         this.accessWidenedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.ACCESS_WIDENED).toFile());
-        this.minecraftClasspath = minecraftClasspath;
         this.projectCache = projectLocalJarsDirectory;
         this.sharedCache = rootDirectory;
 
         final Path cacheDir = rootDirectory.resolve(Constants.Directories.MANIFESTS);
         // Create a version repository. If Gradle is in offline mode, read only from cache
-        if (project.hasProperty(Constants.Manifests.SKIP_CACHE)) {
+        /*if (project.hasProperty(Constants.Manifests.SKIP_CACHE)) {
             this.versions = VersionManifestRepository.direct();
         } else {
             this.versions = VersionManifestRepository.caching(cacheDir, !gradle.getStartParameter().isOffline());
-        }
+        }*/
         this.targetVersion = factory.property(VersionDescriptor.Full.class)
-            .value(this.version.map(version -> {
+            .value(this.version.zip(this.providerService, (version, service) -> {
                 try {
-                    return this.versions.fullVersion(version)
-                        .orElseThrow(() -> new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was not found in the "
-                            + "manifest! Try '%s' instead.", this.version.get(), this.versions.latestVersion(VersionClassifier.RELEASE).orElse(null))));
-                } catch (final IOException ex) {
+                    return service.versions().fullVersion(version).get();
+                        /*.orElseThrow(() -> new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was not found in the "
+                            + "manifest! Try '%s' instead.", this.version.get(), this.versions.latestVersion(VersionClassifier.RELEASE).get().orElse(null))));*/
+                } catch (final InterruptedException | ExecutionException ex) {
                     throw new GradleException("Failed to read version manifest", ex);
                 }
             }));
@@ -173,7 +172,7 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     public void injectedVersion(final Object versionFile) {
         final File resolved = this.project.file(versionFile);
         try {
-            final String versionId = this.versions.inject(resolved);
+            final String versionId = this.providerService.get().versions().inject(resolved);
             this.version.set(versionId);
         } catch (final IOException ex) {
             throw new GradleException("Failed to read injected version manifest from " + resolved, ex);
@@ -182,14 +181,32 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
 
     @Override
     public void latestRelease() {
-        this.version.set(this.project.provider(() -> this.versions.latestVersion(VersionClassifier.RELEASE)
-            .orElseThrow(() -> new IllegalArgumentException("Could not find any latest release!"))));
+        this.version.set(this.providerService.map(service -> {
+            try {
+                return service.versions().latestVersion(VersionClassifier.RELEASE).get()
+                    .orElseThrow(() -> new IllegalArgumentException("Could not find any latest release!"));
+            } catch (final InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException();
+            } catch (final ExecutionException ex) {
+                throw new GradleException("Failed to fetch latest release", ex);
+            }
+        }));
     }
 
     @Override
     public void latestSnapshot() {
-        this.version.set(this.project.provider(() -> this.versions.latestVersion(VersionClassifier.SNAPSHOT)
-            .orElseThrow(() -> new IllegalArgumentException("Could not find any latest snapshot!"))));
+        this.version.set(this.providerService.map(service -> {
+            try {
+                return service.versions().latestVersion(VersionClassifier.SNAPSHOT).get()
+                    .orElseThrow(() -> new IllegalArgumentException("Could not find any latest release!"));
+            } catch (final InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException();
+            } catch (final ExecutionException ex) {
+                throw new GradleException("Failed to fetch latest release", ex);
+            }
+        }));
     }
 
     @Override
@@ -222,10 +239,6 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         }
 
         awTask.configure(task -> task.getAccessWideners().from(file));
-    }
-
-    VersionManifestRepository versions() {
-        return this.versions;
     }
 
     Path projectCache() {
@@ -281,16 +294,8 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     }
 
     protected void populateMinecraftClasspath() {
-        this.minecraftClasspath.configure(config -> config.withDependencies(a -> {
-            final RuleContext context = RuleContext.create();
-            for (final MinecraftSide side : this.platform.get().activeSides()) {
-                side.applyLibraries(
-                    name -> a.add(this.project.getDependencies().create(name.group() + ':' + name.artifact() + ':' + name.version())),
-                    this.targetVersion.get().libraries(),
-                    context
-                );
-            }
-        }));
+        /*this.minecraftClasspath.configure(config -> config.withDependencies(a -> {
+        }));*/
     }
 
     @Override

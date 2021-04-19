@@ -26,29 +26,33 @@ package org.spongepowered.gradle.vanilla.task;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
 
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.concurrent.ExecutionException;
 
 public abstract class DisplayMinecraftVersionsTask extends DefaultTask {
 
-    @Input
-    public abstract ListProperty<VersionDescriptor> getVersions();
+    @Internal
+    public abstract Property<MinecraftProviderService> getMinecraftProvider();
 
     @TaskAction
-    public void execute() {
+    public void execute() throws ExecutionException, InterruptedException {
         // It is ugly to hardcode the bottom limit but if we don't we'll have to download EACH VERSION to know what we can target!
         final DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
         final Date earliestDate = Date.from(Instant.from(formatter.parse(Constants.FIRST_TARGETABLE_RELEASE_TIMESTAMP)));
 
-        for (final VersionDescriptor version : this.getVersions().get()) {
+        for (final VersionDescriptor version : this.getMinecraftProvider().get().versions().availableVersions().get()) {
             final Date versionDate = Date.from(version.releaseTime().toInstant());
             if (versionDate.before(earliestDate)) {
                 continue;

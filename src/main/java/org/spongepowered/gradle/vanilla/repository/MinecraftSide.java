@@ -22,8 +22,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla;
+package org.spongepowered.gradle.vanilla.repository;
 
+import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.model.GroupArtifactVersion;
 import org.spongepowered.gradle.vanilla.model.Library;
@@ -33,16 +34,15 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public enum MinecraftSide {
     CLIENT(DownloadClassifier.CLIENT, DownloadClassifier.CLIENT_MAPPINGS) {
         @Override
-        public void applyLibraries(
-            final Consumer<GroupArtifactVersion> handler,
+        public <E extends Exception> void applyLibraries(
+            final DependencyAccepter<E> handler,
             final List<Library> knownLibraries,
             final RuleContext rules
-        ) {
+        ) throws E {
             // Client gets all libraries
             for (final Library library : knownLibraries) {
                 if (!library.isNatives() && library.rules().test(rules)) {
@@ -61,9 +61,9 @@ public enum MinecraftSide {
         }
 
         @Override
-        public void applyLibraries(
-                final Consumer<GroupArtifactVersion> handler, final List<Library> knownLibraries,
-                final RuleContext rules) {
+        public <E extends Exception> void applyLibraries(
+                final DependencyAccepter<E> handler, final List<Library> knownLibraries,
+                final RuleContext rules) throws E {
             // TODO: This is kinda ugly, using a hardcoded list
             // Unfortunately Gradle both lets you tweak the metadata of an incoming artifact, and transform the artifact itself, but not both at
             // the same time.
@@ -96,11 +96,11 @@ public enum MinecraftSide {
         return this.mappingsArtifact;
     }
 
-    public abstract void applyLibraries(
-        final Consumer<GroupArtifactVersion> dependencyAccepter,
+    public abstract <E extends Exception> void applyLibraries(
+        final DependencyAccepter<E> dependencyAccepter,
         final List<Library> knownLibraries,
         final RuleContext rules
-    );
+    ) throws E;
 
     /**
      * Get packages that will remain unfiltered in the jar
@@ -111,5 +111,10 @@ public enum MinecraftSide {
      */
     public Set<String> allowedPackages() {
         return Collections.emptySet();
+    }
+
+    @FunctionalInterface
+    public interface DependencyAccepter<E extends Exception> {
+        void accept(final GroupArtifactVersion dependency) throws E;
     }
 }

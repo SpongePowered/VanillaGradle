@@ -22,58 +22,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.model;
+package org.spongepowered.gradle.vanilla.repository;
 
-import com.google.gson.annotations.SerializedName;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
+import org.spongepowered.gradle.vanilla.Constants;
 
 /**
- * Known types of versions published by mojang.
+ * Tools used for specific operations in the Minecraft preparation pipeline.
  */
-public enum VersionClassifier {
-    @SerializedName("snapshot")
-    SNAPSHOT,
-    @SerializedName("old_alpha")
-    OLD_ALPHA,
-    @SerializedName("old_beta")
-    OLD_BETA,
-    /**
-     * Used for out-of-band releases.
-     */
-    @SerializedName("pending")
-    PENDING,
-    @SerializedName("release")
-    RELEASE;
-
-    private static final List<String> BY_NAME;
+public enum ResolvableTool {
+    JAR_MERGE(Constants.Configurations.MERGETOOL, Constants.WorkerDependencies.MERGE_TOOL),
+    ACCESS_WIDENER(Constants.Configurations.ACCESS_WIDENER, Constants.WorkerDependencies.ACCESS_WIDENER)
+    ;
 
     private final String id;
+    private final String notation;
 
-    VersionClassifier() {
-        this.id = this.name().toLowerCase(Locale.ROOT);
-    }
-
-    /**
-     * @return an unmodifiable list of known version classifier IDs.
-     */
-    public static List<String> ids() {
-        return VersionClassifier.BY_NAME;
+    ResolvableTool(final String id, final String notation) {
+        this.id = id;
+        this.notation = notation;
     }
 
     public String id() {
         return this.id;
     }
 
-    static {
-        final VersionClassifier[] classifiers = VersionClassifier.values();
-        final List<String> values = new ArrayList<>(classifiers.length);
-        for (final VersionClassifier classifier : classifiers) {
-            values.add(classifier.id);
-        }
-        BY_NAME = Collections.unmodifiableList(values);
+    public String notation() {
+        return this.notation;
     }
 }

@@ -29,13 +29,13 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.network.Downloader;
+import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.util.CopyingInputStream;
-import org.spongepowered.gradle.vanilla.util.DigestUtils;
 import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URL;
@@ -52,22 +52,24 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-final class CachingVersionManifestRepository implements VersionManifestRepository {
+/*final class CachingVersionManifestRepository implements VersionManifestRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CachingVersionManifestRepository.class);
     private static final String VERSION_MANIFEST_FILE = "version_manifest_v2.json";
     private static final String VERSIONS_DIRECTORY = "versions";
     private static final String ATTRIBUTE_CREATION_TIME = "basic:creationTime";
 
+    private final Downloader downloader;
     private final Path cacheDir;
     private final boolean queryRemote;
     private volatile @Nullable VersionManifestV2 manifest;
     private final Map<String, VersionDescriptor.Full> loadedVersions = new ConcurrentHashMap<>();
     private final Set<VersionDescriptor.Full> injectedVersions = new HashSet<>(); // all injected versions are also in loadedVersions
 
-    public CachingVersionManifestRepository(final Path cacheDir, final boolean queryRemote) {
+    public CachingVersionManifestRepository(final Downloader downloader, final Path cacheDir, final boolean queryRemote) {
         this.cacheDir = cacheDir;
         this.queryRemote = queryRemote;
     }
@@ -87,11 +89,9 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
         }
 
         if (expectedSha1 != null) {
-            try (final InputStream is = Files.newInputStream(expected)) {
-                if (!DigestUtils.validateSha1(expectedSha1, is)) {
-                    CachingVersionManifestRepository.LOGGER.warn("Failed to validate hash for file {} when loading from cache", expected);
-                    return null;
-                }
+            if (!HashAlgorithm.SHA1.validate(expectedSha1, expected)) {
+                CachingVersionManifestRepository.LOGGER.warn("Failed to validate hash for file {} when loading from cache", expected);
+                return null;
             }
         }
         try {
@@ -114,7 +114,7 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
     }
 
     @Override
-    public VersionManifestV2 manifest() throws IOException {
+    public CompletableFuture<VersionManifestV2> manifest() {
         @Nullable VersionManifestV2 manifest = this.manifest;
         if (manifest == null) {
             this.manifest = manifest = this.fetchManifest(true);
@@ -144,7 +144,7 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
     }
 
     @Override
-    public List<? extends VersionDescriptor> availableVersions() {
+    public CompletableFuture<List<? extends VersionDescriptor>> availableVersions() {
         try {
             if (this.injectedVersions.isEmpty()) {
                 return this.manifest().versions();
@@ -160,7 +160,7 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
     }
 
     @Override
-    public Optional<String> latestVersion(final VersionClassifier classifier) {
+    public CompletableFuture<Optional<String>> latestVersion(final VersionClassifier classifier) {
         try {
             return Optional.ofNullable(this.manifest().latest().get(classifier));
         } catch (final IOException e) {
@@ -169,7 +169,7 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
     }
 
     @Override
-    public Optional<VersionDescriptor.Full> fullVersion(final String versionId) throws IOException {
+    public CompletableFuture<VersionDescriptor.Full> fullVersion(final String versionId) {
         // Cache version if it exists
         VersionDescriptor.Full cachedVersion = this.loadedVersions.get(versionId);
         if (cachedVersion != null) {
@@ -218,4 +218,4 @@ final class CachingVersionManifestRepository implements VersionManifestRepositor
         this.injectedVersions.add(version);
         return version.id();
     }
-}
+}*/

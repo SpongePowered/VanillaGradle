@@ -28,9 +28,12 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.network.Downloader;
+import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -38,64 +41,74 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 final class DirectVersionManifestRepository implements VersionManifestRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(DirectVersionManifestRepository.class);
 
-    private volatile @Nullable VersionManifestV2 manifest;
+    private final Downloader downloader;
+    private volatile @Nullable CompletableFuture<VersionManifestV2> manifest;
     private final Map<String, VersionDescriptor.Full> injectedVersions = new ConcurrentHashMap<>();
 
+    DirectVersionManifestRepository(final Downloader downloader) {
+        this.downloader = downloader;
+    }
+
     @Override
-    public VersionManifestV2 manifest() throws IOException {
-        @Nullable VersionManifestV2 manifest = this.manifest;
+    public CompletableFuture<VersionManifestV2> manifest() {
+        @Nullable CompletableFuture<VersionManifestV2> manifest = this.manifest;
         if (manifest == null) {
-            final URL url = new URL(Constants.Manifests.API_V2_ENDPOINT);
-            this.manifest = manifest = GsonUtils.parseFromJson(url, VersionManifestV2.class);
+            final URL url;
+            try {
+                url = new URL(Constants.Manifests.API_V2_ENDPOINT);
+            } catch (final MalformedURLException ex) {
+                throw new IllegalStateException("Constant API URL failed to parse", ex);
+            }
+            this.manifest = manifest = this.downloader.downloadJson(url, "manifest.json", VersionManifestV2.class);
         }
         return manifest;
     }
 
     @Override
-    public List<? extends VersionDescriptor> availableVersions() {
-        try {
-            final List<VersionDescriptor.Reference> manifestVersions = this.manifest().versions();
+    public CompletableFuture<List<? extends VersionDescriptor>> availableVersions() {
+        return this.manifest().thenApply(manifest -> {
             if (this.injectedVersions.isEmpty()) {
-                return manifestVersions;
+                return manifest.versions();
             } else {
-                final List<VersionDescriptor> versions = new ArrayList<>(manifestVersions);
+                final List<VersionDescriptor> versions = new ArrayList<>(manifest.versions());
                 versions.addAll(this.injectedVersions.values());
                 return versions;
             }
-        } catch (final IOException ex) {
+        }).exceptionally(ex -> {
             DirectVersionManifestRepository.LOGGER.error("Failed to query Minecraft version manifest: ", ex);
             return Collections.emptyList();
-        }
+        });
     }
 
     @Override
-    public Optional<String> latestVersion(final VersionClassifier classifier) {
-        try {
-            return Optional.ofNullable(this.manifest().latest().get(classifier));
-        } catch (final IOException ex) {
+    public CompletableFuture<Optional<String>> latestVersion(final VersionClassifier classifier) {
+        return this.manifest().thenApply(manifest -> {
+            return Optional.ofNullable(manifest.latest().get(classifier));
+        }).exceptionally(ex -> {
             DirectVersionManifestRepository.LOGGER.error("Failed to query Minecraft version manifest: ", ex);
             return Optional.empty();
-        }
+        });
     }
 
     @Override
-    public Optional<VersionDescriptor.Full> fullVersion(final String versionId) throws IOException {
+    public CompletableFuture<VersionDescriptor.Full> fullVersion(final String versionId) {
         if (this.injectedVersions.containsKey(versionId)) {
-            return Optional.of(this.injectedVersions.get(versionId));
+            return CompletableFuture.completedFuture(this.injectedVersions.get(versionId));
         }
 
-        final VersionDescriptor.@Nullable Reference result = this.manifest()
-            .findDescriptor(versionId).orElse(null);
-        if (result == null) { // no such version
-            return Optional.empty();
-        }
-
-        return Optional.of(GsonUtils.parseFromJson(result.url(), VersionDescriptor.Full.class));
+        return this.manifest().thenCompose(manifest -> {
+            final VersionDescriptor.@Nullable Reference option = manifest.findDescriptor(versionId).orElse(null);
+            if (option == null) {
+                return CompletableFuture.completedFuture(null); // todo
+            }
+            return this.downloader.downloadJson(option.url(), "versions/" + option.id() + ".json", HashAlgorithm.SHA1, option.sha1(), VersionDescriptor.Full.class);
+        });
     }
 
     @Override

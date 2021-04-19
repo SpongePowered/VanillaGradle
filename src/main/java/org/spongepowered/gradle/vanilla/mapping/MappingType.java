@@ -22,33 +22,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.storage;
+package org.spongepowered.gradle.vanilla.mapping;
 
-import org.apache.hc.core5.http.Header;
-import org.apache.hc.core5.http.HttpException;
-import org.apache.hc.core5.http.nio.AsyncEntityConsumer;
-import org.apache.hc.core5.http.nio.entity.DigestingEntityConsumer;
-import org.spongepowered.gradle.vanilla.util.DigestUtils;
+import org.gradle.api.Incubating;
 
-import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-import java.util.List;
+/**
+ * A representation of mappings.
+ *
+ * <p>This will change significantly before it's useful.</p>
+ */
+@Incubating
+public enum MappingType {
+    /**
+     * Obfuscated, as distributed directly from launcher meta.
+     */
+    OBF,
+    /**
+     * Official names based on provided mappings.
+     */
+    OFFICIAL;
 
-final class ValidatingDigestingEntityConsumer<V> extends DigestingEntityConsumer<V> {
-    private final String expected;
-
-    public ValidatingDigestingEntityConsumer(final AsyncEntityConsumer<V> wrapped, final String algorithm, final String expected)
-        throws NoSuchAlgorithmException {
-        super(algorithm, wrapped);
-        this.expected = expected;
-    }
-
-    @Override
-    public void streamEnd(final List<? extends Header> trailers) throws HttpException, IOException {
-        super.streamEnd(trailers);
-        final String actual = DigestUtils.toHexString(this.getDigest());
-        if (!DigestUtils.toHexString(this.getDigest()).equals(this.expected)) {
-            throw new IOException("Failed to validate SHA-1 hash. Expected " + this.expected + ", but got " + actual);
-        }
-    }
 }

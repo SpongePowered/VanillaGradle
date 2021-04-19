@@ -28,8 +28,10 @@ import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
@@ -43,6 +45,8 @@ import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
+import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryPlugin;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 
@@ -62,24 +66,24 @@ public final class VanillaGradle implements Plugin<Project> {
         final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) project.getExtensions().getByType(MinecraftExtension.class);
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
             Stream.of(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME).forEach(config -> {
-                project.getDependencies().add(config, minecraft.minecraftDependency());
+                final NamedDomainObjectProvider<Configuration> minecraftConfig = project.getConfigurations().named(Constants.Configurations.MINECRAFT);
+                project.getConfigurations().named(config, c -> {
+                    c.extendsFrom(minecraftConfig.get());
+                });
             });
 
-            final NamedDomainObjectProvider<SourceSet> mainSourceSet = project.getExtensions().getByType(SourceSetContainer.class).named(SourceSet.MAIN_SOURCE_SET_NAME);
-            minecraft.getRuns().configureEach(run -> run.classpath().from(mainSourceSet.map(SourceSet::getRuntimeClasspath), mainSourceSet.map(SourceSet::getOutput)));
+            project.afterEvaluate(p -> {
+                final NamedDomainObjectProvider<SourceSet> mainSourceSet =
+                    p.getExtensions().getByType(SourceSetContainer.class).named(SourceSet.MAIN_SOURCE_SET_NAME);
+                minecraft.getRuns().configureEach(
+                    run -> run.classpath().from(mainSourceSet.map(SourceSet::getOutput), mainSourceSet.map(SourceSet::getRuntimeClasspath)));
+            });
         });
 
-        this.createDisplayMinecraftVersions(minecraft, project.getTasks());
+        this.createDisplayMinecraftVersions(project.getPlugins().getPlugin(MinecraftRepositoryPlugin.class).service(), project.getTasks());
         project.afterEvaluate(p -> {
             if (minecraft.targetVersion().isPresent()) {
-                final VersionDescriptor.Full version = minecraft.targetVersion().get();
-                if (!version.download(DownloadClassifier.CLIENT_MAPPINGS).isPresent() && !version.download(DownloadClassifier.SERVER_MAPPINGS)
-                    .isPresent()) {
-                    throw new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was released before Mojang "
-                        + "provided official mappings! Try '%s' instead.", minecraft.version().get(),
-                        minecraft.versions().latestVersion(VersionClassifier.RELEASE).orElse("<unknown>")));
-                }
-                p.getLogger().lifecycle(String.format("Targeting Minecraft '%s' on a '%s' platform", version.id(),
+                p.getLogger().lifecycle(String.format("Targeting Minecraft '%s' on a '%s' platform", minecraft.version().get(),
                     minecraft.platform().get().name()
                 ));
             } else {
@@ -93,11 +97,11 @@ public final class VanillaGradle implements Plugin<Project> {
         });
     }
 
-    private void createDisplayMinecraftVersions(final MinecraftExtensionImpl extension, final TaskContainer tasks) {
+    private void createDisplayMinecraftVersions(final Provider<MinecraftProviderService> providerService, final TaskContainer tasks) {
         tasks.register("displayMinecraftVersions", DisplayMinecraftVersionsTask.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.setDescription("Displays all Minecraft versions that can be targeted");
-            task.getVersions().set(task.getProject().getProviders().provider(() -> extension.versions().availableVersions()));
+            task.getMinecraftProvider().set(providerService);
         });
     }
 

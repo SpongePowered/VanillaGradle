@@ -22,29 +22,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-/**
- * A service that handles artifact resolution and caching.
- *
- * <p>The basic types of artifact are:</p>
- * <ul>
- *     <li>Flat URL file</li>
- *     <li>Maven-style (has metadata attached)</li>
- *     <li>Minecraft version (has metadata attached in the form of its {@link VersionDescriptor.Full})</li>
- *     <li>Deserialized JSON object via a URL (or file) endpoint</li>
- * </ul>
- *
- * <h2>Caching</h2>
- * <p>Caches can resolve any sort of artifact. They support a parent cache.
- * To be safe for use across multiple processes, caches will be write-locked
- * while a single process is performing its writes.</p>
- *
- * <h2>Resolution</h2>
- * <p>Artifacts are resolved in several stages. These are:</p>
- * <ol>
- *     <li>(optional) Resolve metadata. Metadata is an artifact type like any other.</li>
- *     <li>(optional) Resolve dependencies</li>
- * </ol>
- */
-package org.spongepowered.gradle.vanilla.storage;
+package org.spongepowered.gradle.vanilla.worker;
 
-import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
+import net.minecraftforge.mergetool.AnnotationVersion;
+import net.minecraftforge.mergetool.Merger;
+import org.gradle.api.file.RegularFileProperty;
+import org.gradle.workers.WorkAction;
+import org.gradle.workers.WorkParameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.file.Path;
+
+/**
+ * Combine a client and server jar together.
+ *
+ * <p>This cannot use any Gradle API.</p>
+ */
+public final class JarMerger {
+    // private static final Logger LOGGER = LoggerFactory.getLogger(JarMerger.class);
+
+    public static void execute(final Path clientJar, final Path serverJar, final Path outputJar) {
+        final Merger merger = new Merger(
+            clientJar.toFile(),
+            serverJar.toFile(),
+            outputJar.toFile()
+        );
+        merger.annotate(AnnotationVersion.API, true);
+        merger.keepData();
+
+        try {
+            merger.process();
+        } catch (final IOException ex) {
+            // JarMerger.LOGGER.error("Failed to merge jars", ex);
+            throw new RuntimeException("Failed to merge jars", ex);
+        }
+    }
+
+}
