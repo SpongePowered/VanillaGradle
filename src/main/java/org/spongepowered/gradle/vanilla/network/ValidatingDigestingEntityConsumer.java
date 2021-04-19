@@ -22,19 +22,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.storage;
+package org.spongepowered.gradle.vanilla.network;
 
-import java.net.URL;
-import java.nio.file.Path;
-import java.util.concurrent.CompletableFuture;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpException;
+import org.apache.hc.core5.http.nio.AsyncEntityConsumer;
+import org.apache.hc.core5.http.nio.entity.DigestingEntityConsumer;
 
-/**
- * Some sort of downloader for files
- */
-public interface Downloader {
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
-    CompletableFuture<Path> download(final URL source, final Path path);
+final class ValidatingDigestingEntityConsumer<V> extends DigestingEntityConsumer<V> {
+    private final String expected;
 
-    CompletableFuture<Path> downloadAndValidate(final URL source, final Path path, final String algorithm, final String hash);
+    public ValidatingDigestingEntityConsumer(final AsyncEntityConsumer<V> wrapped, final HashAlgorithm algorithm, final String expected)
+        throws NoSuchAlgorithmException {
+        super(algorithm.digestName(), wrapped);
+        this.expected = expected;
+    }
 
+    @Override
+    public void streamEnd(final List<? extends Header> trailers) throws HttpException, IOException {
+        super.streamEnd(trailers);
+        final String actual = HashAlgorithm.toHexString(this.getDigest());
+        if (!HashAlgorithm.toHexString(this.getDigest()).equals(this.expected)) {
+            throw new IOException("Failed to validate SHA-1 hash. Expected " + this.expected + ", but got " + actual);
+        }
+    }
 }

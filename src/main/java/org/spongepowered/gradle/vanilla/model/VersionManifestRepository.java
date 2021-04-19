@@ -24,12 +24,15 @@
  */
 package org.spongepowered.gradle.vanilla.model;
 
+import org.spongepowered.gradle.vanilla.network.Downloader;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A repository resolving version manifests.
@@ -43,9 +46,10 @@ public interface VersionManifestRepository {
      * version data.</p>
      *
      * @return a new direct repository
+     * @param downloader the downloader to use to fetch remote resources
      */
-    static VersionManifestRepository direct() {
-        return new DirectVersionManifestRepository();
+    static VersionManifestRepository direct(final Downloader downloader) {
+        return new DirectVersionManifestRepository(downloader);
     }
 
     /**
@@ -58,12 +62,13 @@ public interface VersionManifestRepository {
      * @param queryRemote whether to query the remote repository
      * @return the repository
      */
-    static VersionManifestRepository caching(final Path cacheDir, final boolean queryRemote) {
-        if (Files.isDirectory(cacheDir) || !Files.exists(cacheDir)) {
-            return new CachingVersionManifestRepository(cacheDir, queryRemote);
+    static VersionManifestRepository caching(final Downloader downloader, final Path cacheDir, final boolean queryRemote) {
+        return new DirectVersionManifestRepository(downloader);
+        /*if (Files.isDirectory(cacheDir) || !Files.exists(cacheDir)) {
+            return new CachingVersionManifestRepository(downloader, cacheDir, queryRemote);
         } else {
             throw new IllegalArgumentException("Provided cache directory " + cacheDir + " is already a file, when a directory was expected!");
-        }
+        }*/
     }
 
     /**
@@ -71,14 +76,14 @@ public interface VersionManifestRepository {
      *
      * @return the backing manifest
      */
-    VersionManifestV2 manifest() throws IOException;
+    CompletableFuture<VersionManifestV2> manifest();
 
     /**
      * Get all available versions.
      *
      * @return the collection of available versions
      */
-    List<? extends VersionDescriptor> availableVersions();
+    CompletableFuture<List<? extends VersionDescriptor>> availableVersions();
 
     /**
      * Get the identifier for the latest version of a particular type.
@@ -86,17 +91,15 @@ public interface VersionManifestRepository {
      * @param classifier the version classifier to query the latest version of.
      * @return a version id if any is present for the classifier
      */
-    Optional<String> latestVersion(final VersionClassifier classifier);
+    CompletableFuture<Optional<String>> latestVersion(final VersionClassifier classifier);
 
     /**
      * Query a full version for a specific id.
      *
-     * <p>This may block.</p>
-     *
      * @param versionId the ID of the version to query
      * @return a version descriptor
      */
-    Optional<VersionDescriptor.Full> fullVersion(final String versionId) throws IOException;
+    CompletableFuture<VersionDescriptor.Full> fullVersion(final String versionId);
 
     /**
      * Inject a pre-existing local version descriptor.
@@ -142,12 +145,12 @@ public interface VersionManifestRepository {
      * @param unknown a version descriptor of unknown type
      * @return a full version
      */
-    default VersionDescriptor.Full promote(final VersionDescriptor unknown) throws IOException {
+    default CompletableFuture<VersionDescriptor.Full> promote(final VersionDescriptor unknown) {
         if (unknown instanceof VersionDescriptor.Full) {
-            return (VersionDescriptor.Full) unknown;
+            return CompletableFuture.completedFuture((VersionDescriptor.Full) unknown);
         } else {
-            return this.fullVersion(unknown.id())
-                .orElseThrow(() -> new IllegalArgumentException("Version descriptor " + unknown.id() + " was not found in this repository!"));
+            return this.fullVersion(unknown.id());
+                // .orElseThrow(() -> new IllegalArgumentException("Version descriptor " + unknown.id() + " was not found in this repository!"));
         }
     }
 

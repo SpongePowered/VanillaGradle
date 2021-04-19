@@ -22,7 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.storage;
+package org.spongepowered.gradle.vanilla.network;
 
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequests;
 import org.apache.hc.client5.http.async.methods.SimpleRequestProducer;
@@ -36,20 +36,22 @@ import org.apache.hc.core5.io.CloseMode;
 import org.apache.hc.core5.reactor.IOReactorConfig;
 import org.apache.hc.core5.util.TimeValue;
 import org.apache.hc.core5.util.Timeout;
-import org.gradle.api.services.BuildService;
-import org.gradle.api.services.BuildServiceParameters;
 import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CompletableFuture;
 
-public abstract class HttpClientService implements BuildService<BuildServiceParameters.None>, AutoCloseable, Downloader {
+public class ApacheHttpDownloader implements AutoCloseable, Downloader {
+    private final Path baseDirectory;
     private final CloseableHttpAsyncClient client;
 
-    public HttpClientService() {
+    public ApacheHttpDownloader(final Path baseDirectory) {
+        this.baseDirectory = baseDirectory;
         // TODO: Custom TLS strategy needed?
         // https://github.com/apache/httpcomponents-client/blob/5.0.x/httpclient5/src/test/java/org/apache/hc/client5/http/examples/AsyncClientTlsAlpn.java#L57
         final IOReactorConfig config = IOReactorConfig.custom()
@@ -68,11 +70,23 @@ public abstract class HttpClientService implements BuildService<BuildServicePara
         return new BasicResponseConsumer<>(new ToPathEntityConsumer(path));
     }
 
-    public static BasicResponseConsumer<Path> responseToFileValidating(final Path path, final String algorithm, final String hash) {
+    public static BasicResponseConsumer<Path> responseToFileValidating(final Path path, final HashAlgorithm algorithm, final String hash) {
         try {
             return new BasicResponseConsumer<>(new ValidatingDigestingEntityConsumer<>(new ToPathEntityConsumer(path), algorithm, hash));
         } catch (final NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("Could not resolve SHA-1 algorithm");
+            throw new IllegalStateException("Could not resolve hash algorithm");
+        }
+    }
+
+    public static <T> BasicResponseConsumer<T> responseToJson(final Class<T> type) {
+        return new BasicResponseConsumer<>(new JsonParsingEntityConsumer<>(GsonUtils.GSON, type));
+    }
+
+    public static <T> BasicResponseConsumer<T> responseToJsonValidating(final Class<T> type, final HashAlgorithm algorithm, final String hash) {
+        try {
+            return new BasicResponseConsumer<>(new ValidatingDigestingEntityConsumer<>(new JsonParsingEntityConsumer<>(GsonUtils.GSON, type), algorithm, hash));
+        } catch (final NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("Could not resolve hash algorithm");
         }
     }
 
@@ -82,12 +96,12 @@ public abstract class HttpClientService implements BuildService<BuildServicePara
     }
 
     @Override
-    public CompletableFuture<Path> download(final URL source, final Path path) {
-        final FutureToCompletable<Message<HttpResponse, Path>> result = new FutureToCompletable<>();
+    public <T> CompletableFuture<T> downloadJson(final URL source, final String relativeLocation, final Class<T> type) {
+        final FutureToCompletable<Message<HttpResponse, T>> result = new FutureToCompletable<>();
         try {
             this.client().execute(
                 SimpleRequestProducer.create(SimpleHttpRequests.get(source.toURI())),
-                HttpClientService.responseToFile(path),
+                ApacheHttpDownloader.responseToJson(type),
                 result
             );
         } catch (final URISyntaxException ex) {
@@ -97,12 +111,75 @@ public abstract class HttpClientService implements BuildService<BuildServicePara
     }
 
     @Override
-    public CompletableFuture<Path> downloadAndValidate(final URL source, final Path path, final String algorithm, final String hash) {
+    public <T> CompletableFuture<T> downloadJson(
+        final URL source, final String relativeLocation, final HashAlgorithm algorithm, final String expectedHash, final Class<T> type
+    ) {
+        final FutureToCompletable<Message<HttpResponse, T>> result = new FutureToCompletable<>();
+        try {
+            this.client().execute(
+                SimpleRequestProducer.create(SimpleHttpRequests.get(source.toURI())),
+                ApacheHttpDownloader.responseToJson(type),
+                result
+            );
+        } catch (final URISyntaxException ex) {
+            result.future().completeExceptionally(ex);
+        }
+        return result.future().thenApply(Message::getBody);
+    }
+
+    @Override
+    public CompletableFuture<String> readString(final URL source) {
+        return null;
+    }
+
+    @Override
+    public CompletableFuture<String> readStringAndValidate(final URL source, final HashAlgorithm algorithm, final String hash) {
+        return null;
+    }
+
+    @Override
+    public CompletableFuture<byte[]> readBytes(final URL source) {
+        return null;
+    }
+
+    @Override
+    public CompletableFuture<byte[]> readBytesAndValidate(final URL source, final HashAlgorithm algorithm, final String hash) {
+        return null;
+    }
+
+    @Override
+    public CompletableFuture<Path> download(final URL source, final String relativePath, final boolean forceReplacement) {
+        final Path path = this.baseDirectory.resolve(relativePath);
+        if (!forceReplacement && Files.isRegularFile(path)) {
+            return CompletableFuture.completedFuture(path);
+        }
+
         final FutureToCompletable<Message<HttpResponse, Path>> result = new FutureToCompletable<>();
         try {
             this.client().execute(
                 SimpleRequestProducer.create(SimpleHttpRequests.get(source.toURI())),
-                HttpClientService.responseToFileValidating(path, algorithm, hash),
+                ApacheHttpDownloader.responseToFile(path),
+                result
+            );
+        } catch (final URISyntaxException ex) {
+            result.future().completeExceptionally(ex);
+        }
+        return result.future().thenApply(Message::getBody);
+    }
+
+    @Override
+    public CompletableFuture<Path> downloadAndValidate(final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash) {
+        final Path path = this.baseDirectory.resolve(relativePath);
+        if (Files.isRegularFile(path)) {
+            // Validate that the file matches the path, only download if it doesn't.
+            return CompletableFuture.completedFuture(path);
+        }
+
+        final FutureToCompletable<Message<HttpResponse, Path>> result = new FutureToCompletable<>();
+        try {
+            this.client().execute(
+                SimpleRequestProducer.create(SimpleHttpRequests.get(source.toURI())),
+                ApacheHttpDownloader.responseToFileValidating(path, algorithm, hash),
                 result
             );
         } catch (final URISyntaxException ex) {

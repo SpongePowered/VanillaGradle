@@ -43,12 +43,12 @@ import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.AssetIndex;
-import org.spongepowered.gradle.vanilla.storage.HttpClientService;
-import org.spongepowered.gradle.vanilla.util.DigestUtils;
+import org.spongepowered.gradle.vanilla.network.ApacheHttpDownloader;
+import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
+import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
@@ -71,7 +71,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
     public abstract DirectoryProperty getAssetsDirectory();
 
     @Internal
-    public abstract Property<HttpClientService> getHttpClient();
+    public abstract Property<MinecraftProviderService> getHttpClient();
 
     public DownloadAssetsTask() {
         this.setGroup(Constants.TASK_GROUP);
@@ -148,8 +148,8 @@ public abstract class DownloadAssetsTask extends DefaultTask {
                         final AssetIndex.Asset asset = inputObjects.get(assetId);
                         assert asset != null;
 
-                        try (final InputStream is = Files.newInputStream(file)) {
-                            if (DigestUtils.validateSha1(asset.hash(), is)) {
+                        try {
+                            if (HashAlgorithm.SHA1.validate(asset.hash(), file)) {
                                 assetNamesByPath.remove(relativePath);
                             } else {
                                 DownloadAssetsTask.this.getLogger().warn("Failed to validate asset {} (expected hash: {})", assetId, asset.hash());
@@ -172,7 +172,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
     }
 
     private void downloadAssets(final Map<String, AssetIndex.Asset> toDownload, final Path assetsDirectory) throws URISyntaxException, IOException {
-        final CloseableHttpAsyncClient client = this.getHttpClient().get().client();
+        final CloseableHttpAsyncClient client = this.getHttpClient().get().downloader().client();
 
         final HttpHost host = HttpHost.create(Constants.MINECRAFT_RESOURCES_URL);
         final CountDownLatch latch = new CountDownLatch(toDownload.size());
@@ -183,7 +183,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
             Files.createDirectories(destinationFile.getParent());
             client.execute(
                 SimpleRequestProducer.create(SimpleHttpRequests.get(host, '/' + fileName)),
-                HttpClientService.responseToFileValidating(destinationFile, "SHA-1", entry.getValue().hash()),
+                ApacheHttpDownloader.responseToFileValidating(destinationFile, HashAlgorithm.SHA1, entry.getValue().hash()),
                 new FutureCallback<Message<HttpResponse, Path>>() {
                     @Override
                     public void completed(final Message<HttpResponse, Path> result) {

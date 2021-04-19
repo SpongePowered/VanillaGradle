@@ -22,29 +22,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla;
+package org.spongepowered.gradle.vanilla.network;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import org.apache.hc.core5.concurrent.FutureCallback;
 
-public enum MinecraftPlatform {
-    CLIENT(MinecraftSide.CLIENT),
-    SERVER(MinecraftSide.SERVER),
-    JOINED(MinecraftSide.CLIENT, MinecraftSide.SERVER);
+import java.util.concurrent.CompletableFuture;
 
-    private final Set<MinecraftSide> activeSides;
+public class FutureToCompletable<V> implements FutureCallback<V> {
+    private final CompletableFuture<V> future = new CompletableFuture<>();
 
-    MinecraftPlatform(final MinecraftSide... sides) {
-        this.activeSides = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(sides)));
+    @Override
+    public void completed(final V result) {
+        this.future.complete(result);
     }
 
-    public boolean includes(final MinecraftSide platform) {
-        return this.activeSides.contains(platform);
+    @Override
+    public void failed(final Exception ex) {
+        this.future.completeExceptionally(ex);
     }
 
-    public Set<MinecraftSide> activeSides() {
-        return this.activeSides;
+    @Override
+    public void cancelled() {
+        this.future.cancel(true);
+    }
+
+    CompletableFuture<V> future() {
+        return this.future;
     }
 }

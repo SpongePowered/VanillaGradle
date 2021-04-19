@@ -22,7 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.storage;
+package org.spongepowered.gradle.vanilla.network;
 
 import static java.util.Objects.requireNonNull;
 
@@ -80,6 +80,8 @@ final class ToPathEntityConsumer extends AbstractBinAsyncEntityConsumer<Path> {
         this.unwrappedTarget = unwrappedTarget;
 
         this.targetTemp = ToPathEntityConsumer.temporaryPath(unwrappedTarget.getParent(), unwrappedTarget.getFileName().toString());
+        Files.createDirectories(this.target.getParent());
+        Files.createDirectories(this.targetTemp.getParent());
         this.output = FileChannel.open(this.targetTemp, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 

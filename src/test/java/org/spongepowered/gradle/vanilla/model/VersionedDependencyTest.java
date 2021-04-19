@@ -29,19 +29,25 @@ import org.junit.jupiter.api.Test;
 import org.opentest4j.AssertionFailedError;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.network.UrlConnectionDownloader;
+import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 
 class VersionedDependencyTest {
 
     @Test
     @Disabled("Makes network requests")
-    void dependenciesFromManifest() throws IOException {
-        final VersionManifestRepository repo = VersionManifestRepository.direct();
+    void dependenciesFromManifest() throws IOException, ExecutionException, InterruptedException {
+        final VersionManifestRepository repo = VersionManifestRepository.direct(new UrlConnectionDownloader(Paths.get("."), GsonUtils.GSON,
+            ForkJoinPool.commonPool()
+        ));
 
-        final String latestName = repo.latestVersion(VersionClassifier.RELEASE).orElseThrow(() -> new IllegalStateException("No latest release!"));
-        final VersionDescriptor.Full actual = repo.fullVersion(latestName).orElseThrow(AssertionFailedError::new);
+        final String latestName = repo.latestVersion(VersionClassifier.RELEASE).get().orElseThrow(() -> new IllegalStateException("No latest release!"));
+        final VersionDescriptor.Full actual = repo.fullVersion(latestName).get();
 
         final RuleContext context = RuleContext.create();
         OperatingSystemRule.setOsName(context, "osx");
@@ -54,12 +60,15 @@ class VersionedDependencyTest {
 
     @Test
     @Disabled("Fairly resource-intensive, takes a while to download all uncached")
-    void testLoadAllManifests() throws IOException {
-        final VersionManifestRepository repo = VersionManifestRepository.caching(Paths.get("test-cache"), true);
+    void testLoadAllManifests() throws IOException, ExecutionException, InterruptedException {
+        final VersionManifestRepository repo = VersionManifestRepository.direct(new UrlConnectionDownloader(Paths.get("."), GsonUtils.GSON,
+            ForkJoinPool.commonPool()
+        ));
+        // final VersionManifestRepository repo = VersionManifestRepository.caching(Paths.get("test-cache"), true);
 
-        for (final VersionDescriptor version : repo.availableVersions()) {
+        for (final VersionDescriptor version : repo.availableVersions().get()) {
             System.out.println(version);
-            repo.fullVersion(version.id()).orElseThrow(() -> new IllegalStateException("Unable to resolve version " + version.id()));
+            repo.fullVersion(version.id()).get();
         }
     }
 }

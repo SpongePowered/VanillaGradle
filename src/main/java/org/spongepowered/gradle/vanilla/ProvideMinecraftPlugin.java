@@ -25,17 +25,18 @@
 package org.spongepowered.gradle.vanilla;
 
 import de.undercouch.gradle.tasks.download.Download;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.Action;
+import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.ArtifactCollection;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.MavenRepositoryContentDescriptor;
-import org.gradle.api.attributes.Bundling;
-import org.gradle.api.attributes.Category;
-import org.gradle.api.attributes.LibraryElements;
-import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DuplicatesStrategy;
@@ -63,19 +64,22 @@ import org.spongepowered.gradle.vanilla.model.Library;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
+import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
+import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryPlugin;
+import org.spongepowered.gradle.vanilla.repository.MinecraftSide;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
-import org.spongepowered.gradle.vanilla.storage.HttpClientService;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 import org.spongepowered.gradle.vanilla.task.AtlasTransformTask;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.task.MergeJarsTask;
-import org.spongepowered.gradle.vanilla.task.ProcessedJarTask;
 import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 import org.spongepowered.gradle.vanilla.util.StringUtils;
 
 import java.io.File;
-import java.util.Locale;
+import java.util.Iterator;
+import java.util.Objects;
 
 /**
  * A plugin that creates the necessary tasks and configurations to provide the
@@ -88,44 +92,42 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
     @Override
     public void apply(final Project target) {
+        target.getPluginManager().apply(MinecraftRepositoryPlugin.class);
         this.project = target;
-        final Provider<HttpClientService> httpClient = target.getGradle().getSharedServices()
-            .registerIfAbsent("httpclient", HttpClientService.class, spec -> {});
+        final Provider<MinecraftProviderService> minecraftProvider = target.getPlugins().getPlugin(MinecraftRepositoryPlugin.class).service();
 
         AtlasTransformTask.registerExecutionCompleteListener(this.project.getGradle());
-        final NamedDomainObjectProvider<Configuration> minecraftClasspathConfig = target.getConfigurations().register(Constants.Configurations.MINECRAFT_CLASSPATH, config -> {
-            config.setCanBeConsumed(false);
-            config.setCanBeResolved(false);
-        });
-        final NamedDomainObjectProvider<Configuration> minecraftConfig = target.getConfigurations().register(Constants.Configurations.MINECRAFT, config -> {
-            config.setCanBeResolved(true);
-            config.setCanBeConsumed(true);
-            config.attributes(attributes -> {
-                attributes.attribute(Category.CATEGORY_ATTRIBUTE, target.getObjects().named(Category.class, Category.LIBRARY));
-                attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, target.getObjects().named(Bundling.class, Bundling.EXTERNAL));
-                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, target.getObjects().named(LibraryElements.class,
-                    LibraryElements.JAR));
-                attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 8);
-            });
-            config.extendsFrom(minecraftClasspathConfig.get());
-        });
 
         final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) target.getExtensions()
-            .create(MinecraftExtension.class, "minecraft", MinecraftExtensionImpl.class, minecraftClasspathConfig, target);
+            .create(MinecraftExtension.class, "minecraft", MinecraftExtensionImpl.class, target, minecraftProvider);
 
-        final TaskProvider<AtlasTransformTask> remapClientJar = this.createSidedTasks(MinecraftSide.CLIENT, target.getTasks(), minecraft);
-        final TaskProvider<AtlasTransformTask> remapServerJar = this.createSidedTasks(MinecraftSide.SERVER, target.getTasks(), minecraft);
+        final NamedDomainObjectProvider<Configuration> minecraftConfig = target.getConfigurations().register(Constants.Configurations.MINECRAFT, config -> {
+            config.setVisible(false);
+            config.setCanBeConsumed(false);
+            config.setCanBeResolved(true);
 
-        final TaskProvider<MergeJarsTask> mergedJars = this.createJarMerge(minecraft, remapClientJar, remapServerJar);
-        final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, httpClient, target.getTasks());
+            config.defaultDependencies(set -> {
+                minecraft.platform().disallowChanges();
+                minecraft.version().disallowChanges();
+                set.add(target.getDependencies().create(minecraft.platform().get().moduleName() + ':' + minecraft.version().get()));
+            });
 
-        final TaskProvider<DecompileJarTask> decompileJar = this.createJarDecompile();
+            // TODO: Set appropriate attributes here
+        });
+
+        // final TaskProvider<AtlasTransformTask> remapClientJar = this.createSidedTasks(MinecraftSide.CLIENT, target.getTasks(), minecraft);
+        // final TaskProvider<AtlasTransformTask> remapServerJar = this.createSidedTasks(MinecraftSide.SERVER, target.getTasks(), minecraft);
+
+        // final TaskProvider<MergeJarsTask> mergedJars = this.createJarMerge(minecraft, remapClientJar, remapServerJar);
+        final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, minecraftProvider, target.getTasks());
+
+        final TaskProvider<DecompileJarTask> decompileJar = this.createJarDecompile(minecraftConfig, minecraftProvider, minecraft);
 
         final TaskProvider<?> prepareWorkspace = target.getTasks().register(Constants.Tasks.PREPARE_WORKSPACE, task -> {
             task.setGroup(Constants.TASK_GROUP);
-            task.dependsOn(remapServerJar);
+            /*task.dependsOn(remapServerJar);
             task.dependsOn(remapClientJar);
-            task.dependsOn(mergedJars);
+            task.dependsOn(mergedJars);*/
         });
 
         this.createCleanTasks(target.getTasks(), minecraft);
@@ -134,76 +136,26 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             this.createRunTasks(minecraft, target.getTasks(), target.getExtensions().getByType(JavaToolchainService.class));
 
             // todo: this is not great, we should probably have a separate configuration for run classpath
-            minecraft.getRuns().configureEach(run -> run.classpath().from(minecraftConfig, minecraftConfig.map(conf -> conf.getOutgoing().getArtifacts().getFiles())));
+            minecraft.getRuns().configureEach(run -> run.classpath().from(minecraftConfig));
         });
+
+
 
         target.afterEvaluate(p -> {
             // Only add repositories if selected in extension
             this.configureRepositories(minecraft, p.getRepositories());
-            minecraft.populateMinecraftClasspath();
 
             prepareWorkspace.configure(task -> {
-                if (minecraft.platform().get().activeSides().contains(MinecraftSide.CLIENT)) {
+                if (minecraft.platform().get().includes(MinecraftSide.CLIENT)) {
                     task.dependsOn(assets);
                 }
             });
 
-            final TaskProvider<? extends ProcessedJarTask> resultJar;
-            switch (minecraft.platform().get()) {
-                case CLIENT:
-                    resultJar = remapClientJar;
-                    break;
-                case SERVER:
-                    resultJar = remapServerJar;
-                    break;
-                case JOINED:
-                    resultJar = mergedJars;
-                    break;
-                default:
-                    resultJar = null;
-                    break;
-            }
-
-            if (resultJar != null) {
-                final TaskProvider<? extends ProcessedJarTask> actualDependency;
-                if (p.getTasks().getNames().contains(Constants.Tasks.ACCESS_WIDENER)) { // Using AW
-                    final TaskProvider<AccessWidenJarTask> awTask = p.getTasks().named(
-                        Constants.Tasks.ACCESS_WIDENER,
-                        AccessWidenJarTask.class
-                    );
-                    awTask.configure(task -> {
-                        // Configure source
-                        task.getSource().from(resultJar);
-                        // Set suffix based on target platform
-                        task.getVersionMetadata().set(minecraft.platform().zip(
-                            minecraft.targetVersion(),
-                            (pm, v) -> pm.name().toLowerCase(Locale.ROOT) + "-" + v.id()));
-                    });
-                    actualDependency = awTask;
-                    prepareWorkspace.configure(task -> task.dependsOn(actualDependency)); // todo: this is a bit ugly
-                } else {
-                    actualDependency = resultJar;
-                }
-                decompileJar.configure(decompile -> {
-                    decompile.dependsOn(actualDependency);
-                    decompile.getInputJar().set(actualDependency.flatMap(ProcessedJarTask::outputJar));
-                    decompile.getOutputJar().fileProvider(actualDependency.flatMap(task -> task.outputJar().map(out -> {
-                        final File output = out.getAsFile();
-                        final String fileName = output.getName();
-                        final int dotIndex = fileName.lastIndexOf('.');
-                        final String nameWithoutExtension = dotIndex == -1 ? fileName : fileName.substring(0, dotIndex);
-                        final String extension = dotIndex == -1 ? "" : fileName.substring(dotIndex);
-
-                        return new File(output.getParentFile(), nameWithoutExtension + "-sources" + extension);
-                    })));
-                });
-                minecraftConfig.configure(mc -> mc.getOutgoing().artifact(actualDependency));
-
-                this.configureIDEIntegrations(p, minecraft);
-            }
+            this.configureIDEIntegrations(p, minecraft);
         });
     }
 
+    // TODO: Move this up to the Settings plugin... somehow
     private void configureRepositories(final MinecraftExtension extension, final RepositoryHandler handler) {
         if (extension.injectRepositories().get()) {
             handler.maven(repo -> {
@@ -214,92 +166,58 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         }
     }
 
-    private TaskProvider<MergeJarsTask> createJarMerge(
-        final MinecraftExtensionImpl minecraft,
-        final TaskProvider<AtlasTransformTask> client,
-        final TaskProvider<AtlasTransformTask> server
+    private TaskProvider<DecompileJarTask> createJarDecompile(
+        final NamedDomainObjectProvider<Configuration> minecraftConfiguration,
+        final Provider<MinecraftProviderService> minecraftProvider,
+        final MinecraftExtensionImpl extension
     ) {
-
-        final Configuration mergetool = this.project.getConfigurations().maybeCreate(Constants.Configurations.MERGETOOL);
-        mergetool.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.MERGE_TOOL)));
-        final FileCollection mergetoolClasspath = mergetool.getIncoming().getFiles();
-
-        return this.project.getTasks().register("mergeJars", MergeJarsTask.class, task -> {
-            final String platformName = minecraft.platform().get().name().toLowerCase(Locale.ROOT);
-            task.onlyIf(t -> minecraft.platform().get() == MinecraftPlatform.JOINED);
-
-            task.dependsOn(client);
-            task.dependsOn(server);
-            task.setWorkerClasspath(mergetoolClasspath);
-            task.getClientJar().set(client.get().getOutputJar());
-            task.getServerJar().set(server.get().getOutputJar());
-            task.getMergedJar().set(
-                minecraft.remappedDirectory().zip(minecraft.targetVersion(), (dir, version) -> dir.dir(platformName)
-                    .dir(version.id())
-                    .file("minecraft-" + platformName + "-" + version.id() + "-" + version.releaseTime().toInstant().getEpochSecond() + ".jar"))
-            );
-        });
-    }
-
-    private TaskProvider<DecompileJarTask> createJarDecompile() {
         final Configuration forgeFlower = this.project.getConfigurations().maybeCreate(Constants.Configurations.FORGE_FLOWER);
         forgeFlower.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.FORGE_FLOWER)));
         final FileCollection forgeFlowerClasspath = forgeFlower.getIncoming().getFiles();
-        final FileCollection minecraftClasspath = this.project.getConfigurations().getByName(Constants.Configurations.MINECRAFT).getIncoming().getFiles();
+        final Provider<ArtifactCollection> minecraftActifacts = minecraftConfiguration.map(mc -> mc.getIncoming().getArtifacts());
+        final Provider<MinecraftPlatform> platform = minecraftConfiguration.zip(extension.platform(), (mc, declared) -> {
+            final @Nullable Dependency dep = this.extractMinecraftDependency(mc.getAllDependencies());
+            if (dep == null) {
+                return declared;
+            }
+            final String requested = dep.getName();
+            return MinecraftPlatform.byId(requested)
+                .orElseThrow(() -> new InvalidUserDataException("Unknown minecraft platform + " + requested));
+        });
+        final Provider<String> version = minecraftConfiguration.zip(extension.version(), (mc, declared) -> {
+            final @Nullable Dependency dep = this.extractMinecraftDependency(mc.getAllDependencies());
+            if (dep == null) {
+                return declared;
+            }
+            return Objects.requireNonNull(dep.getVersion(),"No version provided for MC dependency");
+        });
 
         return this.project.getTasks().register(Constants.Tasks.DECOMPILE, DecompileJarTask.class, task -> {
-            task.getDecompileClasspath().from(minecraftClasspath);
+            task.getMinecraftPlatform().set(platform);
+            task.getMinecraftVersion().set(version);
+            task.getInputArtifacts().set(minecraftActifacts);
+            task.getMinecraftProvider().set(minecraftProvider);
             task.setWorkerClasspath(forgeFlowerClasspath);
         });
     }
 
-    private TaskProvider<AtlasTransformTask> createSidedTasks(final MinecraftSide side, final TaskContainer tasks, final MinecraftExtensionImpl minecraft) {
-        final String sideName = side.name().toLowerCase(Locale.ROOT);
-        final String capitalizedSideName = Character.toUpperCase(sideName.charAt(0)) + sideName.substring(1);
+    private @Nullable Dependency extractMinecraftDependency(final DependencySet dependencies) {
+        // Assuming the `minecraft` configuration contains a 0 or 1 dependencies
+        final Iterator<Dependency> it = dependencies.iterator();
+        // defaultDependencies is not taken into account here, so we just return null
+        if (!it.hasNext()) {
+            return null;
+        }
 
-        final TaskProvider<Download> downloadJar = this.createDownload(tasks, "download" + capitalizedSideName, task -> {
-            task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
-            final VersionDescriptor.Full targetVersion = minecraft.targetVersion().get();
-            final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(side.executableArtifact());
-            task.src(download.url());
-            task.dest(minecraft.originalDirectory().get().dir(sideName).dir(targetVersion.id())
-                .file("minecraft-" + sideName + "-" + targetVersion.id() + "-" + download.sha1() + ".jar").getAsFile());
-        });
-
-        final TaskProvider<Download> downloadMappings = this.createDownload(tasks, "download" + capitalizedSideName + "Mappings", task -> {
-            task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
-            final VersionDescriptor.Full targetVersion = minecraft.targetVersion().get();
-            final org.spongepowered.gradle.vanilla.model.Download download = targetVersion.requireDownload(side.mappingsArtifact());
-            task.src(download.url());
-            task.dest(minecraft.mappingsDirectory().get().dir(sideName).dir(targetVersion.id())
-                .file(sideName + "-" + targetVersion.id() + "-" + download.sha1() + ".txt").getAsFile());
-        });
-
-        return tasks.register("remap" + capitalizedSideName + "Jar", AtlasTransformTask.class, task -> {
-            task.onlyIf(t -> minecraft.platform().get().activeSides().contains(side));
-            task.dependsOn(downloadJar);
-            task.dependsOn(downloadMappings);
-
-            task.getInputJar().fileProvider(downloadJar.map(Download::getDest));
-            task.getOutputJar().fileProvider(minecraft.remappedDirectory().zip(minecraft.targetVersion(),
-                (remapDir, version) -> {
-                    final org.spongepowered.gradle.vanilla.model.Download download = version.requireDownload(side.executableArtifact());
-                    return remapDir.getAsFile().toPath().resolve(sideName).resolve(version.id())
-                        .resolve("minecraft-" + sideName + "-" + version.id() + "-" + download.sha1() + "-remapped.jar").toFile();
-                }));
-
-            if (!side.allowedPackages().isEmpty()) {
-                task.getTransformations().filterEntries().getAllowedPackages().addAll(side.allowedPackages());
-            }
-
-            task.getTransformations().stripSignatures();
-            task.getTransformations().remap().getMappingsFile().fileProvider(downloadMappings.map(Download::getDest));
-        });
+        final Dependency dependency = it.next();
+        if (it.hasNext()) {
+            throw new InvalidUserDataException("Only one dependency should be declared in the 'minecraft' configuration, but multiple were found!");
+        }
+        return dependency;
     }
 
-    private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtensionImpl minecraft, final Provider<HttpClientService> httpClient, final TaskContainer tasks) {
-        // TODO: Attempt to link assets to default client, or other common directories
-
+    private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtensionImpl minecraft, final Provider<MinecraftProviderService> httpClient, final TaskContainer tasks) {
+        // TODO: Update this to use our Downloader and to derive version information from the `minecraft` configuration
         // Download asset index
         final TaskProvider<Download> downloadIndex = this.createDownload(tasks, "downloadAssetIndex",
             minecraft.targetVersion().map(it -> it.assetIndex().url()),
@@ -362,13 +280,13 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
     }
 
     private void createCleanTasks(final TaskContainer tasks, final MinecraftExtensionImpl minecraft) {
+        // TODO: Update for new ivy repository style
         tasks.register("cleanMinecraft", Delete.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.setDescription("Delete downloaded files for the current minecraft environment used for this project");
             task.delete(
                 tasks.withType(AccessWidenJarTask.class),
                 tasks.withType(Download.class).matching(dl -> !dl.getName().equals("downloadAssetIndex")),
-                tasks.withType(AtlasTransformTask.class),
                 tasks.withType(MergeJarsTask.class)
             );
         });
