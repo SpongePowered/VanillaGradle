@@ -51,7 +51,6 @@ public class MinecraftIvyModuleExtraDataApplierRule implements ComponentMetadata
     @Override
     public void execute(final ComponentMetadataContext context) {
         final @Nullable IvyModuleDescriptor ivy = context.getDescriptor(IvyModuleDescriptor.class);
-        MinecraftIvyModuleExtraDataApplierRule.LOGGER.warn("Populating dependencies for module {}", context.getDetails().getId().getModule());
         final ComponentMetadataDetails details = context.getDetails();
         final ModuleVersionIdentifier id = details.getId();
         if (!MinecraftPlatform.GROUP.equals(id.getGroup())) {
@@ -67,6 +66,7 @@ public class MinecraftIvyModuleExtraDataApplierRule implements ComponentMetadata
         if (ivy == null) {
             return; // no extra data
         }
+
         // Set status scheme for MC version types
         details.setStatusScheme(VersionClassifier.ids());
         final @Nullable String mojangStatus = ivy.getExtraInfo().get(IvyModuleWriter.PROPERTY_MOJANG_STATUS);
