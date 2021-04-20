@@ -24,27 +24,31 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.StringReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.xml.stream.XMLStreamException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.stream.StreamSource;
 
 public class IvyModuleWriterTest {
 
+    private static final Pattern NEWLINE = Pattern.compile("\r?\n");
+
     @Test
-    void testWriteVersionWithoutJavaVersion() throws IOException, XMLStreamException, TransformerException {
+    void testWriteVersionWithoutJavaVersion() throws IOException, XMLStreamException {
         final VersionDescriptor.Full version = GsonUtils.parseFromJson(this.getClass().getResource("manifest-1.16.5.json"), VersionDescriptor.Full.class);
 
         final StringWriter writer = new StringWriter();
@@ -53,21 +57,15 @@ public class IvyModuleWriterTest {
             ivy.write(version, MinecraftPlatform.JOINED);
         }
 
-        System.out.println(writer);
+        Assertions.assertLinesMatch(
+            IvyModuleWriterTest.readLinesFromResource("expected-ivy-1.16.5.xml"),
+            IvyModuleWriterTest.NEWLINE.splitAsStream(writer.getBuffer()).collect(Collectors.toList())
+        );
 
-        // https://stackoverflow.com/questions/4616383/xmlstreamwriter-indentation
-        final Transformer transformer = TransformerFactory.newInstance().newTransformer();
-        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
-
-        final StringWriter formattedOut = new StringWriter(writer.getBuffer().length() + 50);
-        transformer.transform(new StreamSource(new StringReader(writer.toString())), new StreamResult(formattedOut));
-
-        System.out.println(formattedOut);
     }
 
     @Test
-    void testWriteVersionWithJavaVersion() throws IOException, XMLStreamException, TransformerException {
+    void testWriteVersionWithJavaVersion() throws IOException, XMLStreamException {
         final VersionDescriptor.Full version = GsonUtils.parseFromJson(this.getClass().getResource("manifest-21w15a.json"), VersionDescriptor.Full.class);
 
         final StringWriter writer = new StringWriter();
@@ -76,17 +74,24 @@ public class IvyModuleWriterTest {
             ivy.write(version, MinecraftPlatform.JOINED);
         }
 
-        System.out.println(writer);
+        Assertions.assertLinesMatch(
+            IvyModuleWriterTest.readLinesFromResource("expected-ivy-21w15a.xml"),
+            IvyModuleWriterTest.NEWLINE.splitAsStream(writer.getBuffer()).collect(Collectors.toList())
+        );
+    }
 
-        // https://stackoverflow.com/questions/4616383/xmlstreamwriter-indentation
-        final Transformer transformer = TransformerFactory.newInstance().newTransformer();
-        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+    private static List<String> readLinesFromResource(final String resource) throws IOException {
+        final @Nullable InputStream in = IvyModuleWriterTest.class.getResourceAsStream(resource);
+        Assertions.assertNotNull(in, "No resource with name " + resource + " was found");
 
-        final StringWriter formattedOut = new StringWriter(writer.getBuffer().length() + 50);
-        transformer.transform(new StreamSource(new StringReader(writer.toString())), new StreamResult(formattedOut));
-
-        System.out.println(formattedOut);
+        final List<String> contents = new ArrayList<>();
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                contents.add(line);
+            }
+        }
+        return contents;
     }
 
 }

@@ -136,9 +136,18 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         this.targetVersion = factory.property(VersionDescriptor.Full.class)
             .value(this.version.zip(this.providerService, (version, service) -> {
                 try {
-                    return service.versions().fullVersion(version).get();
-                        /*.orElseThrow(() -> new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was not found in the "
-                            + "manifest! Try '%s' instead.", this.version.get(), this.versions.latestVersion(VersionClassifier.RELEASE).get().orElse(null))));*/
+                    return service.versions().fullVersion(version).get()
+                        .orElseThrow(() -> {
+                            try {
+                                return new GradleException(String.format("Version '%s' specified in the 'minecraft' extension was not found in the "
+                                    + "manifest! Try '%s' instead.", this.version.get(), this.providerService.get().versions().latestVersion(VersionClassifier.RELEASE).get().orElse(null)));
+                            } catch (final InterruptedException ex) {
+                                Thread.currentThread().interrupt();
+                                throw new RuntimeException(); // todo???
+                            } catch (final ExecutionException ex) {
+                                throw new GradleException("Failed to fetch latest version", ex.getCause());
+                            }
+                        });
                 } catch (final InterruptedException | ExecutionException ex) {
                     throw new GradleException("Failed to read version manifest", ex);
                 }

@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
 import org.spongepowered.gradle.vanilla.network.ApacheHttpDownloader;
+import org.spongepowered.gradle.vanilla.network.Downloader;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -54,10 +55,10 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
     private final ExecutorService executor;
 
     public interface Parameters extends BuildServiceParameters {
-        DirectoryProperty getSharedCache();
-        DirectoryProperty getRootProjectCache();
-        Property<Boolean> getOfflineMode();
-        Property<Boolean> getRefreshDependencies();
+        DirectoryProperty getSharedCache(); // global cache
+        DirectoryProperty getRootProjectCache(); // root project cache, used for any transformed artifacts that are reliant on project data
+        Property<Boolean> getOfflineMode(); // gradle -o offline mode parameter, only resolve from local cache
+        Property<Boolean> getRefreshDependencies(); // gradle --refresh-dependencies start parameter, ignore existing data in local cache
     }
 
     public MinecraftProviderService() {
@@ -71,7 +72,20 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
         if (downloader == null) {
             synchronized (this) {
                 if (this.downloader == null) {
-                    this.downloader = downloader = new ApacheHttpDownloader(this.getParameters().getSharedCache().get().getAsFile().toPath());
+                    final Parameters params = this.getParameters();
+                    final ApacheHttpDownloader.ResolveMode mode;
+                    if (params.getOfflineMode().get()) {
+                        mode = Downloader.ResolveMode.LOCAL_ONLY;
+                    } else if (params.getRefreshDependencies().get()) {
+                        mode = Downloader.ResolveMode.REMOTE_ONLY;
+                    } else {
+                        mode = Downloader.ResolveMode.LOCAL_THEN_REMOTE;
+                    }
+                    this.downloader = downloader = new ApacheHttpDownloader(
+                        this.executor,
+                        this.getParameters().getSharedCache().get().getAsFile().toPath(),
+                        mode
+                    );
                 } else {
                     return this.downloader;
                 }
@@ -86,17 +100,16 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
             synchronized (this) {
                 if (this.resolver == null) {
                     this.resolver = resolver = new MinecraftResolverImpl(
-                        this.getParameters().getSharedCache().get().getAsFile().toPath(),
                         this.versions(),
                         this.downloader(),
                         this.executor
                     );
                 } else {
-                    return this.resolver.withResolver(this.toolResolver(project));
+                    return this.resolver.setResolver(this.toolResolver(project));
                 }
             }
         }
-        return resolver.withResolver(this.toolResolver(project));
+        return resolver.setResolver(this.toolResolver(project));
     }
 
     private Function<ResolvableTool, URL[]> toolResolver(final Project project) {
@@ -117,14 +130,9 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
         if (versions == null) {
             synchronized (this) {
                 if (this.versions == null) {
-                    // Create a version repository. If Gradle is in offline mode, read only from cache
+                    // Create a version repository. Offline and --refresh-dependencies are handled by our overall Downloader
                     final Path cacheDir = this.getParameters().getSharedCache().get().getAsFile().toPath().resolve(Constants.Directories.MANIFESTS);
-                    if (this.getParameters().getRefreshDependencies().get()) {
-                        this.versions = versions = VersionManifestRepository.direct(this.downloader());
-                    } else {
-                        this.versions =
-                            versions = VersionManifestRepository.caching(this.downloader(), cacheDir, !this.getParameters().getOfflineMode().get());
-                    }
+                    this.versions = versions = VersionManifestRepository.fromDownloader(this.downloader().withBaseDir(cacheDir));
                 } else {
                     return this.versions;
                 }
@@ -135,7 +143,7 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
 
     @Override
     public void close() {
-        MinecraftProviderService.LOGGER.warn("[]: Shutting down MinecraftProviderService");
+        MinecraftProviderService.LOGGER.warn(Constants.NAME + ": Shutting down MinecraftProviderService");
         this.executor.shutdown();
         boolean success;
         try {
@@ -145,7 +153,7 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
         }
 
         if (!success) {
-            // todo: log warning
+            MinecraftProviderService.LOGGER.warn(Constants.NAME + ": Failed to shut down executor in 10 seconds, forcing shutdown!");
             this.executor.shutdownNow();
         }
 

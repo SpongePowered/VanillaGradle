@@ -326,7 +326,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                         ideaRun.setWorkingDirectory(runDirectory.getAbsolutePath());
                         runDirectory.mkdirs();
 
-                        // TODO: Figure out if it's possible to set this more appropriately based on the run configuration's classpath
                         final SourceSet moduleSet;
                         if (run.ideaRunSourceSet().isPresent()) {
                             moduleSet = run.ideaRunSourceSet().get();
