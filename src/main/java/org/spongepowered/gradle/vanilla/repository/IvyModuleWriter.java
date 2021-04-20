@@ -57,7 +57,7 @@ public class IvyModuleWriter implements AutoCloseable {
 
     private static final String XSI = XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI;
     private static final String IVY = "http://ant.apache.org/ivy/schemas/ivy.xsd";
-    private static final String EXTRA = "http://ant.apache.org/ivy/extra";
+    private static final String VANILLAGRADLE = "https://spongepowered.org/vanillagradle/ivy-extra";
 
     private static final XMLOutputFactory OUTPUT_FACTORY = XMLOutputFactory.newInstance();
 
@@ -81,7 +81,7 @@ public class IvyModuleWriter implements AutoCloseable {
         this.writer.writeStartDocument("UTF-8", "1.0");
         this.writer.writeStartElement("ivy-module");
         this.writer.writeNamespace("xsi", IvyModuleWriter.XSI);
-        this.writer.writeNamespace("e", IvyModuleWriter.EXTRA);
+        this.writer.writeNamespace("vanillagradle", IvyModuleWriter.VANILLAGRADLE);
         this.writer.writeAttribute(IvyModuleWriter.XSI, "noNamespaceSchemaLocation", IvyModuleWriter.IVY);
         this.writer.writeAttribute("version", "2.0");
 
@@ -100,25 +100,23 @@ public class IvyModuleWriter implements AutoCloseable {
         this.writer.writeAttribute("module", platform.artifactId());
         this.writer.writeAttribute("revision", version.id());
         this.writer.writeAttribute("status", "release"); // gradle wants release... we must please the gradle...
-        this.writer.writeAttribute(
-            IvyModuleWriter.EXTRA,
-            IvyModuleWriter.PROPERTY_MOJANG_STATUS,
-            version.type().id()
-        );
-
-        final @Nullable JavaRuntimeVersion javaVersion = version.javaVersion();
-        if (javaVersion != null) {
-            this.writer.writeAttribute(
-                IvyModuleWriter.EXTRA,
-                IvyModuleWriter.PROPERTY_JAVA_VERSION,
-                String.valueOf(javaVersion.majorVersion())
-            );
-        }
 
         // License
         this.writer.writeEmptyElement("license");
         this.writer.writeAttribute("name", "Minecraft EULA");
         this.writer.writeAttribute("url", "https://www.minecraft.net/en-us/eula");
+
+        // Extra info (this is the only type of custom metadata exposed in Gradle, for some reason...)
+        this.writer.writeStartElement(IvyModuleWriter.VANILLAGRADLE, IvyModuleWriter.PROPERTY_MOJANG_STATUS);
+        this.writer.writeCharacters(version.type().id());
+        this.writer.writeEndElement();
+
+        final @Nullable JavaRuntimeVersion javaVersion = version.javaVersion();
+        if (javaVersion != null) {
+            this.writer.writeStartElement(IvyModuleWriter.VANILLAGRADLE, IvyModuleWriter.PROPERTY_JAVA_VERSION);
+            this.writer.writeCharacters(String.valueOf(javaVersion.majorVersion()));
+            this.writer.writeEndElement();
+        }
 
         // End
         this.writer.writeEndElement();
@@ -154,14 +152,6 @@ public class IvyModuleWriter implements AutoCloseable {
         this.writer.writeAttribute("ext", "jar");
         this.writer.writeAttribute("conf", "default");
         this.writer.writeEndElement(); */
-    }
-
-    private static String gradleStatus(final VersionClassifier classifier) {
-        if (classifier == VersionClassifier.RELEASE) {
-            return "release";
-        } else {
-            return "integration";
-        }
     }
 
     @Override
