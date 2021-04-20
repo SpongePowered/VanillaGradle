@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.network;
 
+import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
@@ -35,36 +36,112 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>Access is uncached.</p>
  */
-public interface Downloader {
+public interface Downloader extends AutoCloseable {
 
-    <T> CompletableFuture<T> downloadJson(final URL source, final String relativeLocation, final Class<T> type);
+    /**
+     * Get the base directory used for this downloader.
+     *
+     * @return the base directory
+     */
+    Path baseDir();
 
-    <T> CompletableFuture<T> downloadJson(final URL source, final String relativeLocation, final HashAlgorithm algorithm, final String expectedHash, final Class<T> type);
+    /**
+     * Return a new downloader with a new base directory, but sharing this
+     * downloader's resources.
+     *
+     * <p>Closing the returned downloader must not havve any effect on
+     * this instance.</p>
+     *
+     * @param override the new base directory
+     * @return a derived downloader
+     */
+    Downloader withBaseDir(final Path override);
 
-    CompletableFuture<String> readString(final URL source);
+    /**
+     * Read the contents of {@code source} as a {@link String}.
+     *
+     * <p>Encoding will be determined based on response headers, defaulting to
+     * UTF-8.</p>
+     *
+     * @param source the URL to download from
+     * @param relativePath the location to use as a cache key for the result
+     * @return a future providing the completed result
+     */
+    CompletableFuture<String> readString(final URL source, final String relativePath);
 
-    CompletableFuture<String> readStringAndValidate(final URL source, final HashAlgorithm algorithm, final String hash);
+    /**
+     * Read the contents of {@code source} as a {@link String}.
+     *
+     * <p>The downloaded content and any cached information will be validated
+     * against the provided hash.</p>
+     *
+     * @param source the URL to download from
+     * @param relativePath the location to use as a cache key for the result
+     * @param algorithm the hash algorithm to test with
+     * @param hash the expected hash, as a string of hex digits
+     * @return a future providing the resolved result
+     */
+    CompletableFuture<String> readStringAndValidate(final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash);
 
-    CompletableFuture<byte[]> readBytes(final URL source);
+    /**
+     * Read the contents of {@code source} as a {@code byte[]}.
+     *
+     * @param source the URL to download from
+     * @param relativePath the location to use as a cache key for the result
+     * @return a future providing the completed result
+     */
+    CompletableFuture<byte[]> readBytes(final URL source, final String relativePath);
 
-    CompletableFuture<byte[]> readBytesAndValidate(final URL source, final HashAlgorithm algorithm, final String hash);
+    /**
+     * Read the contents of {@code source} as a {@code byte[]}.
+     *
+     * <p>The downloaded content and any cached information will be validated
+     * against the provided hash.</p>
+     *
+     * @param source the URL to download from
+     * @param relativePath the location to use as a cache key for the result
+     * @param algorithm the hash algorithm to test with
+     * @param hash the expected hash, as a string of hex digits
+     * @return a future providing the resolved result
+     */
+    CompletableFuture<byte[]> readBytesAndValidate(final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash);
 
     /**
      * Download a file to the provided relative location.
      *
-     * <p>If the file already exists, it may not be overwritten, depending on the downloader's caching policy.</p>
+     * <p>If the file already exists, it may not be overwritten, depending on
+     * the downloader's caching policy.</p>
      *
      * @param source the URL to download from.
-     * @param relativeLocation the location relative to the downloader's base directory.
-     * @return a future returning the downloa
+     * @param destination the location to download to
+     * @return a future returning the downloaded patch once a download is complete
      */
-    default CompletableFuture<Path> download(final URL source, final String relativeLocation) {
-        return this.download(source, relativeLocation, false);
+    CompletableFuture<Path> download(final URL source, final Path destination);
+
+    CompletableFuture<Path> downloadAndValidate(final URL source, final Path destination, final HashAlgorithm algorithm, final String hash);
+
+    @Override
+    void close() throws IOException;
+
+    /**
+     * A mode to control usage of any potential locale cache
+     */
+    enum ResolveMode {
+        /**
+         * Test and validate local before querying remote.
+         */
+        LOCAL_THEN_REMOTE,
+        /**
+         * Only check the local storage.
+         *
+         * <p>In this mode, hash validation failures will result in a printed
+         * warning rather than an error.</p>
+         */
+        LOCAL_ONLY,
+
+        /**
+         * Ignore any existing local state and always resolve from the remote.
+         */
+        REMOTE_ONLY,
     }
-
-    CompletableFuture<Path> download(final URL source, final String relativeLocation, boolean forceReplacement);
-
-    CompletableFuture<Path> downloadAndValidate(final URL source, final String relativeLocation, final HashAlgorithm algorithm, final String hash);
-
-
 }

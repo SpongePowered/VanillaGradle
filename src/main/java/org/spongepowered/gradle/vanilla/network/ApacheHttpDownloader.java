@@ -31,29 +31,71 @@ import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
 import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.http.Message;
+import org.apache.hc.core5.http.nio.AsyncEntityConsumer;
+import org.apache.hc.core5.http.nio.entity.BasicAsyncEntityConsumer;
+import org.apache.hc.core5.http.nio.entity.StringAsyncEntityConsumer;
 import org.apache.hc.core5.http.nio.support.BasicResponseConsumer;
 import org.apache.hc.core5.io.CloseMode;
 import org.apache.hc.core5.reactor.IOReactorConfig;
 import org.apache.hc.core5.util.TimeValue;
 import org.apache.hc.core5.util.Timeout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
-import org.spongepowered.gradle.vanilla.util.GsonUtils;
+import org.spongepowered.gradle.vanilla.util.AsyncUtils;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.function.Function;
 
 public class ApacheHttpDownloader implements AutoCloseable, Downloader {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ApacheHttpDownloader.class);
+
+    private final Executor asyncExecutor;
     private final Path baseDirectory;
     private final CloseableHttpAsyncClient client;
+    private final ResolveMode resolveMode;
+    private final boolean writeToDisk;
+    private final boolean shouldClose;
 
-    public ApacheHttpDownloader(final Path baseDirectory) {
+    /**
+     * Create a downloader that does not cache.
+     *
+     * <p>The downloader's {@code resolveMode} is always {@link ResolveMode#REMOTE_ONLY}.</p>
+     *
+     * @param asyncExecutor the executor to execute on.
+     * @return a new downloader
+     */
+    public static ApacheHttpDownloader uncached(final Executor asyncExecutor) {
+        try {
+            return new ApacheHttpDownloader(asyncExecutor, Files.createTempDirectory("downloader"), ResolveMode.REMOTE_ONLY, false);
+        } catch (final IOException ex) {
+            throw new IllegalStateException("Failed to create a temporary directory for file downloads");
+        }
+    }
+
+    public ApacheHttpDownloader(final Executor asyncExecutor, final Path baseDirectory, final ResolveMode resolveMode) {
+        this(asyncExecutor, baseDirectory, resolveMode, true);
+    }
+
+    private ApacheHttpDownloader(final Executor asyncExecutor, final Path baseDirectory, final ResolveMode resolveMode, final boolean writeToDisk) {
+        this.asyncExecutor = asyncExecutor;
         this.baseDirectory = baseDirectory;
-        // TODO: Custom TLS strategy needed?
-        // https://github.com/apache/httpcomponents-client/blob/5.0.x/httpclient5/src/test/java/org/apache/hc/client5/http/examples/AsyncClientTlsAlpn.java#L57
+        this.resolveMode = resolveMode;
+        this.writeToDisk = writeToDisk;
+
+        // Configure the HTTP client
+        // This won't actually launch a thread pool until the first request is performed.
         final IOReactorConfig config = IOReactorConfig.custom()
             .setSoTimeout(Timeout.ofSeconds(5))
             .build();
@@ -63,28 +105,21 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
             .setUserAgent(Constants.USER_AGENT)
             .setRetryStrategy(new DefaultHttpRequestRetryStrategy(5, TimeValue.ofMilliseconds(500)))
             .build();
-
+        this.shouldClose = true;
     }
 
-    public static BasicResponseConsumer<Path> responseToFile(final Path path) {
-        return new BasicResponseConsumer<>(new ToPathEntityConsumer(path));
+    private ApacheHttpDownloader(final Executor asyncExecutor, final Path baseDirectory, final ResolveMode mode, final boolean writeToDisk, final CloseableHttpAsyncClient existing) {
+        this.asyncExecutor = asyncExecutor;
+        this.baseDirectory = baseDirectory;
+        this.resolveMode = mode;
+        this.writeToDisk = writeToDisk;
+        this.client = existing;
+        this.shouldClose = false;
     }
 
     public static BasicResponseConsumer<Path> responseToFileValidating(final Path path, final HashAlgorithm algorithm, final String hash) {
         try {
             return new BasicResponseConsumer<>(new ValidatingDigestingEntityConsumer<>(new ToPathEntityConsumer(path), algorithm, hash));
-        } catch (final NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("Could not resolve hash algorithm");
-        }
-    }
-
-    public static <T> BasicResponseConsumer<T> responseToJson(final Class<T> type) {
-        return new BasicResponseConsumer<>(new JsonParsingEntityConsumer<>(GsonUtils.GSON, type));
-    }
-
-    public static <T> BasicResponseConsumer<T> responseToJsonValidating(final Class<T> type, final HashAlgorithm algorithm, final String hash) {
-        try {
-            return new BasicResponseConsumer<>(new ValidatingDigestingEntityConsumer<>(new JsonParsingEntityConsumer<>(GsonUtils.GSON, type), algorithm, hash));
         } catch (final NoSuchAlgorithmException ex) {
             throw new IllegalStateException("Could not resolve hash algorithm");
         }
@@ -96,29 +131,141 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
     }
 
     @Override
-    public <T> CompletableFuture<T> downloadJson(final URL source, final String relativeLocation, final Class<T> type) {
-        final FutureToCompletable<Message<HttpResponse, T>> result = new FutureToCompletable<>();
-        try {
-            this.client().execute(
-                SimpleRequestProducer.create(SimpleHttpRequests.get(source.toURI())),
-                ApacheHttpDownloader.responseToJson(type),
-                result
-            );
-        } catch (final URISyntaxException ex) {
-            result.future().completeExceptionally(ex);
-        }
-        return result.future().thenApply(Message::getBody);
+    public Path baseDir() {
+        return this.baseDirectory;
     }
 
     @Override
-    public <T> CompletableFuture<T> downloadJson(
-        final URL source, final String relativeLocation, final HashAlgorithm algorithm, final String expectedHash, final Class<T> type
+    public Downloader withBaseDir(final Path override) {
+        Objects.requireNonNull(override, "override");
+        return new ApacheHttpDownloader(
+            this.asyncExecutor,
+            override,
+            this.resolveMode,
+            this.writeToDisk,
+            this.client
+        );
+    }
+
+    @Override
+    public CompletableFuture<String> readString(final URL source, final String relativePath) {
+        return this.download(source, this.baseDirectory.resolve(relativePath), path -> {
+            final AsyncEntityConsumer<String> reader = new StringAsyncEntityConsumer();
+            if (this.writeToDisk) {
+                final AsyncEntityConsumer<Path> downloader = new ToPathEntityConsumer(path);
+                return new TeeEntityConsumer<>(reader, downloader);
+            } else {
+                return reader;
+            }
+        }, this::readTextAsync);
+    }
+
+    @Override
+    public CompletableFuture<String> readStringAndValidate(
+        final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash
     ) {
+        return this.downloadValidating(source, this.baseDirectory.resolve(relativePath), algorithm, hash, path -> {
+            final AsyncEntityConsumer<String> reader = new StringAsyncEntityConsumer();
+            if (this.writeToDisk) {
+                final AsyncEntityConsumer<Path> downloader = new ToPathEntityConsumer(path);
+                return new TeeEntityConsumer<>(reader, downloader);
+            } else {
+                return reader;
+            }
+        }, this::readTextAsync);
+    }
+
+    private CompletableFuture<String> readTextAsync(final Path path) {
+        return AsyncUtils.failableFuture(() -> {
+            try (final BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+                final StringBuilder builder = new StringBuilder();
+                final char[] buffer = new char[1024];
+                int read;
+                while ((read = reader.read(buffer)) > -1) {
+                    builder.append(buffer, 0, read);
+                }
+                return builder.toString();
+            }
+        }, this.asyncExecutor);
+    }
+
+
+    @Override
+    public CompletableFuture<byte[]> readBytes(final URL source, final String relativePath) {
+        return this.download(source, this.baseDirectory.resolve(relativePath), path -> {
+            final AsyncEntityConsumer<byte[]> reader = new BasicAsyncEntityConsumer();
+            if (this.writeToDisk) {
+                final AsyncEntityConsumer<Path> downloader = new ToPathEntityConsumer(path);
+                return new TeeEntityConsumer<>(reader, downloader);
+            } else {
+                return reader;
+            }
+        }, this::readBytesAsync);
+    }
+
+    @Override
+    public CompletableFuture<byte[]> readBytesAndValidate(
+        final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash
+    ) {
+        return this.downloadValidating(source, this.baseDirectory.resolve(relativePath), algorithm, hash, path -> {
+            final AsyncEntityConsumer<byte[]> reader = new BasicAsyncEntityConsumer();
+            if (this.writeToDisk) {
+                final AsyncEntityConsumer<Path> downloader = new ToPathEntityConsumer(path);
+                return new TeeEntityConsumer<>(reader, downloader);
+            } else {
+                return reader;
+            }
+        }, this::readBytesAsync);
+    }
+
+    private CompletableFuture<byte[]> readBytesAsync(final Path path) {
+        return AsyncUtils.failableFuture(() -> Files.readAllBytes(path), this.asyncExecutor);
+    }
+
+    @Override
+    public CompletableFuture<Path> download(final URL source, final Path destination) {
+        return this.download(
+            source,
+            destination,
+            ToPathEntityConsumer::new,
+            CompletableFuture::completedFuture
+        );
+    }
+
+    @Override
+    public CompletableFuture<Path> downloadAndValidate(final URL source, final Path destination, final HashAlgorithm algorithm, final String hash) {
+        return this.downloadValidating(
+            source, destination, algorithm, hash,
+            ToPathEntityConsumer::new,
+            CompletableFuture::completedFuture
+        );
+    }
+
+    // Shared logic
+
+    private <T> CompletableFuture<T> download(
+        final URL source,
+        final Path destination,
+        final Function<Path, AsyncEntityConsumer<T>> responseConsumer,
+        final Function<Path, CompletableFuture<T>> existingHandler
+    ) {
+        if (this.resolveMode != ResolveMode.REMOTE_ONLY && Files.isRegularFile(destination)) { // TODO: check etag?
+            // Check every 24 hours
+            try {
+                if (this.resolveMode == ResolveMode.LOCAL_ONLY
+                    || System.currentTimeMillis() - Files.getLastModifiedTime(destination).toMillis() < Constants.Manifests.CACHE_TIMEOUT_SECONDS * 1000) {
+                    return existingHandler.apply(destination);
+                }
+            } catch (final IOException ex) {
+                ApacheHttpDownloader.LOGGER.warn("Failed to get last modified time of {}, attempting to download again", destination, ex);
+            }
+        }
+
         final FutureToCompletable<Message<HttpResponse, T>> result = new FutureToCompletable<>();
         try {
             this.client().execute(
                 SimpleRequestProducer.create(SimpleHttpRequests.get(source.toURI())),
-                ApacheHttpDownloader.responseToJson(type),
+                new BasicResponseConsumer<>(responseConsumer.apply(destination)),
                 result
             );
         } catch (final URISyntaxException ex) {
@@ -127,62 +274,39 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
         return result.future().thenApply(Message::getBody);
     }
 
-    @Override
-    public CompletableFuture<String> readString(final URL source) {
-        return null;
-    }
-
-    @Override
-    public CompletableFuture<String> readStringAndValidate(final URL source, final HashAlgorithm algorithm, final String hash) {
-        return null;
-    }
-
-    @Override
-    public CompletableFuture<byte[]> readBytes(final URL source) {
-        return null;
-    }
-
-    @Override
-    public CompletableFuture<byte[]> readBytesAndValidate(final URL source, final HashAlgorithm algorithm, final String hash) {
-        return null;
-    }
-
-    @Override
-    public CompletableFuture<Path> download(final URL source, final String relativePath, final boolean forceReplacement) {
-        final Path path = this.baseDirectory.resolve(relativePath);
-        if (!forceReplacement && Files.isRegularFile(path)) {
-            return CompletableFuture.completedFuture(path);
-        }
-
-        final FutureToCompletable<Message<HttpResponse, Path>> result = new FutureToCompletable<>();
-        try {
-            this.client().execute(
-                SimpleRequestProducer.create(SimpleHttpRequests.get(source.toURI())),
-                ApacheHttpDownloader.responseToFile(path),
-                result
-            );
-        } catch (final URISyntaxException ex) {
-            result.future().completeExceptionally(ex);
-        }
-        return result.future().thenApply(Message::getBody);
-    }
-
-    @Override
-    public CompletableFuture<Path> downloadAndValidate(final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash) {
-        final Path path = this.baseDirectory.resolve(relativePath);
+    private <T> CompletableFuture<T> downloadValidating(
+        final URL source,
+        final Path destination,
+        final HashAlgorithm algorithm,
+        final String expectedHash,
+        final Function<Path, AsyncEntityConsumer<T>> responseConsumer,
+        final Function<Path, CompletableFuture<T>> existingHandler
+    ) {
+        final Path path = destination;
         if (Files.isRegularFile(path)) {
             // Validate that the file matches the path, only download if it doesn't.
-            return CompletableFuture.completedFuture(path);
+            try {
+                if (algorithm.validate(expectedHash, path)) {
+                    return existingHandler.apply(path);
+                }
+            } catch (final IOException ex) {
+                ApacheHttpDownloader.LOGGER.warn("Failed to test hash on file at {}, re-downloading", path);
+            }
+            try {
+                Files.deleteIfExists(path);
+            } catch (final IOException ex) {
+                ApacheHttpDownloader.LOGGER.warn("Failed to delete file at {}, will try to re-download anyways", path);
+            }
         }
 
-        final FutureToCompletable<Message<HttpResponse, Path>> result = new FutureToCompletable<>();
+        final FutureToCompletable<Message<HttpResponse, T>> result = new FutureToCompletable<>();
         try {
             this.client().execute(
                 SimpleRequestProducer.create(SimpleHttpRequests.get(source.toURI())),
-                ApacheHttpDownloader.responseToFileValidating(path, algorithm, hash),
+                new BasicResponseConsumer<>(new ValidatingDigestingEntityConsumer<>(responseConsumer.apply(path), algorithm, expectedHash)),
                 result
             );
-        } catch (final URISyntaxException ex) {
+        } catch (final URISyntaxException | NoSuchAlgorithmException ex) {
             result.future().completeExceptionally(ex);
         }
         return result.future().thenApply(Message::getBody);
@@ -190,6 +314,9 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
 
     @Override
     public void close() {
-        this.client.close(CloseMode.GRACEFUL);
+        if (this.shouldClose) {
+            this.client.close(CloseMode.GRACEFUL);
+        }
     }
+
 }

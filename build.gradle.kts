@@ -1,5 +1,5 @@
 plugins {
-    id("com.gradle.plugin-publish") version "0.12.0"
+    id("com.gradle.plugin-publish") version "0.14.0"
     `java-gradle-plugin`
     val indraVersion = "1.3.1"
     id("net.kyori.indra") version indraVersion
@@ -54,7 +54,7 @@ dependencies {
 
     implementation("org.cadixdev:lorenz-io-proguard:0.5.6")
 
-    compileOnlyApi("org.checkerframework:checker-qual:3.11.0")
+    compileOnlyApi("org.checkerframework:checker-qual:3.12.0")
     annotationProcessor("org.immutables:value:2.8.8")
     compileOnlyApi("org.immutables:value:2.8.8:annotations")
     api("org.immutables:gson:2.8.8")
@@ -62,7 +62,7 @@ dependencies {
     implementation("org.apache.httpcomponents.client5:httpclient5:5.0.3")
 
     // IDE support
-    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:0.10")
+    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.0")
 
     // Jar merge worker (match with Constants)
     "jarMergeCompileOnly"("net.minecraftforge:mergetool:1.1.1") {

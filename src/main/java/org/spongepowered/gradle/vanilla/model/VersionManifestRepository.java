@@ -28,7 +28,6 @@ import org.spongepowered.gradle.vanilla.network.Downloader;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -42,34 +41,17 @@ public interface VersionManifestRepository {
     /**
      * Create a repository that will fetch version manifests from the API endpoint.
      *
-     * <p>This repository will perform limited in-memory caching of
-     * version data.</p>
+     * <p>This repository will cache information based on the parameters of the
+     * provided downloader.</p>
      *
-     * @return a new direct repository
+     * @return a new downloader-based repository
      * @param downloader the downloader to use to fetch remote resources
      */
-    static VersionManifestRepository direct(final Downloader downloader) {
-        return new DirectVersionManifestRepository(downloader);
+    static VersionManifestRepository fromDownloader(final Downloader downloader) {
+        return new DownloaderBasedVersionManifestRepository(downloader);
     }
 
-    /**
-     * Get a manifest repository that caches responses.
-     *
-     * <p>If {@code queryRemote} is {@code false}, only existing cached data will be
-     * fetched. Expiration checks will also be ignored in this case.</p>
-     *
-     * @param cacheDir the directory to store cached responses in
-     * @param queryRemote whether to query the remote repository
-     * @return the repository
-     */
-    static VersionManifestRepository caching(final Downloader downloader, final Path cacheDir, final boolean queryRemote) {
-        return new DirectVersionManifestRepository(downloader);
-        /*if (Files.isDirectory(cacheDir) || !Files.exists(cacheDir)) {
-            return new CachingVersionManifestRepository(downloader, cacheDir, queryRemote);
-        } else {
-            throw new IllegalArgumentException("Provided cache directory " + cacheDir + " is already a file, when a directory was expected!");
-        }*/
-    }
+    // TODO: Create a repository that doesn not depend on Downloader? for standalone release
 
     /**
      * Fetch the backing manifest.
@@ -99,7 +81,7 @@ public interface VersionManifestRepository {
      * @param versionId the ID of the version to query
      * @return a version descriptor
      */
-    CompletableFuture<VersionDescriptor.Full> fullVersion(final String versionId);
+    CompletableFuture<Optional<VersionDescriptor.Full>> fullVersion(final String versionId);
 
     /**
      * Inject a pre-existing local version descriptor.
@@ -149,8 +131,9 @@ public interface VersionManifestRepository {
         if (unknown instanceof VersionDescriptor.Full) {
             return CompletableFuture.completedFuture((VersionDescriptor.Full) unknown);
         } else {
-            return this.fullVersion(unknown.id());
-                // .orElseThrow(() -> new IllegalArgumentException("Version descriptor " + unknown.id() + " was not found in this repository!"));
+            return this.fullVersion(unknown.id())
+                .thenApply(result -> result
+                    .orElseThrow(() -> new IllegalArgumentException("Version descriptor " + unknown.id() + " was not found in this repository!")));
         }
     }
 

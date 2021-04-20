@@ -44,14 +44,16 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-final class DirectVersionManifestRepository implements VersionManifestRepository {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DirectVersionManifestRepository.class);
+final class DownloaderBasedVersionManifestRepository implements VersionManifestRepository {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DownloaderBasedVersionManifestRepository.class);
 
     private final Downloader downloader;
     private volatile @Nullable CompletableFuture<VersionManifestV2> manifest;
-    private final Map<String, VersionDescriptor.Full> injectedVersions = new ConcurrentHashMap<>();
+    private final Map<String, VersionDescriptor.Full> injectedVersions = new ConcurrentHashMap<>(); // Add-only
+    private final Map<String, CompletableFuture<Optional<VersionDescriptor.Full>>> resolvedVersions = new ConcurrentHashMap<>();
 
-    DirectVersionManifestRepository(final Downloader downloader) {
+    DownloaderBasedVersionManifestRepository(final Downloader downloader) {
         this.downloader = downloader;
     }
 
@@ -65,7 +67,8 @@ final class DirectVersionManifestRepository implements VersionManifestRepository
             } catch (final MalformedURLException ex) {
                 throw new IllegalStateException("Constant API URL failed to parse", ex);
             }
-            this.manifest = manifest = this.downloader.downloadJson(url, "manifest.json", VersionManifestV2.class);
+            this.manifest = manifest = this.downloader.readString(url, "manifest.json") // it's fine if we download multiple times, the downloader ensures we do it safely
+                .thenApply(res -> GsonUtils.GSON.fromJson(res, VersionManifestV2.class));
         }
         return manifest;
     }
@@ -81,7 +84,7 @@ final class DirectVersionManifestRepository implements VersionManifestRepository
                 return versions;
             }
         }).exceptionally(ex -> {
-            DirectVersionManifestRepository.LOGGER.error("Failed to query Minecraft version manifest: ", ex);
+            DownloaderBasedVersionManifestRepository.LOGGER.error("Failed to query Minecraft version manifest: ", ex);
             return Collections.emptyList();
         });
     }
@@ -91,30 +94,33 @@ final class DirectVersionManifestRepository implements VersionManifestRepository
         return this.manifest().thenApply(manifest -> {
             return Optional.ofNullable(manifest.latest().get(classifier));
         }).exceptionally(ex -> {
-            DirectVersionManifestRepository.LOGGER.error("Failed to query Minecraft version manifest: ", ex);
+            DownloaderBasedVersionManifestRepository.LOGGER.error("Failed to query latest version: ", ex);
             return Optional.empty();
         });
     }
 
     @Override
-    public CompletableFuture<VersionDescriptor.Full> fullVersion(final String versionId) {
-        if (this.injectedVersions.containsKey(versionId)) {
-            return CompletableFuture.completedFuture(this.injectedVersions.get(versionId));
-        }
-
-        return this.manifest().thenCompose(manifest -> {
-            final VersionDescriptor.@Nullable Reference option = manifest.findDescriptor(versionId).orElse(null);
+    public CompletableFuture<Optional<VersionDescriptor.Full>> fullVersion(final String versionId) {
+        return this.resolvedVersions.computeIfAbsent(versionId, version -> this.manifest().thenCompose(manifest -> {
+            final VersionDescriptor.@Nullable Reference option = manifest.findDescriptor(version).orElse(null);
             if (option == null) {
-                return CompletableFuture.completedFuture(null); // todo
+                return CompletableFuture.completedFuture(Optional.empty());
             }
-            return this.downloader.downloadJson(option.url(), "versions/" + option.id() + ".json", HashAlgorithm.SHA1, option.sha1(), VersionDescriptor.Full.class);
-        });
+            return this.downloader.readStringAndValidate(
+                option.url(),
+                "versions/" + option.id() + ".json",
+                HashAlgorithm.SHA1,
+                option.sha1()
+            ).thenApply(res -> Optional.of(GsonUtils.GSON.fromJson(res, VersionDescriptor.Full.class)));
+        }));
     }
 
     @Override
-    public String inject(final Path localDescriptor) throws IOException {
+    public String inject(final Path localDescriptor) throws IOException { // TODO: Maybe only allow this before anything has been resolved
         final VersionDescriptor.Full descriptor = GsonUtils.parseFromJson(localDescriptor, VersionDescriptor.Full.class);
+        this.resolvedVersions.put(descriptor.id(), CompletableFuture.completedFuture(Optional.of(descriptor)));
         this.injectedVersions.put(descriptor.id(), descriptor);
         return descriptor.id();
     }
+
 }
