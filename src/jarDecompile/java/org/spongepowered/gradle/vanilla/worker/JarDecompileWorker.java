@@ -61,6 +61,7 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.MAX_PROCESSING_METHOD, FALSE);
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.IGNORE_INVALID_BYTECODE, TRUE);
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.THREADS, Runtime.getRuntime().availableProcessors() - 1);
+        JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.INDENT_STRING, "    " /* Constants.INDENT */);
     }
 
     public static abstract class Parameters implements WorkParameters {
@@ -88,7 +89,7 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
             // perform the decompile
             try {
                 decompiler.decompileContext();
-                LOGGER.warn("Successfully decompiled to {}", params.getOutputJar().get().getAsFile());
+                JarDecompileWorker.LOGGER.warn("Successfully decompiled to {}", params.getOutputJar().get().getAsFile());
             } finally {
                 decompiler.clearContext();
                 System.gc();
