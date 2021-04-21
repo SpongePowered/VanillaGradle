@@ -30,6 +30,7 @@ import org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
 import org.apache.hc.core5.http.HttpResponse;
+import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.Message;
 import org.apache.hc.core5.http.nio.AsyncEntityConsumer;
 import org.apache.hc.core5.http.nio.entity.BasicAsyncEntityConsumer;
@@ -42,6 +43,7 @@ import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.repository.ResolutionResult;
 import org.spongepowered.gradle.vanilla.util.AsyncUtils;
 
 import java.io.BufferedReader;
@@ -54,6 +56,7 @@ import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
@@ -148,7 +151,7 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
     }
 
     @Override
-    public CompletableFuture<String> readString(final URL source, final String relativePath) {
+    public CompletableFuture<ResolutionResult<String>> readString(final URL source, final String relativePath) {
         return this.download(source, this.baseDirectory.resolve(relativePath), path -> {
             final AsyncEntityConsumer<String> reader = new StringAsyncEntityConsumer();
             if (this.writeToDisk) {
@@ -161,7 +164,7 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
     }
 
     @Override
-    public CompletableFuture<String> readStringAndValidate(
+    public CompletableFuture<ResolutionResult<String>> readStringAndValidate(
         final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash
     ) {
         return this.downloadValidating(source, this.baseDirectory.resolve(relativePath), algorithm, hash, path -> {
@@ -191,7 +194,7 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
 
 
     @Override
-    public CompletableFuture<byte[]> readBytes(final URL source, final String relativePath) {
+    public CompletableFuture<ResolutionResult<byte[]>> readBytes(final URL source, final String relativePath) {
         return this.download(source, this.baseDirectory.resolve(relativePath), path -> {
             final AsyncEntityConsumer<byte[]> reader = new BasicAsyncEntityConsumer();
             if (this.writeToDisk) {
@@ -204,7 +207,7 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
     }
 
     @Override
-    public CompletableFuture<byte[]> readBytesAndValidate(
+    public CompletableFuture<ResolutionResult<byte[]>> readBytesAndValidate(
         final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash
     ) {
         return this.downloadValidating(source, this.baseDirectory.resolve(relativePath), algorithm, hash, path -> {
@@ -223,7 +226,7 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
     }
 
     @Override
-    public CompletableFuture<Path> download(final URL source, final Path destination) {
+    public CompletableFuture<ResolutionResult<Path>> download(final URL source, final Path destination) {
         return this.download(
             source,
             destination,
@@ -233,7 +236,7 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
     }
 
     @Override
-    public CompletableFuture<Path> downloadAndValidate(final URL source, final Path destination, final HashAlgorithm algorithm, final String hash) {
+    public CompletableFuture<ResolutionResult<Path>> downloadAndValidate(final URL source, final Path destination, final HashAlgorithm algorithm, final String hash) {
         return this.downloadValidating(
             source, destination, algorithm, hash,
             ToPathEntityConsumer::new,
@@ -243,7 +246,7 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
 
     // Shared logic
 
-    private <T> CompletableFuture<T> download(
+    private <T> CompletableFuture<ResolutionResult<T>> download(
         final URL source,
         final Path destination,
         final Function<Path, AsyncEntityConsumer<T>> responseConsumer,
@@ -254,7 +257,7 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
             try {
                 if (this.resolveMode == ResolveMode.LOCAL_ONLY
                     || System.currentTimeMillis() - Files.getLastModifiedTime(destination).toMillis() < Constants.Manifests.CACHE_TIMEOUT_SECONDS * 1000) {
-                    return existingHandler.apply(destination);
+                    return existingHandler.apply(destination).thenApply(result -> ResolutionResult.result(result, true));
                 }
             } catch (final IOException ex) {
                 ApacheHttpDownloader.LOGGER.warn("Failed to get last modified time of {}, attempting to download again", destination, ex);
@@ -271,10 +274,20 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
         } catch (final URISyntaxException ex) {
             result.future().completeExceptionally(ex);
         }
-        return result.future().thenApply(Message::getBody);
+        return result.future().thenApply(message -> {
+            switch (message.getHead().getCode()) {
+                case HttpStatus.SC_NOT_FOUND:
+                    return ResolutionResult.notFound();
+                case HttpStatus.SC_OK:
+                    // TODO: see if we can return an up-to-date result by comparing the digest of the download with the existing file?
+                    return ResolutionResult.result(message.getBody(), false);
+                default:
+                    throw new CompletionException(new HttpErrorResponseException(source, message.getHead().getCode(), message.getHead().getReasonPhrase()));
+            }
+        });
     }
 
-    private <T> CompletableFuture<T> downloadValidating(
+    private <T> CompletableFuture<ResolutionResult<T>> downloadValidating(
         final URL source,
         final Path destination,
         final HashAlgorithm algorithm,
@@ -287,7 +300,9 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
             // Validate that the file matches the path, only download if it doesn't.
             try {
                 if (algorithm.validate(expectedHash, path)) {
-                    return existingHandler.apply(path);
+                    return existingHandler.apply(path).thenApply(result -> ResolutionResult.result(result, true));
+                } else {
+                    ApacheHttpDownloader.LOGGER.warn("Found hash mismatch on file at {}, re-downloading", path);
                 }
             } catch (final IOException ex) {
                 ApacheHttpDownloader.LOGGER.warn("Failed to test hash on file at {}, re-downloading", path);
@@ -309,7 +324,17 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
         } catch (final URISyntaxException | NoSuchAlgorithmException ex) {
             result.future().completeExceptionally(ex);
         }
-        return result.future().thenApply(Message::getBody);
+
+        return result.future().thenApply(message -> {
+            switch (message.getHead().getCode()) {
+                case HttpStatus.SC_NOT_FOUND:
+                    return ResolutionResult.notFound();
+                case HttpStatus.SC_OK:
+                    return ResolutionResult.result(message.getBody(), false); // Known invalid, hash does not match expected.
+                default:
+                    throw new CompletionException(new HttpErrorResponseException(source, message.getHead().getCode(), message.getHead().getReasonPhrase()));
+            }
+        });
     }
 
     @Override

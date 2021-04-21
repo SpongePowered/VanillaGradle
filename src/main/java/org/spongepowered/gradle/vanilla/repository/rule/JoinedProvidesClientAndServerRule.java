@@ -52,7 +52,6 @@ public class JoinedProvidesClientAndServerRule implements ComponentMetadataRule 
                     final String version = context.getDetails().getId().getVersion();
                     capabilities.addCapability(MinecraftPlatform.GROUP, MinecraftPlatform.SERVER.artifactId(), version);
                     capabilities.addCapability(MinecraftPlatform.GROUP, MinecraftPlatform.CLIENT.artifactId(), version);
-                    JoinedProvidesClientAndServerRule.LOGGER.warn("variant capabilities {}", capabilities);
                 } catch (final Throwable thr) {
                     JoinedProvidesClientAndServerRule.LOGGER.warn("Failed to set capabilities", thr);
                 }

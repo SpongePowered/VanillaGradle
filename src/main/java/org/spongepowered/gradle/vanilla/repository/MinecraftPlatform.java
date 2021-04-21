@@ -39,7 +39,7 @@ import java.util.concurrent.CompletableFuture;
 public enum MinecraftPlatform {
     CLIENT(MinecraftSide.CLIENT) {
         @Override
-        CompletableFuture<MinecraftResolver.MinecraftEnvironment> resolveMinecraft(
+        CompletableFuture<ResolutionResult<MinecraftResolver.MinecraftEnvironment>> resolveMinecraft(
             final MinecraftResolverImpl resolver, final String version, final Path outputJar
         ) {
             return resolver.provide(MinecraftPlatform.CLIENT, MinecraftSide.CLIENT, version, outputJar);
@@ -47,7 +47,7 @@ public enum MinecraftPlatform {
     },
     SERVER(MinecraftSide.SERVER) {
         @Override
-        CompletableFuture<MinecraftResolver.MinecraftEnvironment> resolveMinecraft(
+        CompletableFuture<ResolutionResult<MinecraftResolver.MinecraftEnvironment>> resolveMinecraft(
             final MinecraftResolverImpl resolver, final String version, final Path outputJar
         ) {
             return resolver.provide(MinecraftPlatform.SERVER, MinecraftSide.SERVER, version, outputJar);
@@ -55,11 +55,11 @@ public enum MinecraftPlatform {
     },
     JOINED(MinecraftSide.CLIENT, MinecraftSide.SERVER) {
         @Override
-        CompletableFuture<MinecraftResolver.MinecraftEnvironment> resolveMinecraft(
+        CompletableFuture<ResolutionResult<MinecraftResolver.MinecraftEnvironment>> resolveMinecraft(
             final MinecraftResolverImpl resolver, final String version, final Path outputJar
         ) {
-            final CompletableFuture<MinecraftResolver.MinecraftEnvironment> clientFuture = resolver.provide(MinecraftPlatform.CLIENT, version);
-            final CompletableFuture<MinecraftResolver.MinecraftEnvironment> serverFuture = resolver.provide(MinecraftPlatform.SERVER, version);
+            final CompletableFuture<ResolutionResult<MinecraftResolver.MinecraftEnvironment>> clientFuture = resolver.provide(MinecraftPlatform.CLIENT, version);
+            final CompletableFuture<ResolutionResult<MinecraftResolver.MinecraftEnvironment>> serverFuture = resolver.provide(MinecraftPlatform.SERVER, version);
             return resolver.provideJoined(clientFuture, serverFuture, version, outputJar);
         }
     };
@@ -108,7 +108,7 @@ public enum MinecraftPlatform {
         return this.activeSides;
     }
 
-    abstract CompletableFuture<MinecraftResolver.MinecraftEnvironment> resolveMinecraft(final MinecraftResolverImpl resolver, final String version, final Path outputJar);
+    abstract CompletableFuture<ResolutionResult<MinecraftResolver.MinecraftEnvironment>> resolveMinecraft(final MinecraftResolverImpl resolver, final String version, final Path outputJar);
 
     static {
         final Map<String, MinecraftPlatform> all = new HashMap<>();

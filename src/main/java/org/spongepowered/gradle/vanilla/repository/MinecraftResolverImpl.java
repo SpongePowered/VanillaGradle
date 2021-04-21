@@ -41,7 +41,6 @@ import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.transformer.AtlasTransformers;
 import org.spongepowered.gradle.vanilla.util.AsyncUtils;
 import org.spongepowered.gradle.vanilla.util.FileUtils;
-import org.spongepowered.gradle.vanilla.util.ImmutablesStyle;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -53,9 +52,7 @@ import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,7 +70,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
     private final Downloader downloader;
     private final ExecutorService executor;
     private @Nullable Function<ResolvableTool, URL[]> toolResolver;
-    private final ConcurrentMap<EnvironmentKey, CompletableFuture<MinecraftEnvironment>> artifacts = new ConcurrentHashMap<>();
+    private final ConcurrentMap<EnvironmentKey, CompletableFuture<ResolutionResult<MinecraftEnvironment>>> artifacts = new ConcurrentHashMap<>();
 
     public MinecraftResolverImpl(
         final VersionManifestRepository manifests,
@@ -95,17 +92,10 @@ public class MinecraftResolverImpl implements MinecraftResolver {
         return this.manifests;
     }
 
-    // remap jar, plus filtering if necessary
-
-    // constraints:
-    // lock the repository from multi-process modification
-    // the resolver should be shared across the entire project, and be safe for included builds
-
-    // return a MinecraftEnvironment that can be access-widened
-    CompletableFuture<MinecraftEnvironment> provide(final MinecraftPlatform platform, final MinecraftSide side, final String version, final Path outputJar) {
+    // remap a single-sided jar
+    CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform platform, final MinecraftSide side, final String version, final Path outputJar) {
         return this.artifacts.computeIfAbsent(EnvironmentKey.of(platform, version, null), key -> {
-            MinecraftResolverImpl.LOGGER.warn("Preparing Minecraft {} version {}", side, version);
-            final CompletableFuture<Optional<VersionDescriptor.Full>> descriptorFuture = this.manifests.fullVersion(key.versionId());
+            final CompletableFuture<ResolutionResult<VersionDescriptor.Full>> descriptorFuture = this.manifests.fullVersion(key.versionId());
             return descriptorFuture.thenComposeAsync(potentialDescriptor -> {
                 if (!potentialDescriptor.isPresent()) {
                     throw new InvalidUserDataException("No minecraft version with the id '" + key.versionId() + "' could be found!");
@@ -117,31 +107,46 @@ public class MinecraftResolverImpl implements MinecraftResolver {
                 final Path jarPath;
                 final Path mappingsPath;
                 try {
-                    jarPath = this.artifactPath(platform, "obf", version, null, "jar");
-                    mappingsPath = this.artifactPath(platform, "obf", version, "mappings", "txt");
+                    jarPath = this.artifactPath(platform, "m-obf", version, null, "jar");
+                    mappingsPath = this.artifactPath(platform, "m-obf", version, "mappings", "txt");
                 } catch (final IOException ex) {
                     return AsyncUtils.failedFuture(ex);
                 }
 
-                final CompletableFuture<Path> jarFuture = this.downloader.downloadAndValidate(
+                final CompletableFuture<ResolutionResult<Path>> jarFuture = this.downloader.downloadAndValidate(
                     jarDownload.url(),
                     jarPath,
                     HashAlgorithm.SHA1,
                     jarDownload.sha1()
                 );
-                final CompletableFuture<Path> mappingsFuture = this.downloader.downloadAndValidate(
+                final CompletableFuture<ResolutionResult<Path>> mappingsFuture = this.downloader.downloadAndValidate(
                     mappingsDownload.url(),
                     mappingsPath,
                     HashAlgorithm.SHA1,
-                    jarDownload.sha1()
+                    mappingsDownload.sha1()
                 );
 
                 return jarFuture.thenCombineAsync(mappingsFuture, (jar, mappingsFile) -> {
                     try {
+                        if (jar.upToDate() && mappingsFile.upToDate() && Files.exists(outputJar)) {
+                            // Our inputs are up-to-date, and the output exists, so we can assume (for now) that the output is up-to-date
+                            // Check meta here too, before returning
+                            this.writeMetaIfNecessary(platform, potentialDescriptor, outputJar.getParent());
+                            // todo: eventually, store a hash along with the jar to compare to, for validation
+                            return ResolutionResult.result(new MinecraftEnvironmentImpl(outputJar, descriptor), true);
+                        } else if (!jar.isPresent()) {
+                            throw new IllegalArgumentException("No jar was available for Minecraft " + descriptor.id() + "side " + side.name()
+                                + "! Are you sure the data file is correct?");
+                        } else if (!mappingsFile.isPresent()) {
+                            throw new IllegalArgumentException("No mappings were available for Minecraft " + descriptor.id() + "side " + side.name()
+                                + "! Official mappings are only available for releases 1.14.4 and newer.");
+                        }
+                        MinecraftResolverImpl.LOGGER.warn("Preparing Minecraft: Java Edition {} version {}", side, version);
+
                         final Path outputTmp = Files.createTempDirectory("vanillagradle").resolve("output" + side.name() + ".jar");
                         FileUtils.createDirectoriesSymlinkSafe(outputJar.getParent());
                         final MappingSet scratchMappings = MappingSet.create();
-                        try (final BufferedReader reader = Files.newBufferedReader(mappingsFile, StandardCharsets.UTF_8)) {
+                        try (final BufferedReader reader = Files.newBufferedReader(mappingsFile.get(), StandardCharsets.UTF_8)) {
                             final ProGuardReader proguard = new ProGuardReader(reader);
                             proguard.read(scratchMappings);
                         } catch (final IOException ex) {
@@ -156,11 +161,13 @@ public class MinecraftResolverImpl implements MinecraftResolver {
                             atlas.install(ctx -> AtlasTransformers.stripSignatures());
                             atlas.install(ctx -> AtlasTransformers.remap(mappings, ctx.inheritanceProvider()));
 
-                            atlas.run(jar, outputTmp);
+                            atlas.run(jar.get(), outputTmp);
                         }
-                        this.writeMetaIfNecessary(platform, descriptor, outputJar.getParent());
+                        this.writeMetaIfNecessary(platform, potentialDescriptor, outputJar.getParent());
                         FileUtils.atomicMove(outputTmp, outputJar);
-                        return new MinecraftEnvironmentImpl(outputJar, descriptor);
+                        // not up-to-date, we had to generate the jar
+                        MinecraftResolverImpl.LOGGER.warn("Successfully prepared Minecraft: Java Edition {} version {}", side, version);
+                        return ResolutionResult.result(new MinecraftEnvironmentImpl(outputJar, descriptor), false);
                     } catch (final IOException | XMLStreamException ex) {
                         throw new CompletionException(ex);
                     }
@@ -169,32 +176,42 @@ public class MinecraftResolverImpl implements MinecraftResolver {
         });
     }
 
-    CompletableFuture<MinecraftEnvironment> provideJoined(
-        final CompletableFuture<MinecraftEnvironment> clientFuture,
-        final CompletableFuture<MinecraftEnvironment> serverFuture,
+    // prepare the joined artifact
+    CompletableFuture<ResolutionResult<MinecraftEnvironment>> provideJoined(
+        final CompletableFuture<ResolutionResult<MinecraftEnvironment>> clientFuture,
+        final CompletableFuture<ResolutionResult<MinecraftEnvironment>> serverFuture,
         final String version,
         final Path outputJar
     ) {
-        if (Files.isRegularFile(outputJar)) {
-            return this.artifacts.computeIfAbsent(EnvironmentKey.of(MinecraftPlatform.JOINED, version, null),
-                key -> this.manifests.fullVersion(key.versionId()).thenApply(metadata -> new MinecraftEnvironmentImpl(outputJar, metadata.orElseThrow(() -> new InvalidUserDataException("Unknown minecraft version '" + version +"'!")))));
-        }
-        // To use Gradle's dependency management, we MUST be on a Gradle thread.
-        final Executable merge = this.prepareChildLoader(ResolvableTool.JAR_MERGE, "org.spongepowered.gradle.vanilla.worker.JarMerger", "execute");
         return this.artifacts.computeIfAbsent(EnvironmentKey.of(MinecraftPlatform.JOINED, version, null), key -> {
-            MinecraftResolverImpl.LOGGER.warn("Preparing joined Minecraft version {}", version);
-            final CompletableFuture<Optional<VersionDescriptor.Full>> descriptorFuture = this.manifests.fullVersion(key.versionId());
+            // To use Gradle's dependency management, we MUST be on a Gradle thread.
+            // For now, let's resolve everything ahead-of-time
+            // Shouldn't really do this in a `computeIfAbsent`, but oh well... what gradle tells us, we must do
+            final CompletableFuture<ResolutionResult<VersionDescriptor.Full>> descriptorFuture = this.manifests.fullVersion(key.versionId());
+            final Executable merge = this.prepareChildLoader(ResolvableTool.JAR_MERGE, "org.spongepowered.gradle.vanilla.worker.JarMerger", "execute");
+
             return descriptorFuture.thenComposeAsync(potentialDescriptor -> clientFuture.thenCombineAsync(serverFuture, (client, server) -> {
                 try {
-                    final VersionDescriptor.Full descriptor = potentialDescriptor.orElseThrow(() -> new InvalidUserDataException("Minecraft version " + version + " could not be found!"));
+                    if (!potentialDescriptor.isPresent()) {
+                        return ResolutionResult.notFound();
+                    }
+                    final VersionDescriptor.Full descriptor = potentialDescriptor.get();
+                    if (client.upToDate() && server.upToDate() && Files.isRegularFile(outputJar)) {
+                        // We're up-to-date, give meta a poke and then return without re-executing the jar merge
+                        this.writeMetaIfNecessary(MinecraftPlatform.JOINED, potentialDescriptor, outputJar.getParent());
+                        return ResolutionResult.result(new MinecraftEnvironmentImpl(outputJar, descriptor), true);
+                    }
+                    MinecraftResolverImpl.LOGGER.warn("Preparing Minecraft: Java Edition JOINED version {}", version);
+
                     final Path outputTmp = Files.createTempDirectory("vanillagradle").resolve("mergetmp" + version + ".jar");
 
-                    // apply jar merge worker
-                    merge.execute(client.jar(), server.jar(), outputTmp);
+                    // apply jar merge worker as a (Path client, Path server, Path merged)
+                    merge.execute(client.get().jar(), server.get().jar(), outputTmp);
 
-                    this.writeMetaIfNecessary(MinecraftPlatform.JOINED, descriptor, outputJar.getParent());
+                    this.writeMetaIfNecessary(MinecraftPlatform.JOINED, potentialDescriptor, outputJar.getParent());
                     FileUtils.atomicMove(outputTmp, outputJar);
-                    return new MinecraftEnvironmentImpl(outputJar, descriptor);
+                    MinecraftResolverImpl.LOGGER.warn("Successfully prepared Minecraft: Java Edition JOINED version {}", version);
+                    return ResolutionResult.result(new MinecraftEnvironmentImpl(outputJar, descriptor), false);
                 } catch (final Exception ex) {
                     throw new CompletionException(ex);
                 }
@@ -255,7 +272,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
     //
 
     @Override
-    public CompletableFuture<MinecraftEnvironment> provide(
+    public CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(
         final MinecraftPlatform side, final String version
     ) {
         final Path output;
@@ -265,11 +282,8 @@ public class MinecraftResolverImpl implements MinecraftResolver {
             return AsyncUtils.failedFuture(ex);
         }
 
-        if (Files.exists(output)) { // todo: actually check validity
-            return this.versions().fullVersion(version).thenApply(meta -> new MinecraftEnvironmentImpl(output, meta.orElseThrow(() -> new InvalidUserDataException("No minecraft version of '" + version + "' could be found."))));
-        } else {
-            return side.resolveMinecraft(this, version, output);
-        }
+        // Each platform is responsible for its own up-to-date checks
+        return side.resolveMinecraft(this, version, output);
     }
 
     @Override
@@ -277,16 +291,14 @@ public class MinecraftResolverImpl implements MinecraftResolver {
         final MinecraftPlatform side, final String version, final String id, final BiConsumer<MinecraftEnvironment, Path> action
     ) throws Exception {
         final Path output = this.artifactPath(side, null, version, id, "jar");
-        if (Files.exists(output)) { // todo: actually check validity
-            return output;
-        } else {
-            final MinecraftEnvironment env = this.provide(side, version).get();
+        final ResolutionResult<MinecraftEnvironment> env = this.provide(side, version).get();
+        if (!env.upToDate() || !Files.exists(output)) {
             final Path tempOut = Files.createTempFile("vanillagradle-" + side.artifactId() + "id", ".tmp.jar");
 
-            action.accept(env, tempOut);
+            action.accept(env.get(), tempOut);
             FileUtils.atomicMove(tempOut, output);
-            return output;
         }
+        return output; // todo: find some better way of checking validity? for ex. when decompiler version changes
     }
 
     private Path artifactPath(
@@ -305,17 +317,20 @@ public class MinecraftResolverImpl implements MinecraftResolver {
 
     private void writeMetaIfNecessary(
         final MinecraftPlatform platform,
-        final VersionDescriptor.Full version,
+        final ResolutionResult<VersionDescriptor.Full> version,
         final Path baseDir
     ) throws IOException, XMLStreamException {
-        final Path metaFile = baseDir.resolve("ivy-" + version.id() + ".xml");
-        if (!Files.exists(metaFile)) {
+        if (!version.isPresent()) {
+            return; // not found, we can't resolve
+        }
+        final Path metaFile = baseDir.resolve("ivy-" + version.get().id() + ".xml");
+        if (!version.upToDate() || !Files.exists(metaFile)) {
             FileUtils.createDirectoriesSymlinkSafe(metaFile.getParent());
             final Path metaFileTmp = FileUtils.temporaryPath(metaFile.getParent(), "metadata");
             try (final IvyModuleWriter writer = new IvyModuleWriter(metaFileTmp)) {
-                writer.write(version, platform);
+                writer.write(version.get(), platform);
             }
-            Files.move(metaFileTmp, metaFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            FileUtils.atomicMove(metaFileTmp, metaFile);
         }
     }
 
@@ -325,7 +340,6 @@ public class MinecraftResolverImpl implements MinecraftResolver {
      * <p>This ensures that only one future exists for any given minecraft artifact within a certain runtime.</p>
      */
     @Value.Immutable(builder = false)
-    @ImmutablesStyle
     interface EnvironmentKey {
 
         static EnvironmentKey of(final MinecraftPlatform platform, final String versionId, final @Nullable String extra) {
@@ -344,6 +358,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
     }
 
     static final class MinecraftEnvironmentImpl implements MinecraftEnvironment {
+
         private final Path jar;
         private final VersionDescriptor.Full metadata;
 
@@ -366,5 +381,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
         public CompletableFuture<MinecraftEnvironment> accessWidened(final Path... wideners) {
             throw new UnsupportedOperationException("Not yet implemented");
         }
+
     }
+
 }

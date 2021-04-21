@@ -41,7 +41,7 @@ public interface MinecraftResolver {
     // we simply strip all entries from the client jar that are also present in the server jar
     // The client artifact would depend on the server artifact
 
-    CompletableFuture<MinecraftEnvironment> provide(final MinecraftPlatform side, final String version);
+    CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version);
 
     /**
      * Given a standard Minecraft artifact, produce a variant of that artifact.
@@ -60,8 +60,11 @@ public interface MinecraftResolver {
         throws Exception;
 
     interface MinecraftEnvironment {
+
         Path jar();
         VersionDescriptor.Full metadata();
         CompletableFuture<MinecraftEnvironment> accessWidened(final Path... wideners);
+
     }
+
 }

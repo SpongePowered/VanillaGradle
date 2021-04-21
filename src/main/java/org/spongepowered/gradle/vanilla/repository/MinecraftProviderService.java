@@ -43,6 +43,8 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -63,8 +65,11 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
 
     public MinecraftProviderService() {
         // aaa
-        this.executor = Executors.newWorkStealingPool();
-        MinecraftProviderService.LOGGER.warn("Creating minecraft provider service");
+        /* this.executor = new ThreadPoolExecutor(maxProcessors / 4, maxProcessors,
+            30, TimeUnit.SECONDS,
+            new LinkedBlockingDeque<>()); */
+        this.executor = Executors.newWorkStealingPool(); // todo: use from above
+        MinecraftProviderService.LOGGER.info("Creating minecraft provider service");
     }
 
     public ApacheHttpDownloader downloader() {
@@ -143,7 +148,7 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
 
     @Override
     public void close() {
-        MinecraftProviderService.LOGGER.warn(Constants.NAME + ": Shutting down MinecraftProviderService");
+        MinecraftProviderService.LOGGER.info(Constants.NAME + ": Shutting down MinecraftProviderService");
         this.executor.shutdown();
         boolean success;
         try {

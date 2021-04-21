@@ -40,6 +40,6 @@ public enum MappingType {
     /**
      * Official names based on provided mappings.
      */
-    OFFICIAL;
+    OFFICIAL
 
 }
