@@ -34,6 +34,27 @@ import java.util.function.Function;
 
 public interface MinecraftResolver {
 
+    /**
+     * A version indicator for on-disk storage.
+     *
+     * <p>When a change in how Minecraft artifacts exists that cannot be
+     * detected by existing input detection, or would make data unreadable by
+     * older versions of the resolver, this version will be incremented.</p>
+     */
+    int STORAGE_VERSION = 1;
+    /**
+     * A version for stored metadata.
+     *
+     * <p>Whenever the {@link #STORAGE_VERSION} is incremented, this version
+     * will be reset to {@code 1}</p>
+     */
+    int METADATA_VERSION = 1;
+
+    /**
+     * Get the version manifest repository managed by this resolver.
+     *
+     * @return the resolver
+     */
     VersionManifestRepository versions();
 
     // TODO: reproduce 21w14a+ server/client split, where client is stripped of shaded server classes and depends on server artifact?

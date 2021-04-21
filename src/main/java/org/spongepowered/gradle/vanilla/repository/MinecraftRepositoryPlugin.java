@@ -31,6 +31,7 @@ import org.gradle.api.artifacts.ModuleVersionSelector;
 import org.gradle.api.artifacts.ResolutionStrategy;
 import org.gradle.api.artifacts.dsl.ComponentMetadataHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.initialization.Settings;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.logging.Logger;
@@ -49,6 +50,12 @@ import java.util.concurrent.ExecutionException;
  * The minimum plugin to add the minecraft repository to projects or globally.
  */
 public class MinecraftRepositoryPlugin implements Plugin<Object> {
+
+    /**
+     * A variant of {@link IvyArtifactRepository#MAVEN_IVY_PATTERN} that takes
+     * into account our metadata revision number.
+     */
+    public static final String IVY_METADATA_PATTERN = "[organisation]/[module]/[revision]/ivy-[revision]-vg" + MinecraftResolver.METADATA_VERSION + ".xml";
 
     private @Nullable Provider<MinecraftProviderService> service;
 
@@ -82,7 +89,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         // Apply vanillagradle caches
         if (!project.getGradle().getPlugins().hasPlugin(MinecraftRepositoryPlugin.class)) {
             this.createRepositories(project.getRepositories(), service, sharedCacheDirectory, rootProjectCache);
-            this.registerComponentMetadataRules(service, project.getDependencies().getComponents());
+            this.registerComponentMetadataRules(project.getDependencies().getComponents());
         }
 
         // Register tool configurations
@@ -137,7 +144,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
 
         // Apply VanillaGradle caches
         this.createRepositories(settings.getDependencyResolutionManagement().getRepositories(), service, sharedCacheDirectory, rootProjectCache);
-        this.registerComponentMetadataRules(service, settings.getDependencyResolutionManagement().getComponents());
+        this.registerComponentMetadataRules(settings.getDependencyResolutionManagement().getComponents());
 
         final MinecraftRepositoryExtension extension = this.registerExtension(settings, service, settings.getRootDir());
 
@@ -163,19 +170,18 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
     }
 
     private static Path resolveCache(final Path root) {
-        return root.resolve(Constants.Directories.CACHES).resolve(Constants.NAME);
+        return root.resolve(Constants.Directories.CACHES).resolve(Constants.NAME).resolve("v" + MinecraftResolver.STORAGE_VERSION);
     }
 
     private void createRepositories(final RepositoryHandler repositories, final Provider<MinecraftProviderService> service, final Path sharedCache, final Path rootProjectCache) {
         repositories.ivy(ivy -> {
             ivy.setName("VanillaGradle Global Cache");
-            ivy.setUrl(sharedCache.toUri());
-            /*ivy.patternLayout(layout -> {
+            ivy.setUrl(sharedCache.resolve(Constants.Directories.JARS).toUri());
+            ivy.patternLayout(layout -> {
                 layout.artifact(IvyArtifactRepository.MAVEN_ARTIFACT_PATTERN);
-                layout.ivy(IvyArtifactRepository.MAVEN_IVY_PATTERN);
+                layout.ivy(MinecraftRepositoryPlugin.IVY_METADATA_PATTERN);
                 layout.setM2compatible(true);
-            });*/
-            ivy.layout("maven");
+            });
             ivy.content(content -> {
                 for (final MinecraftPlatform platform : MinecraftPlatform.all()) {
                      content.includeModule(MinecraftPlatform.GROUP, platform.artifactId());
@@ -193,20 +199,23 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         // TODO: how to handle AWs nicely?
         /* repositories.ivy(ivy -> {
             ivy.setName("VanillaGradle Project Cache");
-            ivy.setUrl(rootProjectCache.toUri());
-            ivy.layout("maven");
-            ivy.content(content -> {
-                content.includeModule("net.minecraft", "client");
-                content.includeModule("net.minecraft", "joined");
-                content.includeModule("net.minecraft", "server");
+            ivy.setUrl(rootProjectCache.resolve(Constants.Directories.JARS).toUri());
+            ivy.patternLayout(layout -> {
+                layout.artifact(IvyArtifactRepository.MAVEN_ARTIFACT_PATTERN);
+                layout.ivy(MinecraftRepositoryPlugin.IVY_METADATA_PATTERN);
+                layout.setM2compatible(true);
             });
-            final Provider<VersionManifestRepository> versions = service.map(MinecraftProviderService::versions);
-            ivy.setComponentVersionsLister(LauncherMetaVersionLister.class, params -> params.params(versions));
-            ivy.setMetadataSupplier(LauncherMetaMetadataSupplier.class, params -> params.params(versions));
+            ivy.content(content -> {
+                for (final MinecraftPlatform platform : MinecraftPlatform.all()) {
+                     content.includeModule(MinecraftPlatform.GROUP, platform.artifactId());
+                }
+            });
+            ivy.setComponentVersionsLister(LauncherMetaVersionLister.class, params -> params.params(service));
+            ivy.setMetadataSupplier(LauncherMetaMetadataSupplier.class, params -> params.params(service));
         });*/
     }
 
-    private void registerComponentMetadataRules(final Provider<MinecraftProviderService> service, final ComponentMetadataHandler handler) {
+    private void registerComponentMetadataRules(final ComponentMetadataHandler handler) {
         handler.withModule(MinecraftPlatform.JOINED.moduleName(), JoinedProvidesClientAndServerRule.class);
 
         for (final MinecraftPlatform platform : MinecraftPlatform.all()) {
