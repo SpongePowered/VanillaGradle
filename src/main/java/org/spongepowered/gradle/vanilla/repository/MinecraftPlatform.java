@@ -30,6 +30,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -76,7 +78,7 @@ public enum MinecraftPlatform {
 
     MinecraftPlatform(final MinecraftSide... sides) {
         this.artifactId = this.name().toLowerCase(Locale.ROOT);
-        this.activeSides = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(sides)));
+        this.activeSides = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(sides)));
     }
 
     public static Collection<MinecraftPlatform> all() {

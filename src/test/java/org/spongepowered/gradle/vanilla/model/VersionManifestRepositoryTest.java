@@ -64,7 +64,7 @@ class VersionManifestRepositoryTest {
     }
 
     @Test
-    // @Disabled("Fairly resource-intensive, takes a while to download all uncached (~1 minute)")
+    @Disabled("Fairly resource-intensive, takes a while to download all uncached (~1 minute)")
     void testLoadAllManifests() throws IOException, ExecutionException, InterruptedException {
         try (final Downloader downloader = new ApacheHttpDownloader(ForkJoinPool.commonPool(), Paths.get("test-cache"), Downloader.ResolveMode.LOCAL_THEN_REMOTE)) {
             final VersionManifestRepository repo = VersionManifestRepository.fromDownloader(downloader);

@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.model.Download;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
+import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.network.Downloader;
 import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.transformer.AtlasTransformers;
@@ -50,6 +51,7 @@ import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -128,7 +130,8 @@ public class MinecraftResolverImpl implements MinecraftResolver {
 
                 return jarFuture.thenCombineAsync(mappingsFuture, (jar, mappingsFile) -> {
                     try {
-                        if (jar.upToDate() && mappingsFile.upToDate() && Files.exists(outputJar)) {
+                        final boolean outputExists = Files.exists(outputJar);
+                        if (jar.upToDate() && mappingsFile.upToDate() && outputExists) {
                             // Our inputs are up-to-date, and the output exists, so we can assume (for now) that the output is up-to-date
                             // Check meta here too, before returning
                             this.writeMetaIfNecessary(platform, potentialDescriptor, outputJar.getParent());
@@ -142,6 +145,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
                                 + "! Official mappings are only available for releases 1.14.4 and newer.");
                         }
                         MinecraftResolverImpl.LOGGER.warn("Preparing Minecraft: Java Edition {} version {}", side, version);
+                        this.cleanAssociatedArtifacts(platform, version);
 
                         final Path outputTmp = Files.createTempDirectory("vanillagradle").resolve("output" + side.name() + ".jar");
                         FileUtils.createDirectoriesSymlinkSafe(outputJar.getParent());
@@ -196,12 +200,14 @@ public class MinecraftResolverImpl implements MinecraftResolver {
                         return ResolutionResult.notFound();
                     }
                     final VersionDescriptor.Full descriptor = potentialDescriptor.get();
-                    if (client.upToDate() && server.upToDate() && Files.isRegularFile(outputJar)) {
+                    final boolean outputExists = Files.isRegularFile(outputJar);
+                    if (client.upToDate() && server.upToDate() && outputExists) {
                         // We're up-to-date, give meta a poke and then return without re-executing the jar merge
                         this.writeMetaIfNecessary(MinecraftPlatform.JOINED, potentialDescriptor, outputJar.getParent());
                         return ResolutionResult.result(new MinecraftEnvironmentImpl(outputJar, descriptor), true);
                     }
                     MinecraftResolverImpl.LOGGER.warn("Preparing Minecraft: Java Edition JOINED version {}", version);
+                    this.cleanAssociatedArtifacts(MinecraftPlatform.JOINED, version);
 
                     final Path outputTmp = Files.createTempDirectory("vanillagradle").resolve("mergetmp" + version + ".jar");
 
@@ -286,6 +292,26 @@ public class MinecraftResolverImpl implements MinecraftResolver {
         return side.resolveMinecraft(this, version, output);
     }
 
+    private void cleanAssociatedArtifacts(final MinecraftPlatform platform, final String version) throws IOException {
+        final Path baseArtifact = this.artifactPath(platform, null, version, null, "jar");
+        int errorCount = 0;
+        try (final DirectoryStream<Path> siblings = Files.newDirectoryStream(baseArtifact.getParent(), x -> x.getFileName().toString().endsWith(".jar"))) {
+            for (final Path file : siblings) {
+                if (!file.equals(baseArtifact)) {
+                    try {
+                        Files.delete(file);
+                    } catch (final IOException ex) {
+                        errorCount++;
+                    }
+                }
+            }
+        }
+
+        if (errorCount > 0) {
+            throw new IOException("Failed to delete " + errorCount + " associated artifacts of " + platform + " " + version + "!");
+        }
+    }
+
     @Override
     public Path produceAssociatedArtifactSync(
         final MinecraftPlatform side, final String version, final String id, final BiConsumer<MinecraftEnvironment, Path> action
@@ -328,7 +354,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
             FileUtils.createDirectoriesSymlinkSafe(metaFile.getParent());
             final Path metaFileTmp = FileUtils.temporaryPath(metaFile.getParent(), "metadata");
             try (final IvyModuleWriter writer = new IvyModuleWriter(metaFileTmp)) {
-                writer.write(version.get(), platform);
+                writer.write(version.get(), platform, RuleContext.create());
             }
             FileUtils.atomicMove(metaFileTmp, metaFile);
         }

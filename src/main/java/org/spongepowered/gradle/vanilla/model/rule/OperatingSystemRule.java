@@ -73,7 +73,7 @@ public final class OperatingSystemRule implements Rule<OperatingSystemRule.OSInf
 
     @Override
     public TypeToken<OSInfo> type() {
-        return TYPE;
+        return OperatingSystemRule.TYPE;
     }
 
     @Override

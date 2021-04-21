@@ -39,8 +39,8 @@ jobs:
         with:
           name: test-results
           path: |
-            build/test-results/test/
-            */build/test-results/test/
+            build/reports/**
+            */build/reports/**
 
       # Then publish if we are all set up to do so
       - name: Determine status
