@@ -4,7 +4,7 @@ name: Build, Test, and Deploy
 
 on:
   push:
-    branches: "*"
+    branches: "**"
     tags-ignore: ["*"]
   pull_request:
   release:
