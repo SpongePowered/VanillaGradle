@@ -66,6 +66,7 @@ import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
+import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryPlugin;
 import org.spongepowered.gradle.vanilla.repository.MinecraftSide;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
@@ -155,14 +156,9 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         });
     }
 
-    // TODO: Move this up to the Settings plugin... somehow
-    private void configureRepositories(final MinecraftExtension extension, final RepositoryHandler handler) {
+    private void configureRepositories(final MinecraftRepositoryExtension extension, final RepositoryHandler handler) {
         if (extension.injectRepositories().get()) {
-            handler.maven(repo -> {
-                repo.setUrl(Constants.Repositories.MINECRAFT);
-                repo.mavenContent(MavenRepositoryContentDescriptor::releasesOnly);
-            });
-            handler.maven(repo -> repo.setUrl(Constants.Repositories.MINECRAFT_FORGE));
+            Constants.Repositories.applyTo(handler);
         }
     }
 

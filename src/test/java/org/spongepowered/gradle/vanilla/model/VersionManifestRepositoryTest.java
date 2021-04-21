@@ -65,7 +65,6 @@ class VersionManifestRepositoryTest {
 
     @Test
     @Disabled("Fairly resource-intensive, takes a while to download all uncached (~1 minute)")
-    @SuppressWarnings("rawtypes")
     void testLoadAllManifests() throws IOException, ExecutionException, InterruptedException {
         try (final Downloader downloader = new ApacheHttpDownloader(ForkJoinPool.commonPool(), Paths.get("test-cache"), Downloader.ResolveMode.LOCAL_THEN_REMOTE)) {
             final VersionManifestRepository repo = VersionManifestRepository.fromDownloader(downloader);
@@ -86,7 +85,7 @@ class VersionManifestRepositoryTest {
             }
 
             System.out.println("Awaiting");
-            CompletableFuture.allOf(descriptors.toArray(new CompletableFuture[0])).get();
+            CompletableFuture.allOf(descriptors.toArray(new CompletableFuture<?>[0])).get();
             System.out.println("Done");
         }
     }

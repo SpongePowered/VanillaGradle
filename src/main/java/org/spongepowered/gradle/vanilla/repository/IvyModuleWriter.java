@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla.repository;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.JavaRuntimeVersion;
 import org.spongepowered.gradle.vanilla.model.Library;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
@@ -68,13 +69,13 @@ public class IvyModuleWriter implements AutoCloseable {
     public IvyModuleWriter(final Writer output) throws XMLStreamException {
         this.managedOutput = false;
         this.output = output;
-        this.writer = new IndentingXmlStreamWriter(IvyModuleWriter.OUTPUT_FACTORY.createXMLStreamWriter(output), "    ");
+        this.writer = new IndentingXmlStreamWriter(IvyModuleWriter.OUTPUT_FACTORY.createXMLStreamWriter(output), Constants.INDENT);
     }
 
     public IvyModuleWriter(final Path target) throws IOException, XMLStreamException {
         this.managedOutput = true;
         this.output = Files.newBufferedWriter(target);
-        this.writer = new IndentingXmlStreamWriter(IvyModuleWriter.OUTPUT_FACTORY.createXMLStreamWriter(this.output), "    ");
+        this.writer = new IndentingXmlStreamWriter(IvyModuleWriter.OUTPUT_FACTORY.createXMLStreamWriter(this.output), Constants.INDENT);
     }
 
     public void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform plaform) throws XMLStreamException {

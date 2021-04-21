@@ -31,40 +31,14 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.provider.Property;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
+import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 
 /**
- * Properties that can configure how VanillaGradle applies minecraft
+ * Properties that can configure how VanillaGradle applies Minecraft to the
+ * current project.
  */
-public interface MinecraftExtension {
-
-    /**
-     * Get whether repositories should be injected into the build.
-     *
-     * <p>For users who run their own proxying repositories or who want to
-     * manage repositories in another way, this property can be disabled.
-     * However, to function VanillaGradle must be able to resolve artifacts
-     * that are present in the following repositories:</p>
-     * <ul>
-     *     <li>Maven Central</li>
-     *     <li><a href="https://libraries.minecraft.net/">https://libraries.minecraft.net</a></li>
-     *     <li><a href="https://files.minecraftforge.net/maven/">https://files.minecraftforge.net/maven/</a></li>
-     * </ul>
-     *
-     * <p>This list is subject to change in any feature release without that
-     * release being marked as "breaking".</p>
-     *
-     * @return the inject repositories property
-     */
-    Property<Boolean> injectRepositories();
-
-    /**
-     * Set whether standard repositories should be added to the project.
-     *
-     * @param injectRepositories whether repositories should be injected
-     * @see #injectRepositories() for a list of repositories that are injected
-     */
-    void injectRepositories(boolean injectRepositories);
+public interface MinecraftExtension extends MinecraftRepositoryExtension {
 
     /**
      * Get a property pointing to the version of Minecraft to prepare.
