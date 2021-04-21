@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.network.Downloader;
 import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
+import org.spongepowered.gradle.vanilla.repository.ResolutionResult;
 import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
 import java.io.IOException;
@@ -51,7 +52,7 @@ final class DownloaderBasedVersionManifestRepository implements VersionManifestR
     private final Downloader downloader;
     private volatile @Nullable CompletableFuture<VersionManifestV2> manifest;
     private final Map<String, VersionDescriptor.Full> injectedVersions = new ConcurrentHashMap<>(); // Add-only
-    private final Map<String, CompletableFuture<Optional<VersionDescriptor.Full>>> resolvedVersions = new ConcurrentHashMap<>();
+    private final Map<String, CompletableFuture<ResolutionResult<VersionDescriptor.Full>>> resolvedVersions = new ConcurrentHashMap<>();
 
     DownloaderBasedVersionManifestRepository(final Downloader downloader) {
         this.downloader = downloader;
@@ -68,7 +69,7 @@ final class DownloaderBasedVersionManifestRepository implements VersionManifestR
                 throw new IllegalStateException("Constant API URL failed to parse", ex);
             }
             this.manifest = manifest = this.downloader.readString(url, "manifest.json") // it's fine if we download multiple times, the downloader ensures we do it safely
-                .thenApply(res -> GsonUtils.GSON.fromJson(res, VersionManifestV2.class));
+                .thenApply(res -> GsonUtils.GSON.fromJson(res.get(), VersionManifestV2.class)); // ensure it's present
         }
         return manifest;
     }
@@ -91,34 +92,37 @@ final class DownloaderBasedVersionManifestRepository implements VersionManifestR
 
     @Override
     public CompletableFuture<Optional<String>> latestVersion(final VersionClassifier classifier) {
-        return this.manifest().thenApply(manifest -> {
-            return Optional.ofNullable(manifest.latest().get(classifier));
-        }).exceptionally(ex -> {
-            DownloaderBasedVersionManifestRepository.LOGGER.error("Failed to query latest version: ", ex);
-            return Optional.empty();
-        });
+        return this.manifest()
+            .thenApply(manifest -> Optional.ofNullable(manifest.latest().get(classifier)))
+            .exceptionally(ex -> {
+                DownloaderBasedVersionManifestRepository.LOGGER.error("Failed to query latest version: ", ex);
+                return Optional.empty();
+            });
     }
 
     @Override
-    public CompletableFuture<Optional<VersionDescriptor.Full>> fullVersion(final String versionId) {
+    public CompletableFuture<ResolutionResult<VersionDescriptor.Full>> fullVersion(final String versionId) {
         return this.resolvedVersions.computeIfAbsent(versionId, version -> this.manifest().thenCompose(manifest -> {
             final VersionDescriptor.@Nullable Reference option = manifest.findDescriptor(version).orElse(null);
             if (option == null) {
-                return CompletableFuture.completedFuture(Optional.empty());
+                return CompletableFuture.completedFuture(ResolutionResult.notFound());
             }
             return this.downloader.readStringAndValidate(
                 option.url(),
                 "versions/" + option.id() + ".json",
                 HashAlgorithm.SHA1,
                 option.sha1()
-            ).thenApply(res -> Optional.of(GsonUtils.GSON.fromJson(res, VersionDescriptor.Full.class)));
+            ).thenApply(res -> res.mapIfPresent((upToDate, content) -> GsonUtils.GSON.fromJson(content, VersionDescriptor.Full.class)));
         }));
     }
 
     @Override
-    public String inject(final Path localDescriptor) throws IOException { // TODO: Maybe only allow this before anything has been resolved
+    public String inject(final Path localDescriptor) throws IOException {
+        // TODO: Maybe only allow this before anything has been resolved
+        // That restriction would probably cause issues in multi-project builds, if more than one registers custom versions
+        // ... we do have a settings plugin for that though...
         final VersionDescriptor.Full descriptor = GsonUtils.parseFromJson(localDescriptor, VersionDescriptor.Full.class);
-        this.resolvedVersions.put(descriptor.id(), CompletableFuture.completedFuture(Optional.of(descriptor)));
+        this.resolvedVersions.put(descriptor.id(), CompletableFuture.completedFuture(ResolutionResult.result(descriptor, false))); // todo: does this make sense?... we have no real way to track whether these descriptors changed
         this.injectedVersions.put(descriptor.id(), descriptor);
         return descriptor.id();
     }

@@ -41,7 +41,9 @@ import org.immutables.value.Value;
     set = "*",
     depluralize = true,
     deferCollectionAllocation = true,
-    jdkOnly = true
+    jdkOnly = true,
+    optionalAcceptNullable = true,
+    nullableAnnotation = "org.checkerframework.checker.nullness.qual.Nullable"
 )
 public @interface ImmutablesStyle {
 }

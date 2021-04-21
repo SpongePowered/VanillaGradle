@@ -26,7 +26,6 @@ package org.spongepowered.gradle.vanilla;
 
 import de.undercouch.gradle.tasks.download.Download;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.gradle.api.Action;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
@@ -36,7 +35,6 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
-import org.gradle.api.artifacts.repositories.MavenRepositoryContentDescriptor;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DuplicatesStrategy;
@@ -71,10 +69,8 @@ import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryPlugin;
 import org.spongepowered.gradle.vanilla.repository.MinecraftSide;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
-import org.spongepowered.gradle.vanilla.task.AtlasTransformTask;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
-import org.spongepowered.gradle.vanilla.task.MergeJarsTask;
 import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 import org.spongepowered.gradle.vanilla.util.StringUtils;
 
@@ -96,8 +92,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         target.getPluginManager().apply(MinecraftRepositoryPlugin.class);
         this.project = target;
         final Provider<MinecraftProviderService> minecraftProvider = target.getPlugins().getPlugin(MinecraftRepositoryPlugin.class).service();
-
-        AtlasTransformTask.registerExecutionCompleteListener(this.project.getGradle());
 
         final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) target.getExtensions()
             .create(MinecraftExtension.class, "minecraft", MinecraftExtensionImpl.class, target, minecraftProvider);
@@ -282,8 +276,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.setDescription("Delete downloaded files for the current minecraft environment used for this project");
             task.delete(
                 tasks.withType(AccessWidenJarTask.class),
-                tasks.withType(Download.class).matching(dl -> !dl.getName().equals("downloadAssetIndex")),
-                tasks.withType(MergeJarsTask.class)
+                tasks.withType(Download.class).matching(dl -> !dl.getName().equals("downloadAssetIndex"))
             );
         });
 
@@ -368,16 +361,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                     je.getWorkingDir().mkdirs();
                 });
             });
-        });
-    }
-
-
-    private TaskProvider<Download> createDownload(final TaskContainer tasks, final String name, final Action<Download> extraConfig) {
-        return tasks.register(name, Download.class, download -> {
-            download.header("User-Agent", Constants.USER_AGENT);
-            download.onlyIfModified(true);
-            download.quiet(true);
-            extraConfig.execute(download);
         });
     }
 

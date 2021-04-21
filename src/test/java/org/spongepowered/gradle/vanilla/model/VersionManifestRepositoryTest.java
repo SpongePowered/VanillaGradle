@@ -30,11 +30,11 @@ import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.network.ApacheHttpDownloader;
 import org.spongepowered.gradle.vanilla.network.Downloader;
+import org.spongepowered.gradle.vanilla.repository.ResolutionResult;
 
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -64,12 +64,12 @@ class VersionManifestRepositoryTest {
     }
 
     @Test
-    @Disabled("Fairly resource-intensive, takes a while to download all uncached (~1 minute)")
+    // @Disabled("Fairly resource-intensive, takes a while to download all uncached (~1 minute)")
     void testLoadAllManifests() throws IOException, ExecutionException, InterruptedException {
         try (final Downloader downloader = new ApacheHttpDownloader(ForkJoinPool.commonPool(), Paths.get("test-cache"), Downloader.ResolveMode.LOCAL_THEN_REMOTE)) {
             final VersionManifestRepository repo = VersionManifestRepository.fromDownloader(downloader);
 
-            final Set<CompletableFuture<Optional<VersionDescriptor.Full>>> descriptors = new HashSet<>();
+            final Set<CompletableFuture<ResolutionResult<VersionDescriptor.Full>>> descriptors = new HashSet<>();
             for (final VersionDescriptor version : repo.availableVersions().get()) {
                 System.out.println(version);
                 descriptors.add(repo.fullVersion(version.id()).whenComplete((result, err) -> {
@@ -77,7 +77,7 @@ class VersionManifestRepositoryTest {
                         System.out.println("Failed to download " + version.id());
                         err.printStackTrace();
                     } else if (result.isPresent()) {
-                        System.out.println("Finished " + result.get().id());
+                        System.out.println("Finished " + result.get().id() + " (up-to-date: " + result.upToDate() + ")");
                     } else {
                         System.out.println("Result not found for " + version.id());
                     }

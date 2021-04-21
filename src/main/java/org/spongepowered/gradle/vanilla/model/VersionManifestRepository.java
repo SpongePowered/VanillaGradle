@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla.model;
 
 import org.spongepowered.gradle.vanilla.network.Downloader;
+import org.spongepowered.gradle.vanilla.repository.ResolutionResult;
 
 import java.io.File;
 import java.io.IOException;
@@ -81,7 +82,7 @@ public interface VersionManifestRepository {
      * @param versionId the ID of the version to query
      * @return a version descriptor
      */
-    CompletableFuture<Optional<VersionDescriptor.Full>> fullVersion(final String versionId);
+    CompletableFuture<ResolutionResult<VersionDescriptor.Full>> fullVersion(final String versionId);
 
     /**
      * Inject a pre-existing local version descriptor.

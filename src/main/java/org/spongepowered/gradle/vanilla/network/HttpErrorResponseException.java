@@ -22,13 +22,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-/**
- * Handling for creating an Ivy repository that will resolve Minecraft artifacts.
- */
-@DefaultQualifier(NonNull.class)
-@ImmutablesStyle
-package org.spongepowered.gradle.vanilla.repository;
+package org.spongepowered.gradle.vanilla.network;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.framework.qual.DefaultQualifier;
-import org.spongepowered.gradle.vanilla.util.ImmutablesStyle;
+import java.io.IOException;
+import java.net.URL;
+
+/**
+ * An exception thrown for any response code except {@code 200}.
+ */
+public class HttpErrorResponseException extends IOException {
+
+    private static final long serialVersionUID = -1L;
+
+    private final URL source;
+    private final int errorCode;
+
+    public HttpErrorResponseException(final URL source, final int errorCode, final String message) {
+        super(message);
+        this.source = source;
+        this.errorCode = errorCode;
+    }
+
+    /**
+     * The {@link URL} that a connection was made to.
+     *
+     * @return the source url
+     */
+    public URL source() {
+        return this.source;
+    }
+
+    /**
+     * The error code returned by the server.
+     *
+     * @return the error code
+     */
+    public int errorCode() {
+        return this.errorCode;
+    }
+
+    @Override
+    public String getMessage() {
+        return this.errorCode + ": " + super.getMessage() + " (at " + this.source + ")";
+    }
+
+}
