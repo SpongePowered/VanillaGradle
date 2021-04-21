@@ -42,9 +42,9 @@ import org.gradle.api.tasks.TaskProvider;
 import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
-import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
+import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryPlugin;
 import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
@@ -60,7 +60,7 @@ import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
 
-public abstract class MinecraftExtensionImpl implements MinecraftExtension {
+public class MinecraftExtensionImpl implements MinecraftExtension {
 
     private final Project project;
     private final Provider<MinecraftProviderService> providerService;
@@ -88,7 +88,7 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         this.providerService = providerService;
         this.version = factory.property(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.JOINED);
-        this.injectRepositories = factory.property(Boolean.class).convention(true);
+        this.injectRepositories = factory.property(Boolean.class).convention(project.provider(() -> !gradle.getPlugins().hasPlugin(MinecraftRepositoryPlugin.class))); // only inject if we aren't already in Settings
         this.assetsDirectory = factory.directoryProperty();
         this.remappedDirectory = factory.directoryProperty();
         this.originalDirectory = factory.directoryProperty();
@@ -126,13 +126,6 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
         this.projectCache = projectLocalJarsDirectory;
         this.sharedCache = rootDirectory;
 
-        final Path cacheDir = rootDirectory.resolve(Constants.Directories.MANIFESTS);
-        // Create a version repository. If Gradle is in offline mode, read only from cache
-        /*if (project.hasProperty(Constants.Manifests.SKIP_CACHE)) {
-            this.versions = VersionManifestRepository.direct();
-        } else {
-            this.versions = VersionManifestRepository.caching(cacheDir, !gradle.getStartParameter().isOffline());
-        }*/
         this.targetVersion = factory.property(VersionDescriptor.Full.class)
             .value(this.version.zip(this.providerService, (version, service) -> {
                 try {
@@ -165,6 +158,22 @@ public abstract class MinecraftExtensionImpl implements MinecraftExtension {
     @Override
     public void injectRepositories(final boolean injectRepositories) {
         this.injectRepositories.set(injectRepositories);
+    }
+
+    @Override
+    public String injectVersion(final String file) {
+        Objects.requireNonNull(file, "file");
+        return this.injectVersion(this.project.file(file));
+    }
+
+    @Override
+    public String injectVersion(final File file) {
+        Objects.requireNonNull(file, "file");
+        try {
+            return  this.providerService.get().versions().inject(file);
+        } catch (final IOException ex) {
+            throw new GradleException("Failed to read injected version manifest from " + file, ex);
+        }
     }
 
     @Override

@@ -24,6 +24,8 @@
  */
 package org.spongepowered.gradle.vanilla;
 
+import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.artifacts.repositories.MavenRepositoryContentDescriptor;
 import org.gradle.util.GradleVersion;
 import org.objectweb.asm.Opcodes;
 
@@ -47,6 +49,7 @@ public final class Constants {
     public static final int ASM_VERSION = Opcodes.ASM9;
     public static final String FIRST_TARGETABLE_RELEASE_TIMESTAMP = "2019-09-04T11:19:34+00:00"; // 19w36a+
     public static final String OUT_OF_BAND_RELEASE = "1.14.4"; // Cause it is special
+    public static final String INDENT = "    "; // indent to use when writing files
 
     public static final class Directories {
         public static final String CACHES = "caches";
@@ -117,6 +120,18 @@ public final class Constants {
         public static final String MINECRAFT_FORGE = "https://files.minecraftforge.net/maven/";
 
         private Repositories() {
+        }
+
+        public static void applyTo(final RepositoryHandler repositories) {
+            repositories.maven(repo -> {
+                repo.setUrl(Constants.Repositories.MINECRAFT);
+                repo.mavenContent(MavenRepositoryContentDescriptor::releasesOnly);
+                repo.setName("minecraft");
+            });
+            repositories.maven(repo -> {
+                repo.setUrl(Constants.Repositories.MINECRAFT_FORGE);
+                repo.setName("forge");
+            });
         }
     }
 

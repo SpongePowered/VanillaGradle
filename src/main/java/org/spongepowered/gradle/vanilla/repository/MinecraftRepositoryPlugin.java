@@ -31,15 +31,16 @@ import org.gradle.api.artifacts.ModuleVersionSelector;
 import org.gradle.api.artifacts.ResolutionStrategy;
 import org.gradle.api.artifacts.dsl.ComponentMetadataHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
-import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.initialization.Settings;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.logging.Logger;
+import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.Provider;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.repository.rule.JoinedProvidesClientAndServerRule;
 import org.spongepowered.gradle.vanilla.repository.rule.MinecraftIvyModuleExtraDataApplierRule;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -138,11 +139,28 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         this.createRepositories(settings.getDependencyResolutionManagement().getRepositories(), service, sharedCacheDirectory, rootProjectCache);
         this.registerComponentMetadataRules(service, settings.getDependencyResolutionManagement().getComponents());
 
+        final MinecraftRepositoryExtension extension = this.registerExtension(settings, service, settings.getRootDir());
+
         // Leave a marker so projects don't try to override these
         settings.getGradle().getPluginManager().apply(MinecraftRepositoryPlugin.class);
+
+        // Once the user Settings file has gone through, register our repositories if it makes sense to
+        settings.getGradle().settingsEvaluated(s -> {
+            if (extension.injectRepositories().get()) {
+                Constants.Repositories.applyTo(s.getDependencyResolutionManagement().getRepositories());
+            }
+        });
     }
 
     // Common handling //
+
+    private MinecraftRepositoryExtension registerExtension(final ExtensionAware holder, final Provider<MinecraftProviderService> service, final File rootdir) {
+        final MinecraftRepositoryExtensionImpl
+            extension = (MinecraftRepositoryExtensionImpl) holder.getExtensions().create(MinecraftRepositoryExtension.class, "minecraft", MinecraftRepositoryExtensionImpl.class);
+        extension.providerService.set(service);
+        extension.baseDir.set(rootdir);
+        return extension;
+    }
 
     private static Path resolveCache(final Path root) {
         return root.resolve(Constants.Directories.CACHES).resolve(Constants.NAME);
