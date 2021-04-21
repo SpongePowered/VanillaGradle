@@ -43,8 +43,6 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -106,7 +104,7 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
                 if (this.resolver == null) {
                     this.resolver = resolver = new MinecraftResolverImpl(
                         this.versions(),
-                        this.downloader(),
+                        this.downloader().withBaseDir(this.downloader().baseDir().resolve(Constants.Directories.JARS)),
                         this.executor
                     );
                 } else {

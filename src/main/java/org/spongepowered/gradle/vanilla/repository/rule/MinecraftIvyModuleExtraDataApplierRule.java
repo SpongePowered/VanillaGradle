@@ -71,13 +71,13 @@ public class MinecraftIvyModuleExtraDataApplierRule implements ComponentMetadata
         details.setStatusScheme(VersionClassifier.ids());
         final @Nullable String mojangStatus = ivy.getExtraInfo().get(IvyModuleWriter.PROPERTY_MOJANG_STATUS);
         if (mojangStatus != null) {
-            details.setStatus(mojangStatus);
+            details.setStatus(mojangStatus.trim());
         }
 
         final @Nullable String rawVersion = ivy.getExtraInfo().get(IvyModuleWriter.PROPERTY_JAVA_VERSION);
         try {
             if (rawVersion != null) {
-                final int javaVersion = Integer.parseInt(rawVersion);
+                final int javaVersion = Integer.parseInt(rawVersion.trim());
                 details.allVariants(variant -> {
                     variant.attributes(attributes -> {
                         attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, javaVersion);

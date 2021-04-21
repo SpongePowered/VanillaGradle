@@ -323,7 +323,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
         if (!version.isPresent()) {
             return; // not found, we can't resolve
         }
-        final Path metaFile = baseDir.resolve("ivy-" + version.get().id() + ".xml");
+        final Path metaFile = baseDir.resolve("ivy-" + version.get().id() + "-vg" + MinecraftResolver.METADATA_VERSION + ".xml");
         if (!version.upToDate() || !Files.exists(metaFile)) {
             FileUtils.createDirectoriesSymlinkSafe(metaFile.getParent());
             final Path metaFileTmp = FileUtils.temporaryPath(metaFile.getParent(), "metadata");
