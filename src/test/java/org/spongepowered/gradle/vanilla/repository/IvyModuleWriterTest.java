@@ -28,6 +28,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
+import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.util.GsonUtils;
 
 import java.io.BufferedReader;
@@ -47,6 +49,15 @@ public class IvyModuleWriterTest {
 
     private static final Pattern NEWLINE = Pattern.compile("\r?\n");
 
+    private static final RuleContext TEST_CONTEXT = RuleContext.create();
+
+    static {
+        // Override OS information so we generate consistent ivy modules
+        OperatingSystemRule.setOsName(IvyModuleWriterTest.TEST_CONTEXT, "Windows 10");
+        OperatingSystemRule.setOsArchitecture(IvyModuleWriterTest.TEST_CONTEXT, "amd64");
+        OperatingSystemRule.setOsVersion(IvyModuleWriterTest.TEST_CONTEXT, "10.0");
+    }
+
     @Test
     void testWriteVersionWithoutJavaVersion() throws IOException, XMLStreamException {
         final VersionDescriptor.Full version = GsonUtils.parseFromJson(this.getClass().getResource("manifest-1.16.5.json"), VersionDescriptor.Full.class);
@@ -54,7 +65,7 @@ public class IvyModuleWriterTest {
         final StringWriter writer = new StringWriter();
 
         try (final IvyModuleWriter ivy = new IvyModuleWriter(writer)) {
-            ivy.write(version, MinecraftPlatform.JOINED);
+            ivy.write(version, MinecraftPlatform.JOINED, IvyModuleWriterTest.TEST_CONTEXT);
         }
 
         Assertions.assertLinesMatch(
@@ -71,7 +82,7 @@ public class IvyModuleWriterTest {
         final StringWriter writer = new StringWriter();
 
         try (final IvyModuleWriter ivy = new IvyModuleWriter(writer)) {
-            ivy.write(version, MinecraftPlatform.JOINED);
+            ivy.write(version, MinecraftPlatform.JOINED, IvyModuleWriterTest.TEST_CONTEXT);
         }
 
         Assertions.assertLinesMatch(

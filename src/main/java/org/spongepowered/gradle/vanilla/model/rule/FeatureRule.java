@@ -77,7 +77,7 @@ public final class FeatureRule implements Rule<Map<String, Boolean>> {
 
     @Override
     public TypeToken<Map<String, Boolean>> type() {
-        return TYPE;
+        return FeatureRule.TYPE;
     }
 
     @Override

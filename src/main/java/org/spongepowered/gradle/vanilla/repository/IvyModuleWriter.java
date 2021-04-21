@@ -26,6 +26,7 @@ package org.spongepowered.gradle.vanilla.repository;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.model.GroupArtifactVersion;
 import org.spongepowered.gradle.vanilla.model.JavaRuntimeVersion;
 import org.spongepowered.gradle.vanilla.model.Library;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
@@ -36,7 +37,9 @@ import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.xml.XMLConstants;
 import javax.xml.stream.XMLOutputFactory;
@@ -78,7 +81,7 @@ public class IvyModuleWriter implements AutoCloseable {
         this.writer = new IndentingXmlStreamWriter(IvyModuleWriter.OUTPUT_FACTORY.createXMLStreamWriter(this.output), Constants.INDENT);
     }
 
-    public void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform plaform) throws XMLStreamException {
+    public void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform platform, final RuleContext rules) throws XMLStreamException {
         this.writer.writeStartDocument("UTF-8", "1.0");
         this.writer.writeStartElement("ivy-module");
         this.writer.writeNamespace("xsi", IvyModuleWriter.XSI);
@@ -86,9 +89,9 @@ public class IvyModuleWriter implements AutoCloseable {
         this.writer.writeAttribute(IvyModuleWriter.XSI, "noNamespaceSchemaLocation", IvyModuleWriter.IVY);
         this.writer.writeAttribute("version", "2.0");
 
-        this.writeInfo(descriptor, plaform);
-        this.writeDependencies(descriptor.libraries(), plaform);
-        this.writeArtifacts(plaform);
+        this.writeInfo(descriptor, platform);
+        this.writeDependencies(descriptor.libraries(), platform, rules);
+        this.writeArtifacts(platform);
 
         this.writer.writeEndElement();
         this.writer.writeEndDocument();
@@ -123,21 +126,27 @@ public class IvyModuleWriter implements AutoCloseable {
         this.writer.writeEndElement();
     }
 
-    private void writeDependencies(final List<Library> libraries, final MinecraftPlatform platform) throws XMLStreamException {
+    private void writeDependencies(
+        final List<Library> libraries,
+        final MinecraftPlatform platform,
+        final RuleContext rules
+    ) throws XMLStreamException {
         this.writer.writeStartElement("dependencies");
 
-        final RuleContext ruleContext = RuleContext.create();
+        final Set<GroupArtifactVersion> seenDependencies = new HashSet<>();
         for (final MinecraftSide side : platform.activeSides()) {
             side.applyLibraries(
                 desc -> {
-                    this.writer.writeEmptyElement("dependency");
-                    this.writer.writeAttribute("org", desc.group());
-                    this.writer.writeAttribute("name", desc.artifact());
-                    this.writer.writeAttribute("rev", desc.version());
-                    this.writer.writeAttribute("transitive", "false");
+                    if (seenDependencies.add(desc)) {
+                        this.writer.writeEmptyElement("dependency");
+                        this.writer.writeAttribute("org", desc.group());
+                        this.writer.writeAttribute("name", desc.artifact());
+                        this.writer.writeAttribute("rev", desc.version());
+                        this.writer.writeAttribute("transitive", "false");
+                    }
                 },
                 libraries,
-                ruleContext
+                rules
             );
         }
 
