@@ -24,206 +24,147 @@
  */
 package org.spongepowered.gradle.vanilla.task;
 
-import org.apache.hc.client5.http.async.methods.SimpleHttpRequests;
-import org.apache.hc.client5.http.async.methods.SimpleRequestProducer;
-import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
-import org.apache.hc.core5.concurrent.FutureCallback;
-import org.apache.hc.core5.http.HttpHost;
-import org.apache.hc.core5.http.HttpResponse;
-import org.apache.hc.core5.http.Message;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.file.DirectoryProperty;
-import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.AssetIndex;
-import org.spongepowered.gradle.vanilla.network.ApacheHttpDownloader;
+import org.spongepowered.gradle.vanilla.model.AssetIndexReference;
+import org.spongepowered.gradle.vanilla.network.Downloader;
 import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
+import org.spongepowered.gradle.vanilla.repository.ResolutionResult;
 import org.spongepowered.gradle.vanilla.util.GsonUtils;
+import org.spongepowered.gradle.vanilla.util.Pair;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Path;
-import java.util.AbstractMap;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.stream.Stream;
+import java.util.concurrent.ExecutionException;
 
 public abstract class DownloadAssetsTask extends DefaultTask {
-
-    @InputFile
-    public abstract RegularFileProperty getAssetsIndex();
 
     @OutputDirectory
     public abstract DirectoryProperty getAssetsDirectory();
 
+    @Input
+    public abstract Property<String> getTargetVersion();
+
     @Internal
-    public abstract Property<MinecraftProviderService> getHttpClient();
+    public abstract Property<MinecraftProviderService> getMinecraftProvider();
 
     public DownloadAssetsTask() {
         this.setGroup(Constants.TASK_GROUP);
         this.getOutputs().upToDateWhen(t -> false);
+        this.getOutputs().doNotCacheIf("We perform our own up-to-date checking", spec -> true);
     }
 
     @TaskAction
     public void execute() {
-        // Load assets index from file
+        final Path assetsDirectory = this.getAssetsDirectory().get().getAsFile().toPath();
+        final Downloader downloader = this.getMinecraftProvider().get().downloader().withBaseDir(assetsDirectory);
+
+        // Fetch asset index
+        this.getLogger().info("Fetching asset index for {}", this.getTargetVersion().get());
+        final CompletableFuture<ResolutionResult<AssetIndex>> assets = this.getMinecraftProvider().get().versions().fullVersion(this.getTargetVersion().get())
+            .thenCompose(result -> {
+                if (!result.isPresent()) {
+                    return CompletableFuture.completedFuture(ResolutionResult.notFound());
+                }
+                final AssetIndexReference ref = result.get().assetIndex();
+                return downloader.readStringAndValidate(ref.url(), "indexes/" + ref.id() + ".json", HashAlgorithm.SHA1, ref.sha1())
+                    .thenApply(idx -> idx.mapIfPresent((upToDate, contents) -> GsonUtils.GSON.fromJson(contents, AssetIndex.class)));
+            });
+
         final AssetIndex index;
         try {
-            index = GsonUtils.parseFromJson(this.getAssetsIndex().get().getAsFile(), AssetIndex.class);
-        } catch (final IOException ex) {
-            throw new GradleException("Failed to read asset index", ex);
+            index = assets.get()
+                .orElseThrow(() -> new InvalidUserDataException("Could not resolve an asset index for version '" + this.getTargetVersion().get() + "'!"));
+        } catch (final InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new GradleException("interrupted");
+        } catch (final ExecutionException ex) {
+            throw new GradleException("Failed to download asset index", ex.getCause());
         }
 
-        final Path assetsDirectory = this.getAssetsDirectory().get().getAsFile().toPath();
+        this.getLogger().info("Downloading and verifying {} assets for {}", index.objects().size(), this.getTargetVersion().get());
+        final Path objectsDirectory = assetsDirectory.resolve("objects");
+        // For every asset in the index, resolve create a future providing the resolution result
+        // The asset index will handle resolution
+        final Set<CompletableFuture<ResolutionResult<AssetIndex.Asset>>> results = new HashSet<>();
+        final Set<Pair<Pair<String, AssetIndex.Asset>, Throwable>> failedAssets = ConcurrentHashMap.newKeySet();
 
-        try {
-            // Validate existing assets in the output directory
-            // Because the same assets directory is used by multiple game versions,
-            // we only want to delete assets that fail validation, not assets that
-            // are just not present in the index.
-            final Map<String, AssetIndex.Asset> toDownload = this.validateAssets(index, assetsDirectory);
-            // Then, download any remaining assets as long as gradle isn't in offline mode
-            if (!toDownload.isEmpty()) {
-                if (this.getProject().getGradle().getStartParameter().isOffline()) {
-                    this.getLogger().warn(
-                        "There were {} assets to download, but Gradle is in offline mode. Will proceed without downloading, beware!",
-                        toDownload.size()
-                    );
-                    return;
-                }
-                this.downloadAssets(toDownload, assetsDirectory);
-                this.setDidWork(true);
-            } else {
-                this.setDidWork(false);
+        // Send out all the requests
+        for (final Map.Entry<String, AssetIndex.Asset> asset : index.objects().entrySet()) {
+            results.add(downloader.downloadAndValidate(
+                this.assetUrl(asset.getValue()),
+                objectsDirectory.resolve(asset.getValue().fileName()),
+                HashAlgorithm.SHA1,
+                asset.getValue().hash()
+            )
+                .thenApply(result -> result.mapIfPresent((upToDate, unused) -> asset.getValue()))
+                .exceptionally(err -> {
+                    failedAssets.add(Pair.of(Pair.of(asset), err));
+                    return null;
+                }));
+        }
+
+        // Then await them all, see how many had errors,
+        // We handle all errors above, so we can use the simple join() here without worrying about a dangling future
+        CompletableFuture.allOf(results.toArray(new CompletableFuture<?>[0])).join();
+
+        if (!failedAssets.isEmpty()) {
+            this.getLogger().warn("Failed to download the following assets! Client may appear in an unexpected state.");
+            for (final Pair<Pair<String, AssetIndex.Asset>, Throwable> asset : failedAssets) {
+                this.getLogger().warn("- {}", asset.first().first(), asset.second());
             }
-        } catch (final IOException | URISyntaxException ex) {
-            this.getLogger().error("Failed to download assets", ex);
-            throw new GradleException("Failed to download assets");
-        }
-    }
-
-    /**
-     * Validate a directory of assets.
-     *
-     * @param index the index to validate
-     * @param assetsDirectory the directory of assets
-     * @return a map of all objects that must be downloaded to create a valid asset state
-     * @throws IOException if any error occurs while attempting to traverse the file tree
-     */
-    private Map<String, AssetIndex.Asset> validateAssets(final AssetIndex index, final Path assetsDirectory) throws IOException {
-        final Map<String, AssetIndex.Asset> inputObjects = index.objects();
-        if (!Files.exists(assetsDirectory)) {
-            return inputObjects;
         }
 
-        final Map<String, String> assetNamesByPath = new HashMap<>();
-        for (final Map.Entry<String, AssetIndex.Asset> entry : inputObjects.entrySet()) {
-            assetNamesByPath.put(entry.getValue().fileName(), entry.getKey());
+        final ResolutionResult.Statistics stats = results.stream()
+            .map(CompletableFuture::join)
+            .filter(Objects::nonNull)
+            .collect(ResolutionResult.statisticCollector());
+
+        if (stats.upToDate() == stats.total()) {
+            this.setDidWork(false);
+            return; // all up-to-date
         }
+        this.setDidWork(true);
 
-        try (final Stream<Path> files = Files.walk(assetsDirectory, FileVisitOption.FOLLOW_LINKS)) {
-            files
-                .parallel()
-                .filter(path -> path.toFile().isFile())
-                .forEach(file -> {
-                    // Validate
-                    final String relativePath = assetsDirectory.relativize(file).toString().replace('\\', '/');
-                    final @Nullable String assetId = assetNamesByPath.get(relativePath);
-                    if (assetId != null) {
-                        // We can verify
-                        final AssetIndex.Asset asset = inputObjects.get(assetId);
-                        assert asset != null;
-
-                        try {
-                            if (HashAlgorithm.SHA1.validate(asset.hash(), file)) {
-                                assetNamesByPath.remove(relativePath);
-                            } else {
-                                DownloadAssetsTask.this.getLogger().warn("Failed to validate asset {} (expected hash: {})", assetId, asset.hash());
-                            }
-                        } catch (final IOException ex) {
-                            DownloadAssetsTask.this.getLogger().warn("Failed to validate asset {} due to an exception", assetId, ex);
-                        }
-                    }
-                });
-        }
-
-        if (assetNamesByPath.isEmpty()) { // All assets were found
-            return Collections.emptyMap();
-        } else {
-            // Only return assets that need to be downloaded
-            final Map<String, AssetIndex.Asset> remainingAssets = new ConcurrentHashMap<>(inputObjects);
-            remainingAssets.keySet().retainAll(assetNamesByPath.values());
-            return remainingAssets;
-        }
-    }
-
-    private void downloadAssets(final Map<String, AssetIndex.Asset> toDownload, final Path assetsDirectory) throws URISyntaxException, IOException {
-        final CloseableHttpAsyncClient client = this.getHttpClient().get().downloader().client();
-
-        final HttpHost host = HttpHost.create(Constants.MINECRAFT_RESOURCES_URL);
-        final CountDownLatch latch = new CountDownLatch(toDownload.size());
-        final Set<Map.Entry<String, Exception>> errors = ConcurrentHashMap.newKeySet();
-        for (final Map.Entry<String, AssetIndex.Asset> entry : toDownload.entrySet()) {
-            final String fileName = entry.getValue().fileName();
-            final Path destinationFile = assetsDirectory.resolve(fileName);
-            Files.createDirectories(destinationFile.getParent());
-            client.execute(
-                SimpleRequestProducer.create(SimpleHttpRequests.get(host, '/' + fileName)),
-                ApacheHttpDownloader.responseToFileValidating(destinationFile, HashAlgorithm.SHA1, entry.getValue().hash()),
-                new FutureCallback<Message<HttpResponse, Path>>() {
-                    @Override
-                    public void completed(final Message<HttpResponse, Path> result) {
-                        latch.countDown();
-                        final long count = latch.getCount();
-                        if ((count & 0xf)  == 0) {
-                            final int total = toDownload.size();
-                            DownloadAssetsTask.this.getLogger().lifecycle("{}/{} assets downloaded", total - count, total);
-                        }
-                    }
-
-                    @Override
-                    public void failed(final Exception ex) {
-                        errors.add(new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), ex));
-                        latch.countDown();
-                    }
-
-                    @Override
-                    public void cancelled() {
-                        latch.countDown();
-                    }
-                }
+        if (stats.notFound() > 0) {
+            this.getLogger().warn(
+                "A total of {} assets in the {} index could not be found. Results may be incorrect.",
+                stats.notFound(),
+                this.getTargetVersion().get()
             );
         }
 
+        this.getLogger().lifecycle(
+            "Downloaded {} assets (out of {} total, {} already up-to-date",
+            stats.found() - stats.upToDate(),
+            stats.total(),
+            stats.upToDate()
+        );
+    }
+
+    private URL assetUrl(final AssetIndex.Asset asset) {
         try {
-            latch.await();
-        } catch (final InterruptedException ex) {
-            throw new GradleException("Interrupted while downloading files");
+            return new URL("https", Constants.MINECRAFT_RESOURCES_HOST, '/' + asset.fileName());
+        } catch (final MalformedURLException ex) {
+            throw new IllegalArgumentException("Failed to parse asset URL for " + asset.hash(), ex);
         }
-
-        if (!errors.isEmpty()) {
-            this.getLogger().error("Some errors occurred while downloading assets:");
-            for (final Map.Entry<String, Exception> error : errors) {
-                this.getLogger().error("While downloading {}", error.getKey(), error.getValue());
-            }
-
-            throw new GradleException("Asset download failed");
-        }
-        this.getLogger().lifecycle("Successfully downloaded {} assets!", toDownload.size());
     }
 
 }

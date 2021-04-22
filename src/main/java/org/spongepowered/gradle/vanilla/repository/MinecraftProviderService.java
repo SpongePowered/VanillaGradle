@@ -38,6 +38,7 @@ import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
 import org.spongepowered.gradle.vanilla.network.ApacheHttpDownloader;
 import org.spongepowered.gradle.vanilla.network.Downloader;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
@@ -49,7 +50,7 @@ import java.util.function.Function;
 public abstract class MinecraftProviderService implements BuildService<MinecraftProviderService.Parameters>, AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(MinecraftProviderService.class);
 
-    private volatile @Nullable ApacheHttpDownloader downloader;
+    private volatile @Nullable Downloader downloader;
     private volatile @Nullable MinecraftResolverImpl resolver;
     private volatile @Nullable VersionManifestRepository versions;
     private final ExecutorService executor;
@@ -70,8 +71,8 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
         MinecraftProviderService.LOGGER.info("Creating minecraft provider service");
     }
 
-    public ApacheHttpDownloader downloader() {
-        @Nullable ApacheHttpDownloader downloader = this.downloader;
+    public Downloader downloader() {
+        @Nullable Downloader downloader = this.downloader;
         if (downloader == null) {
             synchronized (this) {
                 if (this.downloader == null) {
@@ -145,7 +146,7 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
         MinecraftProviderService.LOGGER.info(Constants.NAME + ": Shutting down MinecraftProviderService");
         this.executor.shutdown();
         boolean success;
@@ -160,7 +161,7 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
             this.executor.shutdownNow();
         }
 
-        final @Nullable ApacheHttpDownloader downloader = this.downloader;
+        final @Nullable Downloader downloader = this.downloader;
         this.downloader = null;
         if (downloader != null) {
             downloader.close();

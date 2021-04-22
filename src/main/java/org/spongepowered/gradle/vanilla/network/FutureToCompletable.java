@@ -28,7 +28,7 @@ import org.apache.hc.core5.concurrent.FutureCallback;
 
 import java.util.concurrent.CompletableFuture;
 
-public class FutureToCompletable<V> implements FutureCallback<V> {
+final class FutureToCompletable<V> implements FutureCallback<V> {
     private final CompletableFuture<V> future = new CompletableFuture<>();
 
     @Override

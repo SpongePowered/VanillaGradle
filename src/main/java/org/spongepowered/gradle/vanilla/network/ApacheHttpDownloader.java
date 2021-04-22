@@ -40,19 +40,23 @@ import org.apache.hc.core5.io.CloseMode;
 import org.apache.hc.core5.reactor.IOReactorConfig;
 import org.apache.hc.core5.util.TimeValue;
 import org.apache.hc.core5.util.Timeout;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.repository.ResolutionResult;
 import org.spongepowered.gradle.vanilla.util.AsyncUtils;
+import org.spongepowered.gradle.vanilla.util.FileUtils;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -60,7 +64,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
-public class ApacheHttpDownloader implements AutoCloseable, Downloader {
+public final class ApacheHttpDownloader implements AutoCloseable, Downloader {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApacheHttpDownloader.class);
 
@@ -252,16 +256,19 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
         final Function<Path, AsyncEntityConsumer<T>> responseConsumer,
         final Function<Path, CompletableFuture<T>> existingHandler
     ) {
-        if (this.resolveMode != ResolveMode.REMOTE_ONLY && Files.isRegularFile(destination)) { // TODO: check etag?
+        final File destFile = destination.toFile();
+        final @Nullable BasicFileAttributes destAttributes = FileUtils.fileAttributesIfExists(destination);
+        if (this.resolveMode != ResolveMode.REMOTE_ONLY && (destAttributes != null && destAttributes.isRegularFile())) { // TODO: check etag?
             // Check every 24 hours
-            try {
-                if (this.resolveMode == ResolveMode.LOCAL_ONLY
-                    || System.currentTimeMillis() - Files.getLastModifiedTime(destination).toMillis() < Constants.Manifests.CACHE_TIMEOUT_SECONDS * 1000) {
-                    return existingHandler.apply(destination).thenApply(result -> ResolutionResult.result(result, true));
-                }
-            } catch (final IOException ex) {
-                ApacheHttpDownloader.LOGGER.warn("Failed to get last modified time of {}, attempting to download again", destination, ex);
+            if (this.resolveMode == ResolveMode.LOCAL_ONLY
+                || System.currentTimeMillis() - destAttributes.lastModifiedTime().toMillis() < Constants.Manifests.CACHE_TIMEOUT_SECONDS * 1000) {
+                return existingHandler.apply(destination).thenApply(result -> ResolutionResult.result(result, true));
             }
+        }
+
+        if (this.resolveMode == ResolveMode.LOCAL_ONLY) {
+            // No value in cache and we aren't able to resolve, so return a not found
+            return CompletableFuture.completedFuture(ResolutionResult.notFound());
         }
 
         final FutureToCompletable<Message<HttpResponse, T>> result = new FutureToCompletable<>();
@@ -296,7 +303,7 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
         final Function<Path, CompletableFuture<T>> existingHandler
     ) {
         final Path path = destination;
-        if (Files.isRegularFile(path)) {
+        if (path.toFile().isFile()) {
             // Validate that the file matches the path, only download if it doesn't.
             try {
                 if (algorithm.validate(expectedHash, path)) {
@@ -312,6 +319,11 @@ public class ApacheHttpDownloader implements AutoCloseable, Downloader {
             } catch (final IOException ex) {
                 ApacheHttpDownloader.LOGGER.warn("Failed to delete file at {}, will try to re-download anyways", path);
             }
+        }
+
+        if (this.resolveMode == ResolveMode.LOCAL_ONLY) {
+            // No value in cache and we aren't able to resolve, so return a not found
+            return CompletableFuture.completedFuture(ResolutionResult.notFound());
         }
 
         final FutureToCompletable<Message<HttpResponse, T>> result = new FutureToCompletable<>();

@@ -44,7 +44,7 @@ public final class Constants {
     public static final String NAME = "VanillaGradle";
     public static final String VERSION = Constants.version();
     public static final String USER_AGENT = String.format("%s/%s Gradle/%s", Constants.NAME, Constants.VERSION, GradleVersion.current().getVersion());
-    public static final String MINECRAFT_RESOURCES_URL = "https://resources.download.minecraft.net";
+    public static final String MINECRAFT_RESOURCES_HOST = "resources.download.minecraft.net";
     public static final String TASK_GROUP = "vanilla gradle";
     public static final int ASM_VERSION = Opcodes.ASM9;
     public static final String FIRST_TARGETABLE_RELEASE_TIMESTAMP = "2019-09-04T11:19:34+00:00"; // 19w36a+
