@@ -24,11 +24,15 @@
  */
 package org.spongepowered.gradle.vanilla.util;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
+
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 
 public final class FileUtils {
 
@@ -68,6 +72,14 @@ public final class FileUtils {
 
     public static Path temporaryPath(final Path parent, final String key) throws IOException {
         return Files.createTempFile(parent, "." + key, "");
+    }
+
+    public static @Nullable BasicFileAttributes fileAttributesIfExists(final Path file) {
+        try {
+            return Files.getFileAttributeView(file, BasicFileAttributeView.class).readAttributes();
+        } catch (final IOException ex) {
+            return null;
+        }
     }
 
 }

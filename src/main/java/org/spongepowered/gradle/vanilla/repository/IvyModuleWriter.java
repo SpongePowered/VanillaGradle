@@ -46,7 +46,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
-public class IvyModuleWriter implements AutoCloseable {
+public final class IvyModuleWriter implements AutoCloseable {
 
     /**
      * An extra property, optional, that indicates the Java version a certain
@@ -69,19 +69,19 @@ public class IvyModuleWriter implements AutoCloseable {
     private final Writer output;
     private final XMLStreamWriter writer;
 
-    public IvyModuleWriter(final Writer output) throws XMLStreamException {
+    IvyModuleWriter(final Writer output) throws XMLStreamException {
         this.managedOutput = false;
         this.output = output;
         this.writer = new IndentingXmlStreamWriter(IvyModuleWriter.OUTPUT_FACTORY.createXMLStreamWriter(output), Constants.INDENT);
     }
 
-    public IvyModuleWriter(final Path target) throws IOException, XMLStreamException {
+    IvyModuleWriter(final Path target) throws IOException, XMLStreamException {
         this.managedOutput = true;
         this.output = Files.newBufferedWriter(target);
         this.writer = new IndentingXmlStreamWriter(IvyModuleWriter.OUTPUT_FACTORY.createXMLStreamWriter(this.output), Constants.INDENT);
     }
 
-    public void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform platform, final RuleContext rules) throws XMLStreamException {
+    void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform platform, final RuleContext rules) throws XMLStreamException {
         this.writer.writeStartDocument("UTF-8", "1.0");
         this.writer.writeStartElement("ivy-module");
         this.writer.writeNamespace("xsi", IvyModuleWriter.XSI);

@@ -24,7 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla;
 
-import de.undercouch.gradle.tasks.download.Download;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.NamedDomainObjectProvider;
@@ -37,12 +36,14 @@ import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.DuplicatesStrategy;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemLocation;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.Delete;
@@ -59,7 +60,6 @@ import org.jetbrains.gradle.ext.GradleTask;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.model.Library;
-import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
@@ -206,14 +206,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         return dependency;
     }
 
-    private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtensionImpl minecraft, final Provider<MinecraftProviderService> httpClient, final TaskContainer tasks) {
-        // TODO: Update this to use our Downloader and to derive version information from the `minecraft` configuration
-        // Download asset index
-        final TaskProvider<Download> downloadIndex = this.createDownload(tasks, "downloadAssetIndex",
-            minecraft.targetVersion().map(it -> it.assetIndex().url()),
-            minecraft.assetsDirectory().dir("indexes")
-                .zip(minecraft.targetVersion().map(VersionDescriptor.Full::assetIndex), (indexDir, assetIndex) -> indexDir.file(assetIndex.id() + ".json").getAsFile())
-        );
+    private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtensionImpl minecraft, final Provider<MinecraftProviderService> minecraftProvider, final TaskContainer tasks) {
 
         final NamedDomainObjectProvider<Configuration> natives = this.project.getConfigurations().register(Constants.Configurations.MINECRAFT_NATIVES, config -> {
             config.setVisible(false);
@@ -254,15 +247,17 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.setDuplicatesStrategy(DuplicatesStrategy.WARN); // just in case Mojang change things up on us!
         });
 
+        final DirectoryProperty assetsDir = minecraft.assetsDirectory();
+        final Property<String> targetVersion = minecraft.version();
         final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register(Constants.Tasks.DOWNLOAD_ASSETS, DownloadAssetsTask.class, task -> {
             task.dependsOn(gatherNatives);
-            task.getAssetsDirectory().set(minecraft.assetsDirectory().dir("objects"));
-            task.getAssetsIndex().fileProvider(downloadIndex.map(Download::getDest));
-            task.getHttpClient().set(httpClient);
+            task.getAssetsDirectory().set(assetsDir);
+            task.getTargetVersion().set(targetVersion);
+            task.getMinecraftProvider().set(minecraftProvider);
         });
 
         minecraft.getRuns().configureEach(run -> {
-            run.parameterTokens().put(ClientRunParameterTokens.ASSETS_ROOT, minecraft.assetsDirectory().map(x -> x.getAsFile().getAbsolutePath()));
+            run.parameterTokens().put(ClientRunParameterTokens.ASSETS_ROOT, assetsDir.map(x -> x.getAsFile().getAbsolutePath()));
             run.parameterTokens().put(ClientRunParameterTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
         });
 
@@ -275,8 +270,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.setGroup(Constants.TASK_GROUP);
             task.setDescription("Delete downloaded files for the current minecraft environment used for this project");
             task.delete(
-                tasks.withType(AccessWidenJarTask.class),
-                tasks.withType(Download.class).matching(dl -> !dl.getName().equals("downloadAssetIndex"))
+                tasks.withType(AccessWidenJarTask.class)
             );
         });
 
@@ -361,17 +355,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                     je.getWorkingDir().mkdirs();
                 });
             });
-        });
-    }
-
-    private TaskProvider<Download> createDownload(final TaskContainer tasks, final String name, final Provider<?> source, final Provider<?> destination) {
-        return tasks.register(name, Download.class, download -> {
-            download.header("User-Agent", Constants.USER_AGENT);
-            download.onlyIfModified(true);
-            download.quiet(true);
-            download.src(source.get());
-            download.dest(destination.get());
-            download.doFirst(t2 -> ((Download) t2).getDest().getParentFile().mkdirs());
         });
     }
 

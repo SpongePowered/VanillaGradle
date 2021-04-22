@@ -30,6 +30,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import java.util.stream.Collector;
 
 /**
  * A container for the result of a resolution operation.
@@ -165,6 +166,67 @@ public final class ResolutionResult<V> {
             + "result=" + this.result
             + ", upToDate=" + this.upToDate
             + "}";
+    }
+
+    public static <T> Collector<ResolutionResult<T>, Statistics, Statistics> statisticCollector() {
+        return Collector.of(
+            Statistics::new,
+            (stats, result) -> {
+                stats.total++;
+                if (result.upToDate()) {
+                    stats.upToDate++;
+                }
+                if (result.isPresent()) {
+                    stats.found++;
+                } else {
+                    stats.notFound++;
+                }
+            },
+            (a, b) -> new Statistics(
+                a.upToDate + b.upToDate,
+                a.notFound + b.notFound,
+                a.found + b.found,
+                a.total + b.total
+            ),
+            Collector.Characteristics.CONCURRENT,
+            Collector.Characteristics.UNORDERED
+        );
+    }
+
+    /**
+     * Retrieve statistics about a collection of resolution results.
+     */
+    public static final class Statistics {
+        int upToDate;
+        int notFound;
+        int found;
+        int total;
+
+        Statistics() {
+        }
+
+        Statistics(final int upToDate, final int notFound, final int found, final int total) {
+            this.upToDate = upToDate;
+            this.notFound = notFound;
+            this.found = found;
+            this.total = total;
+        }
+
+        public int upToDate() {
+            return this.upToDate;
+        }
+
+        public int notFound() {
+            return this.notFound;
+        }
+
+        public int found() {
+            return this.found;
+        }
+
+        public int total() {
+            return this.total;
+        }
     }
 
 }
