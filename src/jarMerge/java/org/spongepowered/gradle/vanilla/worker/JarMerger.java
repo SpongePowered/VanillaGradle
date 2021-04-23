@@ -38,10 +38,9 @@ import java.nio.file.Path;
 /**
  * Combine a client and server jar together.
  *
- * <p>This cannot use any Gradle API.</p>
+ * <p>This cannot use any VanillaGradle API.</p>
  */
 public final class JarMerger {
-    // private static final Logger LOGGER = LoggerFactory.getLogger(JarMerger.class);
 
     public static void execute(final Path clientJar, final Path serverJar, final Path outputJar) {
         final Merger merger = new Merger(
@@ -55,7 +54,6 @@ public final class JarMerger {
         try {
             merger.process();
         } catch (final IOException ex) {
-            // JarMerger.LOGGER.error("Failed to merge jars", ex);
             throw new RuntimeException("Failed to merge jars", ex);
         }
     }

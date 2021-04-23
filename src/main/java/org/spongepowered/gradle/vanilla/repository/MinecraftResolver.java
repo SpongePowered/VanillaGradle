@@ -84,7 +84,7 @@ public interface MinecraftResolver {
      * @param action the action needed to produce a variant, taking the input environment and a target path
      * @return the path of the jar
      */
-    Path produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final String id, final BiConsumer<MinecraftEnvironment, Path> action)
+    Path produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id, final BiConsumer<MinecraftEnvironment, Path> action)
         throws Exception;
 
     interface MinecraftEnvironment {
@@ -114,11 +114,30 @@ public interface MinecraftResolver {
     }
 
     /**
-     * Context available to individual artifact resolution steps.
+     * Context available to individual artifact modifier steps.
      */
     interface Context {
+
+        /**
+         * A repository exposing the Mojang launcher metadata API.
+         *
+         * @return the manifest repository
+         */
         VersionManifestRepository versions();
+
+        /**
+         * A downloader for resources, configured to resolve to the shared
+         * cache by default.
+         *
+         * @return the downloader instance
+         */
         Downloader downloader();
+
+        /**
+         * An executor for performing asynchronous operations.
+         *
+         * @return the environment's executor
+         */
         Executor executor();
 
         /**

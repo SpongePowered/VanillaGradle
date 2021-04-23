@@ -64,4 +64,13 @@ public final class StringUtils {
         return builder.toString();
     }
 
+    public static String trimUntilFirst(final String input, final char delimiter) {
+        final int idx = input.indexOf(delimiter);
+        if (idx == -1) {
+            return input;
+        }
+
+        return input.substring(0, idx);
+    }
+
 }

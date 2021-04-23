@@ -328,28 +328,34 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
             return unmodified;
         }
 
+        boolean requiresLocalStorage = false;
         final StringBuilder decoratedArtifactBuilder = new StringBuilder(side.artifactId().length() + 10 * modifiers.size());
         decoratedArtifactBuilder.append(side.artifactId());
+        // Synchronously compute the modifier populator providers
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        final CompletableFuture<ArtifactModifier.AtlasPopulator>[] populators = new CompletableFuture[modifiers.size()];
+        int idx = 0;
         for (final ArtifactModifier modifier : modifiers) {
             decoratedArtifactBuilder.append(ArtifactModifier.ENTRY_SEPARATOR)
                 .append(modifier.key())
                 .append(ArtifactModifier.KEY_VALUE_SEPARATOR)
                 .append(modifier.stateKey());
+            requiresLocalStorage |= modifier.requiresLocalStorage();
+            populators[idx++] = modifier.providePopulator(this);
         }
         final String decoratedArtifact = decoratedArtifactBuilder.toString();
 
-        // Synchronously compute the modifier populator providers
-        @SuppressWarnings({"unchecked", "rawtype"})
-        final CompletableFuture<ArtifactModifier.AtlasPopulator>[] populators = new CompletableFuture[modifiers.size()];
-        int idx = 0;
-        for (final ArtifactModifier modifier : modifiers) {
-            populators[idx++] = modifier.providePopulator(this);
-        }
-
+        final boolean finalRequiresLocalStorage = requiresLocalStorage;
         return unmodified.thenCombineAsync(CompletableFuture.allOf(populators), (input, popIgnored) -> {
             try {
                 // compute a file name based on the modifiers
-                final Path output = this.artifactPath(this.privateCache, decoratedArtifact, version, null, "jar");
+                final Path output = this.artifactPath(
+                    finalRequiresLocalStorage ? this.privateCache : this.downloader.baseDir(),
+                    decoratedArtifact,
+                    version,
+                    null,
+                    "jar"
+                );
                 if (input.upToDate() && Files.isRegularFile(output)) {
                     this.writeMetaIfNecessary(side, decoratedArtifact, input.mapIfPresent((upToDate, env) -> env.metadata()), output.getParent());
                     return ResolutionResult.result(new MinecraftEnvironmentImpl(decoratedArtifact, output, input.get().metadata()), true);
@@ -377,7 +383,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         try {
                             populator.join().close();
                         } catch (final IOException ex) {
-                            // ignore, we will continue trying to close veery modifier
+                            // ignore, we will continue trying to close every modifier
                         }
                     }
                 }
@@ -408,14 +414,18 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     @Override
     public Path produceAssociatedArtifactSync(
         // todo: boolean transformsOriginalArtifact (will copy the input to a temp location for safe modification such as linemapping)
-        final MinecraftPlatform side, final String version, final String id, final BiConsumer<MinecraftEnvironment, Path> action
+        final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id, final BiConsumer<MinecraftEnvironment, Path> action
     ) throws Exception {
-        final Path output = this.sharedArtifactPath(side, version, id, "jar");
-        final ResolutionResult<MinecraftEnvironment> env = this.provide(side, version).get();
-        if (!env.upToDate() || !Files.exists(output)) {
-            final Path tempOut = Files.createTempFile("vanillagradle-" + side.artifactId() + "id", ".tmp.jar");
+        final ResolutionResult<MinecraftEnvironment> envResult = this.provide(side, version, modifiers).get();
+        if (!envResult.isPresent()) {
+            throw new IllegalStateException("No environment could be found for '" + side + "' version " + version);
+        }
+        final MinecraftEnvironment env = envResult.get();
+        final Path output = env.jar().resolveSibling(env.decoratedArtifactId() + "-" + env.metadata().id() + "-" + id + ".jar");
+        if (!envResult.upToDate() || !Files.exists(output)) {
+            final Path tempOut = Files.createTempFile("vanillagradle-" + env.decoratedArtifactId() + "-" + id, ".tmp.jar");
 
-            action.accept(env.get(), tempOut);
+            action.accept(env, tempOut);
             FileUtils.atomicMove(tempOut, output);
         }
         return output; // todo: find some better way of checking validity? for ex. when decompiler version changes

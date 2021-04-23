@@ -42,7 +42,7 @@ final class AccessWidenerEntryTransformer implements JarEntryTransformer {
 
     @Override
     public JarClassEntry transform(final JarClassEntry entry) {
-        final String entryNameWithoutExtension = entry.getName().substring(0, entry.getName().length() - entry.getExtension().length());
+        final String entryNameWithoutExtension = entry.getName().substring(0, entry.getName().length() - entry.getExtension().length() - 1);
         if (this.widener.getTargets().contains(entryNameWithoutExtension.replace('/', '.'))) {
             final ClassReader reader = new ClassReader(entry.getContents());
             final ClassWriter writer = new ClassWriter(reader, 0);
