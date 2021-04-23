@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Enumeration;
+import java.util.NoSuchElementException;
 
 /**
  * A classloader that will load classes from itself rather than its parent where possible.
@@ -52,7 +53,11 @@ public class SelfPreferringClassLoader extends URLClassLoader {
         synchronized (this.getClassLoadingLock(name)) {
             Class<?> result = this.findLoadedClass(name);
             if (result == null) {
-                result = this.findClass(name);
+                try {
+                    result = this.findClass(name);
+                } catch (final ClassNotFoundException ex) {
+                    // ignore, delegate to parent
+                }
             }
 
             if (result == null) {
@@ -77,11 +82,39 @@ public class SelfPreferringClassLoader extends URLClassLoader {
 
     @Override
     public Enumeration<URL> getResources(final String name) throws IOException {
-        // todo: compound enumeration of classes
-        /*new Enumeration<?>[] {
-            this.findResources(name),
-            this.parent == null ? ClassLoader.getSystemClassLoader().getResources(name) : this.parent.getResources(name)
-        }; */
-        return super.getResources(name);
+        return new Enumeration<URL>() {
+
+            @Nullable Enumeration<URL> active = SelfPreferringClassLoader.this.findResources(name);
+            @Nullable Enumeration<URL> staged = SelfPreferringClassLoader.this.parent == null
+                                                ? ClassLoader.getSystemClassLoader().getResources(name)
+                                                : SelfPreferringClassLoader.this.parent.getResources(name);
+
+            private @Nullable Enumeration<URL> nextComponent() {
+                if (this.active == null) {
+                    return null;
+                } else if (!this.active.hasMoreElements()) {
+                    this.active = this.staged;
+                    this.staged = null;
+                }
+                return this.active;
+            }
+
+            @Override
+            public boolean hasMoreElements() {
+                final @Nullable Enumeration<URL> component = this.nextComponent();
+                return component != null && component.hasMoreElements();
+            }
+
+            @Override
+            public URL nextElement() {
+                final @Nullable Enumeration<URL> component = this.nextComponent();
+                if (component == null) {
+                    throw new NoSuchElementException();
+                }
+                return component.nextElement();
+            }
+
+        };
     }
+
 }

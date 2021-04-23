@@ -29,7 +29,6 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.ArtifactCollection;
-import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.provider.Property;
@@ -42,8 +41,11 @@ import org.gradle.internal.component.external.model.ModuleComponentArtifactIdent
 import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.workers.WorkerExecutor;
 import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.MinecraftExtension;
+import org.spongepowered.gradle.vanilla.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
+import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.worker.JarDecompileWorker;
 
 import java.io.File;
@@ -93,8 +95,10 @@ public abstract class DecompileJarTask extends DefaultTask {
 
     @TaskAction
     public void execute() throws Exception {
+        // TODO: get rid of these project references... somehow
+        final Set<ArtifactModifier> modifiers = ((MinecraftExtensionImpl) this.getProject().getExtensions().getByType(MinecraftExtension.class)).modifiers();
         this.getMinecraftProvider().get().resolver(this.getProject())
-            .produceAssociatedArtifactSync(this.getMinecraftPlatform().get(), this.getMinecraftVersion().get(), "sources", (env, output) -> {
+            .produceAssociatedArtifactSync(this.getMinecraftPlatform().get(), this.getMinecraftVersion().get(), modifiers, "sources", (env, output) -> {
 
                 // Determine which parts of the configuration are MC, and which are its dependencies
                 final Set<File> dependencies = new HashSet<>();
@@ -102,10 +106,11 @@ public abstract class DecompileJarTask extends DefaultTask {
                 for (final ResolvedArtifactResult artifact : this.getInputArtifacts().get()) {
                     if (artifact.getId() instanceof ModuleComponentArtifactIdentifier) {
                         final ModuleComponentArtifactIdentifier id = (ModuleComponentArtifactIdentifier) artifact.getId();
-                        if (id.getComponentIdentifier().getGroup().equals(MinecraftPlatform.GROUP)
-                            && MinecraftPlatform.byId(id.getComponentIdentifier().getModule()).isPresent()) {
-                            minecraftArtifact = artifact.getFile();
-                            continue;
+                        if (id.getComponentIdentifier().getGroup().equals(MinecraftPlatform.GROUP)) {
+                            if (env.decoratedArtifactId().equals(id.getComponentIdentifier().getModule())) {
+                                minecraftArtifact = artifact.getFile();
+                                continue;
+                            }
                         }
                     }
                     dependencies.add(artifact.getFile());

@@ -109,19 +109,12 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             // TODO: Set appropriate attributes here
         });
 
-        // final TaskProvider<AtlasTransformTask> remapClientJar = this.createSidedTasks(MinecraftSide.CLIENT, target.getTasks(), minecraft);
-        // final TaskProvider<AtlasTransformTask> remapServerJar = this.createSidedTasks(MinecraftSide.SERVER, target.getTasks(), minecraft);
-
-        // final TaskProvider<MergeJarsTask> mergedJars = this.createJarMerge(minecraft, remapClientJar, remapServerJar);
         final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, minecraftProvider, target.getTasks());
 
         final TaskProvider<DecompileJarTask> decompileJar = this.createJarDecompile(minecraftConfig, minecraftProvider, minecraft);
 
         final TaskProvider<?> prepareWorkspace = target.getTasks().register(Constants.Tasks.PREPARE_WORKSPACE, task -> {
             task.setGroup(Constants.TASK_GROUP);
-            /*task.dependsOn(remapServerJar);
-            task.dependsOn(remapClientJar);
-            task.dependsOn(mergedJars);*/
         });
 
         this.createCleanTasks(target.getTasks(), minecraft);

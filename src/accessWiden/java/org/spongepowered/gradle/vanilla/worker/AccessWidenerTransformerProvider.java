@@ -39,7 +39,7 @@ import java.nio.file.Path;
 import java.util.Set;
 import java.util.function.Function;
 
-final class AccessWidenerTransformerProvider implements Function<Set<Path>, JarEntryTransformer> {
+public final class AccessWidenerTransformerProvider implements Function<Set<Path>, JarEntryTransformer> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AccessWidenerTransformerProvider.class);
 

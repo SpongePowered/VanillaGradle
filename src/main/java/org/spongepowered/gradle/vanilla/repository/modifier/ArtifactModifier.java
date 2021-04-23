@@ -37,9 +37,9 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface ArtifactModifier {
 
-    String ENTRY_SEPARATOR = "_";
+    char ENTRY_SEPARATOR = '_';
 
-    String KEY_VALUE_SEPARATOR = "-";
+    char KEY_VALUE_SEPARATOR = '-';
 
     /**
      * A short (1-3 character) identifier for this type of

@@ -53,6 +53,9 @@ import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
+/**
+ * A plugin that actually adds the provided Minecraft artifacts to the project classpath.
+ */
 public final class VanillaGradle implements Plugin<Project> {
     private static final AtomicBoolean VERSION_ANNOUNCED = new AtomicBoolean();
 
