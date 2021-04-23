@@ -81,7 +81,7 @@ public final class IvyModuleWriter implements AutoCloseable {
         this.writer = new IndentingXmlStreamWriter(IvyModuleWriter.OUTPUT_FACTORY.createXMLStreamWriter(this.output), Constants.INDENT);
     }
 
-    void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform platform, final RuleContext rules) throws XMLStreamException {
+    void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform platform, final String artifactId, final RuleContext rules) throws XMLStreamException {
         this.writer.writeStartDocument("UTF-8", "1.0");
         this.writer.writeStartElement("ivy-module");
         this.writer.writeNamespace("xsi", IvyModuleWriter.XSI);
@@ -89,7 +89,7 @@ public final class IvyModuleWriter implements AutoCloseable {
         this.writer.writeAttribute(IvyModuleWriter.XSI, "noNamespaceSchemaLocation", IvyModuleWriter.IVY);
         this.writer.writeAttribute("version", "2.0");
 
-        this.writeInfo(descriptor, platform);
+        this.writeInfo(descriptor, platform, artifactId);
         this.writeDependencies(descriptor.libraries(), platform, rules);
         this.writeArtifacts(platform);
 
@@ -97,11 +97,11 @@ public final class IvyModuleWriter implements AutoCloseable {
         this.writer.writeEndDocument();
     }
 
-    private void writeInfo(final VersionDescriptor.Full version, final MinecraftPlatform platform) throws XMLStreamException {
+    private void writeInfo(final VersionDescriptor.Full version, final MinecraftPlatform platform, final String artifactId) throws XMLStreamException {
         this.writer.writeStartElement("info");
         // Common attributes
         this.writer.writeAttribute("organisation", MinecraftPlatform.GROUP);
-        this.writer.writeAttribute("module", platform.artifactId());
+        this.writer.writeAttribute("module", artifactId);
         this.writer.writeAttribute("revision", version.id());
         this.writer.writeAttribute("status", "release"); // gradle wants release... we must please the gradle...
 

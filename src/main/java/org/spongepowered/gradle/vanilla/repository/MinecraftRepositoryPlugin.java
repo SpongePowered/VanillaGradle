@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla.repository;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionSelector;
@@ -38,6 +39,8 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.Provider;
 import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.MinecraftExtension;
+import org.spongepowered.gradle.vanilla.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.repository.rule.JoinedProvidesClientAndServerRule;
 import org.spongepowered.gradle.vanilla.repository.rule.MinecraftIvyModuleExtraDataApplierRule;
 
@@ -45,6 +48,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Pattern;
 
 /**
  * The minimum plugin to add the minecraft repository to projects or globally.
@@ -109,8 +113,18 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         JoinedProvidesClientAndServerRule.configureResolution(strategy.getCapabilitiesResolution());
         strategy.eachDependency(dependency -> {
             final ModuleVersionSelector dep = dependency.getTarget();
-            final Optional<MinecraftPlatform> platform = MinecraftPlatform.byId(dep.getName());
-            if (platform.isPresent() && MinecraftPlatform.GROUP.equals(dep.getGroup())) {
+            if (MinecraftPlatform.GROUP.equals(dep.getGroup())) {
+                final String[] components = dep.getName().split("_", 2); // any manually specified components will exist, but can't be resolved
+                if (components.length == 0) {
+                    return; // failed
+                }
+                final Optional<MinecraftPlatform> platform = MinecraftPlatform.byId(components[0]);
+                if (!platform.isPresent()) {
+                    return;
+                }
+
+
+                // TODO:
                 // could be:
                 // <an actual version>
                 // <latest.release_type (release, snapshot)>
@@ -122,11 +136,19 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                 logger.info("Attempting to resolve minecraft {} version {}", dep.getName(), version);
                 if (version != null) {
                     try {
-                        // Request the appropriate jar, block until it's provided
-                        service.get().resolver(project).provide(platform.get(), version).get();
+                        final MinecraftResolver resolver = service.get().resolver(project);
+                        final @Nullable MinecraftExtensionImpl extension = (MinecraftExtensionImpl) project.getExtensions().findByType(MinecraftExtension.class);
+                        if (extension != null) {
+                            final ResolutionResult<MinecraftResolver.MinecraftEnvironment> env = resolver.provide(platform.get(), version, extension.modifiers()).get();
+                            if (env.isPresent()) {
+                                dependency.useTarget(MinecraftPlatform.GROUP + ':' + env.get().decoratedArtifactId() + ':' + version);
+                            }
+                        } else {
+                            // Request the appropriate jar, block until it's provided
+                            resolver.provide(platform.get(), version).get();
+                        }
                     } catch (final InterruptedException ex) {
                         Thread.currentThread().interrupt();
-                        return;
                     } catch (final ExecutionException ex) {
                         // log exception but don't throw, dependency resolution failure will come when expected.
                         logger.error("Failed to resolve Minecraft {} version {}:", platform.get(), version, ex);
@@ -174,45 +196,46 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
     }
 
     private void createRepositories(final RepositoryHandler repositories, final Provider<MinecraftProviderService> service, final Path sharedCache, final Path rootProjectCache) {
-        repositories.ivy(ivy -> {
-            ivy.setName("VanillaGradle Global Cache");
-            ivy.setUrl(sharedCache.resolve(Constants.Directories.JARS).toUri());
-            ivy.patternLayout(layout -> {
-                layout.artifact(IvyArtifactRepository.MAVEN_ARTIFACT_PATTERN);
-                layout.ivy(MinecraftRepositoryPlugin.IVY_METADATA_PATTERN);
-                layout.setM2compatible(true);
-            });
-            ivy.content(content -> {
-                for (final MinecraftPlatform platform : MinecraftPlatform.all()) {
-                     content.includeModule(MinecraftPlatform.GROUP, platform.artifactId());
-                }
-            });
-            ivy.setComponentVersionsLister(LauncherMetaVersionLister.class, params -> params.params(service));
-            ivy.setMetadataSupplier(LauncherMetaMetadataSupplier.class, params -> params.params(service));
-            ivy.setAllowInsecureProtocol(true);
-            ivy.getResolve().setDynamicMode(false);
-            ivy.metadataSources(sources -> {
-                sources.ivyDescriptor();
-                sources.artifact();
-            });
-        });
-        // TODO: how to handle AWs nicely?
-        /* repositories.ivy(ivy -> {
-            ivy.setName("VanillaGradle Project Cache");
-            ivy.setUrl(rootProjectCache.resolve(Constants.Directories.JARS).toUri());
-            ivy.patternLayout(layout -> {
-                layout.artifact(IvyArtifactRepository.MAVEN_ARTIFACT_PATTERN);
-                layout.ivy(MinecraftRepositoryPlugin.IVY_METADATA_PATTERN);
-                layout.setM2compatible(true);
-            });
-            ivy.content(content -> {
-                for (final MinecraftPlatform platform : MinecraftPlatform.all()) {
-                     content.includeModule(MinecraftPlatform.GROUP, platform.artifactId());
-                }
-            });
-            ivy.setComponentVersionsLister(LauncherMetaVersionLister.class, params -> params.params(service));
-            ivy.setMetadataSupplier(LauncherMetaMetadataSupplier.class, params -> params.params(service));
-        });*/
+        // Global cache (for standard artifacts)
+        repositories.ivy(MinecraftRepositoryPlugin.repositoryConfiguration(
+            "VanillaGradle Global Cache",
+            sharedCache.resolve(Constants.Directories.JARS),
+            service
+        ));
+        // Root-project cache (for project-specific transformations, such as access wideners, potentially other things
+        repositories.ivy(MinecraftRepositoryPlugin.repositoryConfiguration(
+            "VanillaGradle Project Cache",
+            rootProjectCache.resolve(Constants.Directories.JARS),
+            service
+        ));
+    }
+
+    private static Action<IvyArtifactRepository> repositoryConfiguration(final String name, final Path root, final Provider<MinecraftProviderService> service) {
+       return ivy -> {
+           ivy.setName(name);
+           ivy.setUrl(root.toUri());
+           ivy.patternLayout(layout -> {
+               layout.artifact(IvyArtifactRepository.MAVEN_ARTIFACT_PATTERN);
+               layout.ivy(MinecraftRepositoryPlugin.IVY_METADATA_PATTERN);
+               layout.setM2compatible(true);
+           });
+           ivy.content(content -> {
+               for (final MinecraftPlatform platform : MinecraftPlatform.all()) {
+                   content.includeModuleByRegex(
+                       Pattern.quote(MinecraftPlatform.GROUP),
+                       Pattern.quote(platform.artifactId()) + "($|_.+)" // Allow both the literal artifact ID, plus any encoded modifiers
+                   );
+               }
+           });
+           ivy.setComponentVersionsLister(LauncherMetaVersionLister.class, params -> params.params(service));
+           ivy.setMetadataSupplier(LauncherMetaMetadataSupplier.class, params -> params.params(service));
+           ivy.setAllowInsecureProtocol(true);
+           ivy.getResolve().setDynamicMode(false);
+           ivy.metadataSources(sources -> {
+               sources.ivyDescriptor();
+               sources.artifact();
+           });
+       };
     }
 
     private void registerComponentMetadataRules(final ComponentMetadataHandler handler) {

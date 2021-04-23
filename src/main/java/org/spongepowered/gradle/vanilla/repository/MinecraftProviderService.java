@@ -106,6 +106,7 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
                     this.resolver = resolver = new MinecraftResolverImpl(
                         this.versions(),
                         this.downloader().withBaseDir(this.downloader().baseDir().resolve(Constants.Directories.JARS)),
+                        this.getParameters().getRootProjectCache().get().getAsFile().toPath().resolve(Constants.Directories.JARS),
                         this.executor
                     );
                 } else {

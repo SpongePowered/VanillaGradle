@@ -49,7 +49,6 @@ import org.spongepowered.gradle.vanilla.util.AsyncUtils;
 import org.spongepowered.gradle.vanilla.util.FileUtils;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -122,14 +121,6 @@ public final class ApacheHttpDownloader implements AutoCloseable, Downloader {
         this.writeToDisk = writeToDisk;
         this.client = existing;
         this.shouldClose = false;
-    }
-
-    public static BasicResponseConsumer<Path> responseToFileValidating(final Path path, final HashAlgorithm algorithm, final String hash) {
-        try {
-            return new BasicResponseConsumer<>(new ValidatingDigestingEntityConsumer<>(new ToPathEntityConsumer(path), algorithm, hash));
-        } catch (final NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("Could not resolve hash algorithm");
-        }
     }
 
     public CloseableHttpAsyncClient client() {
@@ -256,7 +247,6 @@ public final class ApacheHttpDownloader implements AutoCloseable, Downloader {
         final Function<Path, AsyncEntityConsumer<T>> responseConsumer,
         final Function<Path, CompletableFuture<T>> existingHandler
     ) {
-        final File destFile = destination.toFile();
         final @Nullable BasicFileAttributes destAttributes = FileUtils.fileAttributesIfExists(destination);
         if (this.resolveMode != ResolveMode.REMOTE_ONLY && (destAttributes != null && destAttributes.isRegularFile())) { // TODO: check etag?
             // Check every 24 hours

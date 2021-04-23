@@ -65,7 +65,7 @@ public class IvyModuleWriterTest {
         final StringWriter writer = new StringWriter();
 
         try (final IvyModuleWriter ivy = new IvyModuleWriter(writer)) {
-            ivy.write(version, MinecraftPlatform.JOINED, IvyModuleWriterTest.TEST_CONTEXT);
+            ivy.write(version, MinecraftPlatform.JOINED, MinecraftPlatform.JOINED.artifactId(), IvyModuleWriterTest.TEST_CONTEXT);
         }
 
         Assertions.assertLinesMatch(
@@ -82,7 +82,7 @@ public class IvyModuleWriterTest {
         final StringWriter writer = new StringWriter();
 
         try (final IvyModuleWriter ivy = new IvyModuleWriter(writer)) {
-            ivy.write(version, MinecraftPlatform.JOINED, IvyModuleWriterTest.TEST_CONTEXT);
+            ivy.write(version, MinecraftPlatform.JOINED, MinecraftPlatform.JOINED.artifactId(), IvyModuleWriterTest.TEST_CONTEXT);
         }
 
         Assertions.assertLinesMatch(

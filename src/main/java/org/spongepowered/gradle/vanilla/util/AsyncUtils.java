@@ -24,9 +24,12 @@
  */
 package org.spongepowered.gradle.vanilla.util;
 
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 
 public final class AsyncUtils {
 
@@ -49,6 +52,23 @@ public final class AsyncUtils {
             }
         });
         return result;
+    }
+
+    public static <T> Supplier<T> memoizedSupplier(final Supplier<T> input) {
+        return new Supplier<T>() {
+            private volatile @MonotonicNonNull T value;
+            @Override
+            public T get() {
+                if (this.value == null) {
+                    synchronized (this) {
+                        if (this.value == null) {
+                            return this.value = input.get();
+                        }
+                    }
+                }
+                return this.value;
+            }
+        };
     }
 
 }

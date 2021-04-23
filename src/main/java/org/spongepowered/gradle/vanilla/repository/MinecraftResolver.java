@@ -26,11 +26,16 @@ package org.spongepowered.gradle.vanilla.repository;
 
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
+import org.spongepowered.gradle.vanilla.network.Downloader;
+import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
 
+import java.net.URLClassLoader;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.Supplier;
 
 public interface MinecraftResolver {
 
@@ -64,6 +69,8 @@ public interface MinecraftResolver {
 
     CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version);
 
+    CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers);
+
     /**
      * Given a standard Minecraft artifact, produce a variant of that artifact.
      *
@@ -82,10 +89,51 @@ public interface MinecraftResolver {
 
     interface MinecraftEnvironment {
 
-        Path jar();
-        VersionDescriptor.Full metadata();
-        CompletableFuture<MinecraftEnvironment> accessWidened(final Path... wideners);
+        /**
+         * Get the artifact ID of the resolved Minecraft environment, after
+         * modifier information has been encoded.
+         *
+         * @return the decorated artifact ID
+         */
+        String decoratedArtifactId();
 
+        /**
+         * The output jar of this environment.
+         *
+         * @return the output jar
+         */
+        Path jar();
+
+        /**
+         * The Mojang-provided metadata for a certain Minecraft environment.
+         *
+         * @return the version metadata
+         */
+        VersionDescriptor.Full metadata();
+
+    }
+
+    /**
+     * Context available to individual artifact resolution steps.
+     */
+    interface Context {
+        VersionManifestRepository versions();
+        Downloader downloader();
+        Executor executor();
+
+        /**
+         * Return a child classloader with a tool and its dependencies on the
+         * classpath, as well as the VanillaGradle jar.
+         *
+         * <p>This is a very fragile arrangement but it allows some dependencies
+         * to be overridden at runtime. Classes from Gradle, VanillaGradle's
+         * dependencies, and the JDK can be safely shared, but VanillaGradle
+         * classes CAN NOT.</p>
+         *
+         * @param tool the tool to resolve
+         * @return a class loader with the tool on the classpath
+         */
+        Supplier<URLClassLoader> classLoaderWithTool(final ResolvableTool tool);
     }
 
 }

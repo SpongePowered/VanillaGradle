@@ -39,9 +39,11 @@ import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.network.Downloader;
 import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
+import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.transformer.AtlasTransformers;
 import org.spongepowered.gradle.vanilla.util.AsyncUtils;
 import org.spongepowered.gradle.vanilla.util.FileUtils;
+import org.spongepowered.gradle.vanilla.util.SelfPreferringClassLoader;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -55,32 +57,38 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import javax.xml.stream.XMLStreamException;
 
-public class MinecraftResolverImpl implements MinecraftResolver {
+public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolver.Context {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MinecraftResolverImpl.class);
     private final VersionManifestRepository manifests;
     private final Downloader downloader;
     private final ExecutorService executor;
+    private final Path privateCache;
     private @Nullable Function<ResolvableTool, URL[]> toolResolver;
     private final ConcurrentMap<EnvironmentKey, CompletableFuture<ResolutionResult<MinecraftEnvironment>>> artifacts = new ConcurrentHashMap<>();
 
     public MinecraftResolverImpl(
         final VersionManifestRepository manifests,
         final Downloader downloader,
+        final Path privateCache,
         final ExecutorService executor
     ) {
         this.manifests = manifests;
         this.downloader = downloader;
+        this.privateCache = privateCache;
         this.executor = executor;
     }
 
@@ -92,6 +100,33 @@ public class MinecraftResolverImpl implements MinecraftResolver {
     @Override
     public VersionManifestRepository versions() {
         return this.manifests;
+    }
+
+    @Override
+    public Downloader downloader() {
+        return this.downloader;
+    }
+
+    @Override
+    public Executor executor() {
+        return this.executor;
+    }
+
+    @Override
+    public Supplier<URLClassLoader> classLoaderWithTool(final ResolvableTool tool) {
+        final @Nullable Function<ResolvableTool, URL[]> toolResolver = this.toolResolver;
+        if (toolResolver == null) {
+            throw new IllegalStateException("No tool resolver has been configured to resolve " + tool);
+        }
+        final URL[] toolUrls = toolResolver.apply(tool);
+
+        // Create a ClassLoader containing the resolved configuration, plus our own code source to be able to access our own classes
+        final URL[] classPath = new URL[toolUrls.length + 1];
+        classPath[0] = this.getClass().getProtectionDomain().getCodeSource().getLocation();
+        System.arraycopy(toolUrls, 0, classPath, 1, toolUrls.length);
+        // Use a custom classloader that prefers classes from the child loader
+        // This means we cannot
+        return AsyncUtils.memoizedSupplier(() -> new SelfPreferringClassLoader(classPath, MinecraftResolverImpl.class.getClassLoader()));
     }
 
     // remap a single-sided jar
@@ -109,8 +144,8 @@ public class MinecraftResolverImpl implements MinecraftResolver {
                 final Path jarPath;
                 final Path mappingsPath;
                 try {
-                    jarPath = this.artifactPath(platform, "m-obf", version, null, "jar");
-                    mappingsPath = this.artifactPath(platform, "m-obf", version, "mappings", "txt");
+                    jarPath = this.sharedArtifactPath(platform.artifactId() + "_m-obf", version, null, "jar");
+                    mappingsPath = this.sharedArtifactPath(platform.artifactId() + "_m-obf", version, "mappings", "txt");
                 } catch (final IOException ex) {
                     return AsyncUtils.failedFuture(ex);
                 }
@@ -136,7 +171,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
                             // Check meta here too, before returning
                             this.writeMetaIfNecessary(platform, potentialDescriptor, outputJar.getParent());
                             // todo: eventually, store a hash along with the jar to compare to, for validation
-                            return ResolutionResult.result(new MinecraftEnvironmentImpl(outputJar, descriptor), true);
+                            return ResolutionResult.result(new MinecraftEnvironmentImpl(platform.artifactId(), outputJar, descriptor), true);
                         } else if (!jar.isPresent()) {
                             throw new IllegalArgumentException("No jar was available for Minecraft " + descriptor.id() + "side " + side.name()
                                 + "! Are you sure the data file is correct?");
@@ -171,7 +206,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
                         FileUtils.atomicMove(outputTmp, outputJar);
                         // not up-to-date, we had to generate the jar
                         MinecraftResolverImpl.LOGGER.warn("Successfully prepared Minecraft: Java Edition {} version {}", side, version);
-                        return ResolutionResult.result(new MinecraftEnvironmentImpl(outputJar, descriptor), false);
+                        return ResolutionResult.result(new MinecraftEnvironmentImpl(platform.artifactId(), outputJar, descriptor), false);
                     } catch (final IOException | XMLStreamException ex) {
                         throw new CompletionException(ex);
                     }
@@ -204,7 +239,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
                     if (client.upToDate() && server.upToDate() && outputExists) {
                         // We're up-to-date, give meta a poke and then return without re-executing the jar merge
                         this.writeMetaIfNecessary(MinecraftPlatform.JOINED, potentialDescriptor, outputJar.getParent());
-                        return ResolutionResult.result(new MinecraftEnvironmentImpl(outputJar, descriptor), true);
+                        return ResolutionResult.result(new MinecraftEnvironmentImpl(MinecraftPlatform.JOINED.artifactId(), outputJar, descriptor), true);
                     }
                     MinecraftResolverImpl.LOGGER.warn("Preparing Minecraft: Java Edition JOINED version {}", version);
                     this.cleanAssociatedArtifacts(MinecraftPlatform.JOINED, version);
@@ -217,7 +252,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
                     this.writeMetaIfNecessary(MinecraftPlatform.JOINED, potentialDescriptor, outputJar.getParent());
                     FileUtils.atomicMove(outputTmp, outputJar);
                     MinecraftResolverImpl.LOGGER.warn("Successfully prepared Minecraft: Java Edition JOINED version {}", version);
-                    return ResolutionResult.result(new MinecraftEnvironmentImpl(outputJar, descriptor), false);
+                    return ResolutionResult.result(new MinecraftEnvironmentImpl(MinecraftPlatform.JOINED.artifactId(), outputJar, descriptor), false);
                 } catch (final Exception ex) {
                     throw new CompletionException(ex);
                 }
@@ -230,42 +265,34 @@ public class MinecraftResolverImpl implements MinecraftResolver {
      */
     @FunctionalInterface
     interface Executable {
-        void execute(final Object... args) throws Exception;
+        <T> T execute(final Object... args) throws Exception;
     }
 
+    // TODO: unify with the classLoaderWithTool system
     private Executable prepareChildLoader(final ResolvableTool tool, final String className, final String methodName) {
-        final @Nullable Function<ResolvableTool, URL[]> toolResolver = this.toolResolver;
-        if (toolResolver == null) {
-            throw new IllegalStateException("No tool resolver has been configured to resolve " + tool);
-        }
-        final URL[] toolUrls = toolResolver.apply(tool);
 
-        return args -> {
-            // Create a ClassLoader containing the resolved configuration, plus our own code source to be able to access our own classes
-            final URL[] classPath = new URL[toolUrls.length + 1];
-            classPath[0] = this.getClass().getProtectionDomain().getCodeSource().getLocation();
-            System.arraycopy(toolUrls, 0, classPath, 1, toolUrls.length);
-            // This has to be the system classloader, since otherwise there are issues with
-            // this classloader preferring classes from the parent classloader when the same URL
-            // is present in both.
-            // TODO: provide a better workaround... would be nice to share MappingSets around
-            try (final URLClassLoader child = new URLClassLoader(classPath, ClassLoader.getSystemClassLoader())) {
-                final Class<?> action = Class.forName(className, true, child);
-                for (final Method method : action.getMethods()) {
-                    if (method.getName().equals(methodName) && Modifier.isStatic(method.getModifiers())
-                        && method.getParameters().length == args.length) {
-                        method.invoke(null, args);
-                        return;
+        final Supplier<URLClassLoader> loader = this.classLoaderWithTool(tool);
+        return new Executable() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T> T execute(final Object... args) throws Exception {
+                try (final URLClassLoader child = loader.get()) {
+                    final Class<?> action = Class.forName(className, true, child);
+                    for (final Method method : action.getMethods()) {
+                        if (method.getName().equals(methodName) && Modifier.isStatic(method.getModifiers())
+                            && method.getParameters().length == args.length) {
+                            return (T) method.invoke(null, args);
+                        }
+                    }
+                } catch (final InvocationTargetException ex) {
+                    if (ex.getCause() != null && ex.getCause() instanceof Exception) {
+                        throw (Exception) ex.getCause();
+                    } else {
+                        throw ex;
                     }
                 }
-            } catch (final InvocationTargetException ex) {
-                if (ex.getCause() != null && ex.getCause() instanceof Exception) {
-                    throw (Exception) ex.getCause();
-                } else {
-                    throw ex;
-                }
+                throw new IllegalStateException("Could not find method matching name " + methodName + " with arguments " + Arrays.toString(args));
             }
-            throw new IllegalStateException("Could not find method matching name " + methodName + " with arguments " + Arrays.toString(args));
         };
 
     }
@@ -283,7 +310,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
     ) {
         final Path output;
         try {
-            output = this.artifactPath(side, null, version, null, "jar");
+            output = this.sharedArtifactPath(side, version, null, "jar");
         } catch (final IOException ex) {
             return AsyncUtils.failedFuture(ex);
         }
@@ -292,8 +319,74 @@ public class MinecraftResolverImpl implements MinecraftResolver {
         return side.resolveMinecraft(this, version, output);
     }
 
+    @Override
+    public CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(
+        final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers
+    ) {
+        final CompletableFuture<ResolutionResult<MinecraftEnvironment>> unmodified = this.provide(side, version);
+        if (modifiers.isEmpty()) { // no modifiers provided, follow the normal path
+            return unmodified;
+        }
+
+        final StringBuilder decoratedArtifactBuilder = new StringBuilder(side.artifactId().length() + 10 * modifiers.size());
+        decoratedArtifactBuilder.append(side.artifactId());
+        for (final ArtifactModifier modifier : modifiers) {
+            decoratedArtifactBuilder.append(ArtifactModifier.ENTRY_SEPARATOR)
+                .append(modifier.key())
+                .append(ArtifactModifier.KEY_VALUE_SEPARATOR)
+                .append(modifier.stateKey());
+        }
+        final String decoratedArtifact = decoratedArtifactBuilder.toString();
+
+        // Synchronously compute the modifier populator providers
+        @SuppressWarnings({"unchecked", "rawtype"})
+        final CompletableFuture<ArtifactModifier.AtlasPopulator>[] populators = new CompletableFuture[modifiers.size()];
+        int idx = 0;
+        for (final ArtifactModifier modifier : modifiers) {
+            populators[idx++] = modifier.providePopulator(this);
+        }
+
+        return unmodified.thenCombineAsync(CompletableFuture.allOf(populators), (input, popIgnored) -> {
+            try {
+                // compute a file name based on the modifiers
+                final Path output = this.artifactPath(this.privateCache, decoratedArtifact, version, null, "jar");
+                if (input.upToDate() && Files.isRegularFile(output)) {
+                    this.writeMetaIfNecessary(side, decoratedArtifact, input.mapIfPresent((upToDate, env) -> env.metadata()), output.getParent());
+                    return ResolutionResult.result(new MinecraftEnvironmentImpl(decoratedArtifact, output, input.get().metadata()), true);
+                } else {
+                    final Path outputTmp = Files.createTempDirectory("vanillagradle").resolve("output" + decoratedArtifact + ".jar");
+                    FileUtils.createDirectoriesSymlinkSafe(output.getParent());
+
+                    try (final Atlas atlas = new Atlas(this.executor)) {
+                        for (final CompletableFuture<ArtifactModifier.AtlasPopulator> populator : populators) {
+                            atlas.install(populator.get()::provide);
+                        }
+
+                        atlas.run(input.get().jar(), outputTmp);
+                    }
+
+                    FileUtils.atomicMove(outputTmp, output);
+                    this.writeMetaIfNecessary(side, decoratedArtifact, input.mapIfPresent((upToDate, env) -> env.metadata()), output.getParent());
+                    return ResolutionResult.result(new MinecraftEnvironmentImpl(decoratedArtifact, output, input.get().metadata()), false);
+                }
+            } catch (final Exception ex) {
+                throw new CompletionException(ex);
+            } finally {
+                for (final CompletableFuture<ArtifactModifier.AtlasPopulator> populator : populators) {
+                    if (!populator.isCompletedExceptionally()) {
+                        try {
+                            populator.join().close();
+                        } catch (final IOException ex) {
+                            // ignore, we will continue trying to close veery modifier
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     private void cleanAssociatedArtifacts(final MinecraftPlatform platform, final String version) throws IOException {
-        final Path baseArtifact = this.artifactPath(platform, null, version, null, "jar");
+        final Path baseArtifact = this.sharedArtifactPath(platform, version, null, "jar");
         int errorCount = 0;
         try (final DirectoryStream<Path> siblings = Files.newDirectoryStream(baseArtifact.getParent(), x -> x.getFileName().toString().endsWith(".jar"))) {
             for (final Path file : siblings) {
@@ -314,9 +407,10 @@ public class MinecraftResolverImpl implements MinecraftResolver {
 
     @Override
     public Path produceAssociatedArtifactSync(
+        // todo: boolean transformsOriginalArtifact (will copy the input to a temp location for safe modification such as linemapping)
         final MinecraftPlatform side, final String version, final String id, final BiConsumer<MinecraftEnvironment, Path> action
     ) throws Exception {
-        final Path output = this.artifactPath(side, null, version, id, "jar");
+        final Path output = this.sharedArtifactPath(side, version, id, "jar");
         final ResolutionResult<MinecraftEnvironment> env = this.provide(side, version).get();
         if (!env.upToDate() || !Files.exists(output)) {
             final Path tempOut = Files.createTempFile("vanillagradle-" + side.artifactId() + "id", ".tmp.jar");
@@ -327,22 +421,64 @@ public class MinecraftResolverImpl implements MinecraftResolver {
         return output; // todo: find some better way of checking validity? for ex. when decompiler version changes
     }
 
-    private Path artifactPath(
+    private Path sharedArtifactPath(
         final MinecraftPlatform platform,
-        final @Nullable String extraArtifact,
         final String version,
         final @Nullable String classifier,
         final String extension
     ) throws IOException {
-        final String artifact = extraArtifact == null ? platform.artifactId() : platform.artifactId() + '_' + extraArtifact;
+        return this.artifactPath(
+            this.downloader.baseDir(),
+            platform.artifactId(),
+            version,
+            classifier,
+            extension
+        );
+    }
+
+    private Path sharedArtifactPath(
+        final String artifactId,
+        final String version,
+        final @Nullable String classifier,
+        final String extension
+    ) throws IOException {
+        return this.artifactPath(
+            this.downloader.baseDir(),
+            artifactId,
+            version,
+            classifier,
+            extension
+        );
+    }
+
+    private Path artifactPath(
+        final Path baseDir,
+        final String artifact,
+        final String version,
+        final @Nullable String classifier,
+        final String extension
+    ) throws IOException {
         final String fileName = classifier == null ? artifact + '-' + version + '.' + extension : artifact + '-' + version + '-' + classifier + '.' + extension;
-        final Path directory = this.downloader.baseDir().resolve("net/minecraft").resolve(artifact).resolve(version);
+        final Path directory = baseDir.resolve("net/minecraft").resolve(artifact).resolve(version);
         FileUtils.createDirectoriesSymlinkSafe(directory);
         return directory.resolve(fileName);
+    }
+    private void writeMetaIfNecessary(
+        final MinecraftPlatform platform,
+        final ResolutionResult<VersionDescriptor.Full> version,
+        final Path baseDir
+    ) throws IOException, XMLStreamException {
+        this.writeMetaIfNecessary(
+            platform,
+            platform.artifactId(),
+            version,
+            baseDir
+        );
     }
 
     private void writeMetaIfNecessary(
         final MinecraftPlatform platform,
+        final String artifactIdOverride,
         final ResolutionResult<VersionDescriptor.Full> version,
         final Path baseDir
     ) throws IOException, XMLStreamException {
@@ -354,7 +490,7 @@ public class MinecraftResolverImpl implements MinecraftResolver {
             FileUtils.createDirectoriesSymlinkSafe(metaFile.getParent());
             final Path metaFileTmp = FileUtils.temporaryPath(metaFile.getParent(), "metadata");
             try (final IvyModuleWriter writer = new IvyModuleWriter(metaFileTmp)) {
-                writer.write(version.get(), platform, RuleContext.create());
+                writer.write(version.get(), platform, artifactIdOverride, RuleContext.create());
             }
             FileUtils.atomicMove(metaFileTmp, metaFile);
         }
@@ -385,12 +521,19 @@ public class MinecraftResolverImpl implements MinecraftResolver {
 
     static final class MinecraftEnvironmentImpl implements MinecraftEnvironment {
 
+        private final String decoratedArtifactId;
         private final Path jar;
         private final VersionDescriptor.Full metadata;
 
-        MinecraftEnvironmentImpl(final Path jar, final VersionDescriptor.Full metadata) {
+        MinecraftEnvironmentImpl(final String decoratedArtifactId, final Path jar, final VersionDescriptor.Full metadata) {
+            this.decoratedArtifactId = decoratedArtifactId;
             this.jar = jar;
             this.metadata = metadata;
+        }
+
+        @Override
+        public String decoratedArtifactId() {
+            return this.decoratedArtifactId;
         }
 
         @Override
@@ -401,11 +544,6 @@ public class MinecraftResolverImpl implements MinecraftResolver {
         @Override
         public VersionDescriptor.Full metadata() {
             return this.metadata;
-        }
-
-        @Override
-        public CompletableFuture<MinecraftEnvironment> accessWidened(final Path... wideners) {
-            throw new UnsupportedOperationException("Not yet implemented");
         }
 
     }
