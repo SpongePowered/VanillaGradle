@@ -29,58 +29,55 @@ import groovy.lang.DelegatesTo;
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
-import org.gradle.api.file.FileCollection;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.tasks.TaskContainer;
-import org.gradle.api.tasks.TaskProvider;
 import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryPlugin;
+import org.spongepowered.gradle.vanilla.repository.modifier.AccessWidenerModifier;
+import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
-import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
 
 public class MinecraftExtensionImpl implements MinecraftExtension {
 
-    private final Project project;
+    // User-set properties
     private final Provider<MinecraftProviderService> providerService;
     private final Property<String> version;
     private final Property<MinecraftPlatform> platform;
     private final Property<Boolean> injectRepositories;
+    private final DirectoryProperty sharedCache;
+    private final DirectoryProperty projectCache;
+    private final ConfigurableFileCollection accessWideners;
 
+    // Derived properties
     private final Property<VersionDescriptor.Full> targetVersion;
-
     private final DirectoryProperty assetsDirectory;
-    private final DirectoryProperty remappedDirectory;
-    private final DirectoryProperty originalDirectory;
-    private final DirectoryProperty mappingsDirectory;
-    private final DirectoryProperty filteredDirectory;
-    private final DirectoryProperty decompiledDirectory;
-    private final DirectoryProperty accessWidenedDirectory;
-    private final Path sharedCache;
-    private final Path projectCache;
 
+    // Internals
+    private final Project project;
     private final RunConfigurationContainer runConfigurations;
+    private volatile Set<ArtifactModifier> lazyModifiers;
 
     @Inject
     public MinecraftExtensionImpl(final Gradle gradle, final ObjectFactory factory, final Project project, final Provider<MinecraftProviderService> providerService) {
@@ -89,20 +86,13 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
         this.version = factory.property(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.JOINED);
         this.injectRepositories = factory.property(Boolean.class).convention(project.provider(() -> !gradle.getPlugins().hasPlugin(MinecraftRepositoryPlugin.class))); // only inject if we aren't already in Settings
-        this.assetsDirectory = factory.directoryProperty();
-        this.remappedDirectory = factory.directoryProperty();
-        this.originalDirectory = factory.directoryProperty();
-        this.mappingsDirectory = factory.directoryProperty();
-        this.filteredDirectory = factory.directoryProperty();
-        this.decompiledDirectory = factory.directoryProperty();
-        this.accessWidenedDirectory = factory.directoryProperty();
+        this.accessWideners = factory.fileCollection();
 
-        final Path gradleHomeDirectory = gradle.getGradleUserHomeDir().toPath();
-        final Path cacheDirectory = gradleHomeDirectory.resolve(Constants.Directories.CACHES);
-        final Path rootDirectory = cacheDirectory.resolve(Constants.NAME);
-        final Path globalJarsDirectory = rootDirectory.resolve(Constants.Directories.JARS);
-        final Path projectLocalJarsDirectory = project.getProjectDir().toPath().resolve(".gradle").resolve(Constants.Directories.CACHES)
-                .resolve(Constants.NAME).resolve(Constants.Directories.JARS);
+        this.assetsDirectory = factory.directoryProperty();
+        this.sharedCache = factory.directoryProperty().convention(providerService.flatMap(it -> it.getParameters().getSharedCache()));
+        this.sharedCache.disallowChanges();
+        this.projectCache = factory.directoryProperty().convention(providerService.flatMap(it -> it.getParameters().getRootProjectCache()));
+        this.projectCache.disallowChanges();
 
         // Test common assets directory locations and use those instead, if they exist
         boolean found = false;
@@ -114,17 +104,8 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
             }
         }
         if (!found) {
-            this.assetsDirectory.set(rootDirectory.resolve(Constants.Directories.ASSETS).toFile());
+            this.assetsDirectory.set(this.sharedCache.map(dir -> dir.dir(Constants.Directories.ASSETS)));
         }
-
-        this.originalDirectory.set(globalJarsDirectory.resolve(Constants.Directories.ORIGINAL).toFile());
-        this.mappingsDirectory.set(rootDirectory.resolve(Constants.Directories.MAPPINGS).toFile());
-        this.remappedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.REMAPPED).toFile());
-        this.filteredDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.FILTERED).toFile());
-        this.decompiledDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.DECOMPILED).toFile());
-        this.accessWidenedDirectory.set(projectLocalJarsDirectory.resolve(Constants.Directories.ACCESS_WIDENED).toFile());
-        this.projectCache = projectLocalJarsDirectory;
-        this.sharedCache = rootDirectory;
 
         this.targetVersion = factory.property(VersionDescriptor.Full.class)
             .value(this.version.zip(this.providerService, (version, service) -> {
@@ -238,59 +219,37 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     }
 
     @Override
-    public void accessWidener(final Object file) {
-        final TaskProvider<AccessWidenJarTask> awTask;
-        final TaskContainer tasks = this.project.getTasks();
-        if (tasks.getNames().contains(Constants.Tasks.ACCESS_WIDENER)) {
-            awTask = tasks.named(Constants.Tasks.ACCESS_WIDENER, AccessWidenJarTask.class);
-        } else {
-            final Configuration accessWidener = this.project.getConfigurations().maybeCreate(Constants.Configurations.ACCESS_WIDENER);
-            accessWidener.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.ACCESS_WIDENER)));
-            final FileCollection widenerClasspath = accessWidener.getIncoming().getFiles();
-            final DirectoryProperty destinationDir = this.accessWidenedDirectory;
-
-            awTask = tasks.register(Constants.Tasks.ACCESS_WIDENER, AccessWidenJarTask.class, task -> {
-                task.setWorkerClasspath(widenerClasspath);
-                task.getExpectedNamespace().set("named");
-                task.getDestinationDirectory().set(destinationDir);
-            });
-        }
-
-        awTask.configure(task -> task.getAccessWideners().from(file));
+    public void accessWideners(final Object... files) {
+        this.accessWideners.from(files);
     }
 
-    Path projectCache() {
+    public ConfigurableFileCollection accessWideners() {
+        return this.accessWideners;
+    }
+
+    public synchronized Set<ArtifactModifier> modifiers() {
+        if (this.lazyModifiers == null) {
+            this.accessWideners.disallowChanges();
+            final Set<ArtifactModifier> modifiers = new HashSet<>();
+            if (!this.accessWideners.isEmpty()) {
+                modifiers.add(new AccessWidenerModifier(this.accessWideners.getFiles()));
+            }
+            return this.lazyModifiers = Collections.unmodifiableSet(modifiers);
+        }
+        return this.lazyModifiers;
+    }
+
+    DirectoryProperty projectCache() {
         return this.projectCache;
     }
 
-    Path sharedCache() {
+    DirectoryProperty sharedCache() {
         return this.sharedCache;
     }
 
     public DirectoryProperty assetsDirectory() {
         return this.assetsDirectory;
     }
-
-    protected DirectoryProperty remappedDirectory() {
-        return this.remappedDirectory;
-    }
-
-    protected DirectoryProperty originalDirectory() {
-        return this.originalDirectory;
-    }
-
-    protected DirectoryProperty mappingsDirectory() {
-        return this.mappingsDirectory;
-    }
-
-    protected DirectoryProperty filteredDirectory() {
-        return this.filteredDirectory;
-    }
-
-    protected DirectoryProperty decompiledDirectory() {
-        return this.decompiledDirectory;
-    }
-
     @Override
     public RunConfigurationContainer getRuns() {
         return this.runConfigurations;
@@ -311,16 +270,9 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
         return this.targetVersion;
     }
 
-    protected void populateMinecraftClasspath() {
-        /*this.minecraftClasspath.configure(config -> config.withDependencies(a -> {
-        }));*/
-    }
-
     @Override
     public Dependency minecraftDependency() {
-        final Map<String, String> parameters = new HashMap<>();
-        parameters.put("path", this.project.getPath());
-        parameters.put("configuration", Constants.Configurations.MINECRAFT);
-        return this.project.getDependencies().project(parameters);
+        // TODO: even worth keeping this?
+        return this.project.getDependencies().create(MinecraftPlatform.GROUP + ':' + this.platform().get().artifactId() + ':' + this.version.get());
     }
 }

@@ -68,7 +68,6 @@ import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryPlugin;
 import org.spongepowered.gradle.vanilla.repository.MinecraftSide;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
-import org.spongepowered.gradle.vanilla.task.AccessWidenJarTask;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
@@ -266,17 +265,17 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
     private void createCleanTasks(final TaskContainer tasks, final MinecraftExtensionImpl minecraft) {
         // TODO: Update for new ivy repository style
-        tasks.register("cleanMinecraft", Delete.class, task -> {
+        /*tasks.register("cleanMinecraft", Delete.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.setDescription("Delete downloaded files for the current minecraft environment used for this project");
             task.delete(
-                tasks.withType(AccessWidenJarTask.class)
             );
-        });
+        });*/
 
         tasks.register("cleanAllMinecraft", Delete.class, task -> {
-            // As a task that could potentially delete *a lot* of data, let's keep this out of the main task list.
-            // task.setGroup(Constants.TASK_GROUP);
+            // todo: As a task that could potentially delete *a lot* of data, let's keep this out of the main task list.
+            // todo: can this be more granular? like all versions vs this specific version? idk
+            task.setGroup(Constants.TASK_GROUP);
             task.setDescription("Delete all cached VanillaGradle data in this project and in shared caches. THIS MAY DELETE A LOT");
             task.delete(
                 minecraft.sharedCache(),

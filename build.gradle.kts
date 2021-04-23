@@ -40,12 +40,12 @@ dependencies {
     commonDeps("org.ow2.asm:asm:$asmVersion")
     commonDeps("org.ow2.asm:asm-commons:$asmVersion")
     commonDeps("org.ow2.asm:asm-util:$asmVersion")
+    commonDeps("org.cadixdev:atlas:0.2.1") {
+        exclude("org.ow2.asm") // Use our own ASM
+    }
 
     // Just main
     implementation("com.google.code.gson:gson:2.8.6")
-    implementation("org.cadixdev:atlas:0.2.1") {
-        exclude("org.ow2.asm") // Use our own ASM
-    }
     implementation("org.cadixdev:lorenz:0.5.6")
     implementation("org.cadixdev:lorenz-asm:0.5.6") {
         exclude("org.ow2.asm") // Use our own ASM
