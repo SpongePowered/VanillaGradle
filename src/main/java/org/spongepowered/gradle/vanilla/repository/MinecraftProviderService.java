@@ -63,12 +63,9 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
     }
 
     public MinecraftProviderService() {
-        // aaa
-        /* this.executor = new ThreadPoolExecutor(maxProcessors / 4, maxProcessors,
-            30, TimeUnit.SECONDS,
-            new LinkedBlockingDeque<>()); */
-        this.executor = Executors.newWorkStealingPool(); // todo: use from above
-        MinecraftProviderService.LOGGER.info("Creating minecraft provider service");
+        final int availableCpus = Runtime.getRuntime().availableProcessors();
+        this.executor = Executors.newWorkStealingPool(Math.min(Math.max(4, availableCpus * 2), 64));
+        MinecraftProviderService.LOGGER.info(Constants.NAME + ": Creating minecraft provider service");
     }
 
     public Downloader downloader() {
@@ -107,7 +104,8 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
                         this.versions(),
                         this.downloader().withBaseDir(this.downloader().baseDir().resolve(Constants.Directories.JARS)),
                         this.getParameters().getRootProjectCache().get().getAsFile().toPath().resolve(Constants.Directories.JARS),
-                        this.executor
+                        this.executor,
+                        this.getParameters().getRefreshDependencies().get()
                     );
                 } else {
                     return this.resolver.setResolver(this.toolResolver(project));
