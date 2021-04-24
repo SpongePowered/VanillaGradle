@@ -63,6 +63,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.BiConsumer;
@@ -80,17 +81,20 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     private final Path privateCache;
     private @Nullable Function<ResolvableTool, URL[]> toolResolver;
     private final ConcurrentMap<EnvironmentKey, CompletableFuture<ResolutionResult<MinecraftEnvironment>>> artifacts = new ConcurrentHashMap<>();
+    private final boolean forceRefresh;
 
     public MinecraftResolverImpl(
         final VersionManifestRepository manifests,
         final Downloader downloader,
         final Path privateCache,
-        final ExecutorService executor
+        final ExecutorService executor,
+        final boolean forceRefresh
     ) {
         this.manifests = manifests;
         this.downloader = downloader;
         this.privateCache = privateCache;
         this.executor = executor;
+        this.forceRefresh = forceRefresh;
     }
 
     public MinecraftResolverImpl setResolver(final Function<ResolvableTool, URL[]> toolResolver) {
@@ -167,7 +171,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                 return jarFuture.thenCombineAsync(mappingsFuture, (jar, mappingsFile) -> {
                     try {
                         final boolean outputExists = Files.exists(outputJar);
-                        if (jar.upToDate() && mappingsFile.upToDate() && outputExists) {
+                        if (!this.forceRefresh && jar.upToDate() && mappingsFile.upToDate() && outputExists) {
                             // Our inputs are up-to-date, and the output exists, so we can assume (for now) that the output is up-to-date
                             // Check meta here too, before returning
                             this.writeMetaIfNecessary(platform, potentialDescriptor, outputJar.getParent());
@@ -237,7 +241,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                     }
                     final VersionDescriptor.Full descriptor = potentialDescriptor.get();
                     final boolean outputExists = Files.isRegularFile(outputJar);
-                    if (client.upToDate() && server.upToDate() && outputExists) {
+                    if (!this.forceRefresh && client.upToDate() && server.upToDate() && outputExists) {
                         // We're up-to-date, give meta a poke and then return without re-executing the jar merge
                         this.writeMetaIfNecessary(MinecraftPlatform.JOINED, potentialDescriptor, outputJar.getParent());
                         return ResolutionResult.result(new MinecraftEnvironmentImpl(MinecraftPlatform.JOINED.artifactId(), outputJar, descriptor), true);
@@ -269,9 +273,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         <T> T execute(final Object... args) throws Exception;
     }
 
-    // TODO: unify with the classLoaderWithTool system
     private Executable prepareChildLoader(final ResolvableTool tool, final String className, final String methodName) {
-
         final Supplier<URLClassLoader> loader = this.classLoaderWithTool(tool);
         return new Executable() {
             @SuppressWarnings("unchecked")
@@ -295,7 +297,6 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                 throw new IllegalStateException("Could not find method matching name " + methodName + " with arguments " + Arrays.toString(args));
             }
         };
-
     }
 
     // todo: state storage
@@ -357,7 +358,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                     null,
                     "jar"
                 );
-                if (input.upToDate() && Files.isRegularFile(output)) {
+                if (!this.forceRefresh && input.upToDate() && Files.isRegularFile(output)) {
                     this.writeMetaIfNecessary(side, decoratedArtifact, input.mapIfPresent((upToDate, env) -> env.metadata()), output.getParent());
                     return ResolutionResult.result(new MinecraftEnvironmentImpl(decoratedArtifact, output, input.get().metadata()), true);
                 } else {
@@ -421,13 +422,21 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         final Set<AssociatedResolutionFlags> flags,
         final BiConsumer<MinecraftEnvironment, Path> action
     ) throws Exception {
-        final ResolutionResult<MinecraftEnvironment> envResult = this.provide(side, version, modifiers).get();
+        final ResolutionResult<MinecraftEnvironment> envResult;
+        try {
+            envResult = this.provide(side, version, modifiers).get();
+        } catch (final ExecutionException ex) {
+            if (ex.getCause() instanceof Exception) {
+                throw (Exception) ex.getCause();
+            }
+            throw ex;
+        }
         if (!envResult.isPresent()) {
             throw new IllegalStateException("No environment could be found for '" + side + "' version " + version);
         }
         final MinecraftEnvironment env = envResult.get();
         final Path output = env.jar().resolveSibling(env.decoratedArtifactId() + "-" + env.metadata().id() + "-" + id + ".jar");
-        if (!envResult.upToDate() || flags.contains(AssociatedResolutionFlags.FORCE_REGENERATE) || !Files.exists(output)) {
+        if (this.forceRefresh || !envResult.upToDate() || flags.contains(AssociatedResolutionFlags.FORCE_REGENERATE) || !Files.exists(output)) {
             final Path tempOutDir = Files.createTempDirectory("vanillagradle-" + env.decoratedArtifactId() + "-" + id);
             final Path tempOut = tempOutDir.resolve(id + ".jar");
 
@@ -488,6 +497,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         FileUtils.createDirectoriesSymlinkSafe(directory);
         return directory.resolve(fileName);
     }
+
     private void writeMetaIfNecessary(
         final MinecraftPlatform platform,
         final ResolutionResult<VersionDescriptor.Full> version,

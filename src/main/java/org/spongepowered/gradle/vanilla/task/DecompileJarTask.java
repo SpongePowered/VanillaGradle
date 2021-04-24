@@ -26,7 +26,7 @@ package org.spongepowered.gradle.vanilla.task;
 
 import com.sun.management.OperatingSystemMXBean;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.GradleException;
+import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.ArtifactCollection;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.FileCollection;
@@ -44,12 +44,14 @@ import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
+import org.spongepowered.gradle.vanilla.repository.ResolutionResult;
 import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.repository.modifier.AssociatedResolutionFlags;
 import org.spongepowered.gradle.vanilla.worker.JarDecompileWorker;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
@@ -99,7 +101,7 @@ public abstract class DecompileJarTask extends DefaultTask {
         // TODO: get rid of these project references... somehow
         final Set<ArtifactModifier> modifiers = ((MinecraftExtensionImpl) this.getProject().getExtensions().getByType(MinecraftExtension.class)).modifiers();
 
-        this.getMinecraftProvider().get().resolver(this.getProject()).produceAssociatedArtifactSync(
+        final ResolutionResult<Path> result = this.getMinecraftProvider().get().resolver(this.getProject()).produceAssociatedArtifactSync(
                 this.getMinecraftPlatform().get(),
                 this.getMinecraftVersion().get(),
                 modifiers,
@@ -121,7 +123,7 @@ public abstract class DecompileJarTask extends DefaultTask {
                     }
 
                     if (dependencies.isEmpty()) {
-                        throw new GradleException("No dependencies were found as part of the classpath");
+                        throw new InvalidUserDataException("No dependencies were found as part of the classpath");
                     }
 
                     // Execute in an isolated JVM that can access our customized classpath
@@ -146,6 +148,8 @@ public abstract class DecompileJarTask extends DefaultTask {
                     this.getWorkerExecutor().await();
                 }
             );
+
+        this.setDidWork(!result.upToDate());
 
     }
 }
