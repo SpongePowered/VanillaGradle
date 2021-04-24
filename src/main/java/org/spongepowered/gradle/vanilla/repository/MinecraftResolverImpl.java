@@ -40,6 +40,7 @@ import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.network.Downloader;
 import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
+import org.spongepowered.gradle.vanilla.repository.modifier.AssociatedResolutionFlags;
 import org.spongepowered.gradle.vanilla.transformer.AtlasTransformers;
 import org.spongepowered.gradle.vanilla.util.AsyncUtils;
 import org.spongepowered.gradle.vanilla.util.FileUtils;
@@ -412,9 +413,13 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     }
 
     @Override
-    public Path produceAssociatedArtifactSync(
-        // todo: boolean transformsOriginalArtifact (will copy the input to a temp location for safe modification such as linemapping)
-        final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id, final BiConsumer<MinecraftEnvironment, Path> action
+    public ResolutionResult<Path> produceAssociatedArtifactSync(
+        final MinecraftPlatform side,
+        final String version,
+        final Set<ArtifactModifier> modifiers,
+        final String id,
+        final Set<AssociatedResolutionFlags> flags,
+        final BiConsumer<MinecraftEnvironment, Path> action
     ) throws Exception {
         final ResolutionResult<MinecraftEnvironment> envResult = this.provide(side, version, modifiers).get();
         if (!envResult.isPresent()) {
@@ -422,13 +427,23 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         }
         final MinecraftEnvironment env = envResult.get();
         final Path output = env.jar().resolveSibling(env.decoratedArtifactId() + "-" + env.metadata().id() + "-" + id + ".jar");
-        if (!envResult.upToDate() || !Files.exists(output)) {
-            final Path tempOut = Files.createTempFile("vanillagradle-" + env.decoratedArtifactId() + "-" + id, ".tmp.jar");
+        if (!envResult.upToDate() || flags.contains(AssociatedResolutionFlags.FORCE_REGENERATE) || !Files.exists(output)) {
+            final Path tempOutDir = Files.createTempDirectory("vanillagradle-" + env.decoratedArtifactId() + "-" + id);
+            final Path tempOut = tempOutDir.resolve(id + ".jar");
 
-            action.accept(env, tempOut);
+            if (flags.contains(AssociatedResolutionFlags.MODIFIES_ORIGINAL)) {
+                // To safely modify the input, we copy it to a temporary location, then copy back when the action successfully completes
+                final Path tempInput = tempOutDir.resolve("original-to-modify.jar");
+                Files.copy(env.jar(), tempInput);
+                action.accept(new MinecraftEnvironmentImpl(env.decoratedArtifactId(), tempInput, env.metadata()), tempOut);
+                FileUtils.atomicMove(tempInput, env.jar());
+            } else {
+                action.accept(env, tempOut);
+            }
             FileUtils.atomicMove(tempOut, output);
+            return ResolutionResult.result(output, false);
         }
-        return output; // todo: find some better way of checking validity? for ex. when decompiler version changes
+        return ResolutionResult.result(output, true); // todo: find some better way of checking validity? for ex. when decompiler version changes
     }
 
     private Path sharedArtifactPath(

@@ -11,6 +11,11 @@ group = "org.spongepowered"
 version = "0.2-SNAPSHOT"
 
 repositories {
+    mavenLocal {
+        content {
+            includeModule("net.minecraftforge", "forgeflower")
+        }
+    }
     maven("https://repo.spongepowered.org/repository/maven-public/") {
         name = "sponge"
     }
@@ -70,7 +75,7 @@ dependencies {
     implementation(jarMerge.output)
 
     // Jar decompile worker (match with Constants)
-    "jarDecompileCompileOnly"("net.minecraftforge:forgeflower:1.5.498.2")
+    "jarDecompileCompileOnly"("net.minecraftforge:forgeflower:1.5.498.5-linemap")
     implementation(jarDecompile.output)
 
     // Access widener worker (match with Constants)
