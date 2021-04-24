@@ -437,21 +437,23 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         }
         final MinecraftEnvironment env = envResult.get();
         final Path output = env.jar().resolveSibling(env.decoratedArtifactId() + "-" + env.metadata().id() + "-" + id + ".jar");
-        if (this.forceRefresh || !envResult.upToDate() || flags.contains(AssociatedResolutionFlags.FORCE_REGENERATE) || !Files.exists(output)) {
-            final Path tempOutDir = Files.createTempDirectory("vanillagradle-" + env.decoratedArtifactId() + "-" + id);
-            final Path tempOut = tempOutDir.resolve(id + ".jar");
+        synchronized (this) { // only one at a time
+            if (this.forceRefresh || !envResult.upToDate() || flags.contains(AssociatedResolutionFlags.FORCE_REGENERATE) || !Files.exists(output)) {
+                final Path tempOutDir = Files.createTempDirectory("vanillagradle-" + env.decoratedArtifactId() + "-" + id);
+                final Path tempOut = tempOutDir.resolve(id + ".jar");
 
-            if (flags.contains(AssociatedResolutionFlags.MODIFIES_ORIGINAL)) {
-                // To safely modify the input, we copy it to a temporary location, then copy back when the action successfully completes
-                final Path tempInput = tempOutDir.resolve("original-to-modify.jar");
-                Files.copy(env.jar(), tempInput);
-                action.accept(new MinecraftEnvironmentImpl(env.decoratedArtifactId(), tempInput, env.metadata()), tempOut);
-                FileUtils.atomicMove(tempInput, env.jar());
-            } else {
-                action.accept(env, tempOut);
+                if (flags.contains(AssociatedResolutionFlags.MODIFIES_ORIGINAL)) {
+                    // To safely modify the input, we copy it to a temporary location, then copy back when the action successfully completes
+                    final Path tempInput = tempOutDir.resolve("original-to-modify.jar");
+                    Files.copy(env.jar(), tempInput);
+                    action.accept(new MinecraftEnvironmentImpl(env.decoratedArtifactId(), tempInput, env.metadata()), tempOut);
+                    FileUtils.atomicMove(tempInput, env.jar());
+                } else {
+                    action.accept(env, tempOut);
+                }
+                FileUtils.atomicMove(tempOut, output);
+                return ResolutionResult.result(output, false);
             }
-            FileUtils.atomicMove(tempOut, output);
-            return ResolutionResult.result(output, false);
         }
         return ResolutionResult.result(output, true); // todo: find some better way of checking validity? for ex. when decompiler version changes
     }
