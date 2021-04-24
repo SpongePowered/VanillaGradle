@@ -37,8 +37,11 @@ import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.xml.XMLConstants;
@@ -68,6 +71,8 @@ public final class IvyModuleWriter implements AutoCloseable {
     private final boolean managedOutput;
     private final Writer output;
     private final XMLStreamWriter writer;
+    private final Set<GroupArtifactVersion> extraDependencies = new HashSet<>();
+    private @Nullable String artifactId;
 
     IvyModuleWriter(final Writer output) throws XMLStreamException {
         this.managedOutput = false;
@@ -81,7 +86,22 @@ public final class IvyModuleWriter implements AutoCloseable {
         this.writer = new IndentingXmlStreamWriter(IvyModuleWriter.OUTPUT_FACTORY.createXMLStreamWriter(this.output), Constants.INDENT);
     }
 
-    void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform platform, final String artifactId, final RuleContext rules) throws XMLStreamException {
+    IvyModuleWriter overrideArtifactId(final String artifactId) {
+        this.artifactId = Objects.requireNonNull(artifactId, "artifactId");
+        return this;
+    }
+
+    IvyModuleWriter extraDependencies(final GroupArtifactVersion... dependencies) {
+        Collections.addAll(this.extraDependencies, dependencies);
+        return this;
+    }
+
+    IvyModuleWriter extraDependencies(final Collection<GroupArtifactVersion> dependencies) {
+        this.extraDependencies.addAll(dependencies);
+        return this;
+    }
+
+    void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform platform, final RuleContext rules) throws XMLStreamException {
         this.writer.writeStartDocument("UTF-8", "1.0");
         this.writer.writeStartElement("ivy-module");
         this.writer.writeNamespace("xsi", IvyModuleWriter.XSI);
@@ -89,7 +109,7 @@ public final class IvyModuleWriter implements AutoCloseable {
         this.writer.writeAttribute(IvyModuleWriter.XSI, "noNamespaceSchemaLocation", IvyModuleWriter.IVY);
         this.writer.writeAttribute("version", "2.0");
 
-        this.writeInfo(descriptor, platform, artifactId);
+        this.writeInfo(descriptor, platform);
         this.writeDependencies(descriptor.libraries(), platform, rules);
         this.writeArtifacts(platform);
 
@@ -97,11 +117,11 @@ public final class IvyModuleWriter implements AutoCloseable {
         this.writer.writeEndDocument();
     }
 
-    private void writeInfo(final VersionDescriptor.Full version, final MinecraftPlatform platform, final String artifactId) throws XMLStreamException {
+    private void writeInfo(final VersionDescriptor.Full version, final MinecraftPlatform platform) throws XMLStreamException {
         this.writer.writeStartElement("info");
         // Common attributes
         this.writer.writeAttribute("organisation", MinecraftPlatform.GROUP);
-        this.writer.writeAttribute("module", artifactId);
+        this.writer.writeAttribute("module", this.artifactId != null ? this.artifactId : platform.artifactId());
         this.writer.writeAttribute("revision", version.id());
         this.writer.writeAttribute("status", "release"); // gradle wants release... we must please the gradle...
 
@@ -138,11 +158,7 @@ public final class IvyModuleWriter implements AutoCloseable {
             side.applyLibraries(
                 desc -> {
                     if (seenDependencies.add(desc)) {
-                        this.writer.writeEmptyElement("dependency");
-                        this.writer.writeAttribute("org", desc.group());
-                        this.writer.writeAttribute("name", desc.artifact());
-                        this.writer.writeAttribute("rev", desc.version());
-                        this.writer.writeAttribute("transitive", "false");
+                        this.writeDependency(desc);
                     }
                 },
                 libraries,
@@ -150,7 +166,21 @@ public final class IvyModuleWriter implements AutoCloseable {
             );
         }
 
+        for (final GroupArtifactVersion extra : this.extraDependencies) {
+            if (seenDependencies.add(extra)) {
+                this.writeDependency(extra);
+            }
+        }
+
         this.writer.writeEndElement();
+    }
+
+    private void writeDependency(final GroupArtifactVersion dep) throws XMLStreamException {
+        this.writer.writeEmptyElement("dependency");
+        this.writer.writeAttribute("org", dep.group());
+        this.writer.writeAttribute("name", dep.artifact());
+        this.writer.writeAttribute("rev", dep.version());
+        this.writer.writeAttribute("transitive", "false");
     }
 
     private void writeArtifacts(final MinecraftPlatform platform) throws XMLStreamException {

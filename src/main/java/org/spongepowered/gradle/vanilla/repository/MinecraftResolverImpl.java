@@ -33,6 +33,7 @@ import org.gradle.api.InvalidUserDataException;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.Download;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
@@ -525,7 +526,9 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
             FileUtils.createDirectoriesSymlinkSafe(metaFile.getParent());
             final Path metaFileTmp = FileUtils.temporaryPath(metaFile.getParent(), "metadata");
             try (final IvyModuleWriter writer = new IvyModuleWriter(metaFileTmp)) {
-                writer.write(version.get(), platform, artifactIdOverride, RuleContext.create());
+                writer.overrideArtifactId(artifactIdOverride)
+                    .extraDependencies(Constants.INJECTED_DEPENDENCIES)
+                    .write(version.get(), platform, RuleContext.create());
             }
             FileUtils.atomicMove(metaFileTmp, metaFile);
         }

@@ -24,11 +24,13 @@
  */
 package org.spongepowered.gradle.vanilla;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.initialization.Settings;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
@@ -56,11 +58,21 @@ import java.util.stream.Stream;
 /**
  * A plugin that actually adds the provided Minecraft artifacts to the project classpath.
  */
-public final class VanillaGradle implements Plugin<Project> {
+public final class VanillaGradle implements Plugin<Object> {
     private static final AtomicBoolean VERSION_ANNOUNCED = new AtomicBoolean();
 
     @Override
-    public void apply(final Project project) {
+    public void apply(final @NonNull Object target) {
+        if (target instanceof Settings) {
+            ((Settings) target).getPlugins().apply(MinecraftRepositoryPlugin.class);
+        } else if (target instanceof Project) {
+            this.applyToProject((Project) target);
+        } else {
+            throw new IllegalArgumentException("Unknown target '" + target + "' of type " + target.getClass());
+        }
+    }
+
+    public void applyToProject(final Project project) {
         if (VanillaGradle.VERSION_ANNOUNCED.compareAndSet(false, true)) {
             project.getLogger().lifecycle(String.format("SpongePowered Vanilla 'GRADLE' Toolset Version '%s'", Constants.VERSION));
         }

@@ -28,6 +28,7 @@ import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.MavenRepositoryContentDescriptor;
 import org.gradle.util.GradleVersion;
 import org.objectweb.asm.Opcodes;
+import org.spongepowered.gradle.vanilla.model.GroupArtifactVersion;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -148,6 +149,13 @@ public final class Constants {
             "net.java.jinput",
             "net.java.jutils",
             "org.lwjgl"
+    )));
+
+    /**
+     * Extra dependencies that are injected into the project.
+     */
+    public static final Set<GroupArtifactVersion> INJECTED_DEPENDENCIES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+        GroupArtifactVersion.of("com.google.code.findbugs", "jsr305", "3.0.2")
     )));
 
     private Constants() {
