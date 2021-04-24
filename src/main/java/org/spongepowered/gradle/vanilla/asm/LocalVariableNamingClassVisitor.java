@@ -32,21 +32,35 @@ import org.spongepowered.gradle.vanilla.Constants;
 
 public final class LocalVariableNamingClassVisitor extends ClassVisitor {
 
+    private final VariableScopeTracker tracker = new VariableScopeTracker();
+
     public LocalVariableNamingClassVisitor(final ClassVisitor classVisitor) {
         super(Constants.ASM_VERSION, classVisitor);
     }
 
     @Override
+    public void visit(
+        final int version, final int access, final String name, final String signature, final String superName, final String[] interfaces
+    ) {
+        super.visit(version, access, name, signature, superName, interfaces);
+        this.tracker.className(name);
+    }
+
+    @Override
     public MethodVisitor visitMethod(final int access, final String name, final String descriptor, final String signature, final String[] exceptions) {
-        int paramSlotCount = 0;
+        int paramVarCount = 0;
         try {
             final Type[] md = Type.getMethodType(descriptor).getArgumentTypes();
-            for (final Type type : md) {
-                paramSlotCount += type.getSize();
-            }
-        } catch (final Exception ex) {
-            paramSlotCount = 0;
+            paramVarCount = md.length;
+        } catch (final Exception ignored) {
+            // oh well, let's be tolerant of bad bytecode
         }
-        return new LocalVariableNamer((access & Opcodes.ACC_STATIC) != 0, paramSlotCount, super.visitMethod(access, name, descriptor, signature, exceptions));
+        return new LocalVariableNamer(
+            (access & Opcodes.ACC_STATIC) != 0,
+            paramVarCount,
+            this.tracker,
+            this.tracker.scope(name, descriptor),
+            super.visitMethod(access, name, descriptor, signature, exceptions)
+        );
     }
 }
