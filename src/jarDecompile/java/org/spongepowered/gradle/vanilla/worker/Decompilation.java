@@ -25,23 +25,35 @@
 package org.spongepowered.gradle.vanilla.worker;
 
 import org.jetbrains.java.decompiler.main.extern.IBytecodeProvider;
-import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 public final class Decompilation {
 
-    public static CloseableBytecodeProvider bytecodeFromJar() {
-        return new CloseableBytecodeProvider() {
-            private final ConcurrentMap<String, ZipFile> files = new ConcurrentHashMap<>();
+    public static VanillaGradleBytecodeProvider bytecodeFromJar() {
+        return new VanillaGradleBytecodeProvider() {
+            private final ConcurrentMap<String, FileSystem> files = new ConcurrentHashMap<>();
+
+            @Override
+            public void setBytecode(final String external, final String internal, final byte[] bytes) throws IOException {
+                final Path result = this.zipFile(external).getPath(internal);
+                Files.write(result, bytes);
+            }
+
             @Override
             public void close() throws IOException {
                 IOException error = null;
-                for (final ZipFile file : this.files.values()) {
+                for (final FileSystem file : this.files.values()) {
                     try {
                         file.close();
                     } catch (final IOException ex) {
@@ -60,16 +72,24 @@ public final class Decompilation {
 
             @Override
             public byte[] getBytecode(final String external, final String internal) throws IOException {
+                final Path result = this.zipFile(external).getPath(internal);
+                return Files.readAllBytes(result);
+            }
+
+            private FileSystem zipFile(final String external) throws IOException {
                 try {
-                    final ZipFile file = this.files.computeIfAbsent(external, path -> {
+                    return this.files.computeIfAbsent(external, path -> {
+                        final URI uri = URI.create("jar:" + new File(path).toURI());
                         try {
-                            return new ZipFile(path);
-                        } catch (final IOException e) {
-                            throw new RuntimeException(e);
+                            return FileSystems.getFileSystem(uri);
+                        } catch (final FileSystemNotFoundException ex) {
+                            try {
+                                return FileSystems.newFileSystem(uri, Collections.emptyMap(), (ClassLoader) null);
+                            } catch (final IOException ex2) {
+                                throw new RuntimeException(ex2);
+                            }
                         }
                     });
-                    final ZipEntry entry = file.getEntry(internal);
-                    return InterpreterUtil.getBytes(file, entry);
                 } catch (final RuntimeException ex) {
                     if (ex.getCause() instanceof IOException) {
                         throw (IOException) ex.getCause();
@@ -81,7 +101,10 @@ public final class Decompilation {
         };
     }
 
-    public interface CloseableBytecodeProvider extends IBytecodeProvider, AutoCloseable {
+    public interface VanillaGradleBytecodeProvider extends IBytecodeProvider, AutoCloseable {
+
+        void setBytecode(final String external, final String internal, final byte[] bytes) throws IOException;
+
         @Override
         void close() throws IOException;
     }

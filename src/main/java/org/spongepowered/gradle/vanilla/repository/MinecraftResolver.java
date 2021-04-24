@@ -28,6 +28,7 @@ import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
 import org.spongepowered.gradle.vanilla.network.Downloader;
 import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
+import org.spongepowered.gradle.vanilla.repository.modifier.AssociatedResolutionFlags;
 
 import java.net.URLClassLoader;
 import java.nio.file.Path;
@@ -81,10 +82,11 @@ public interface MinecraftResolver {
      * @param side the platform to base off of
      * @param version the version to base off of
      * @param id An identifier for this artifact
+     * @param flags flags to configure this resolution
      * @param action the action needed to produce a variant, taking the input environment and a target path
      * @return the path of the jar
      */
-    Path produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id, final BiConsumer<MinecraftEnvironment, Path> action)
+    ResolutionResult<Path> produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id, final Set<AssociatedResolutionFlags> flags, final BiConsumer<MinecraftEnvironment, Path> action)
         throws Exception;
 
     interface MinecraftEnvironment {

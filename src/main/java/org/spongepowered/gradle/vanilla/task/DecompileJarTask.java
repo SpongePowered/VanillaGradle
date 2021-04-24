@@ -27,7 +27,6 @@ package org.spongepowered.gradle.vanilla.task;
 import com.sun.management.OperatingSystemMXBean;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
-import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.ArtifactCollection;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.FileCollection;
@@ -46,10 +45,12 @@ import org.spongepowered.gradle.vanilla.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
+import org.spongepowered.gradle.vanilla.repository.modifier.AssociatedResolutionFlags;
 import org.spongepowered.gradle.vanilla.worker.JarDecompileWorker;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -97,55 +98,54 @@ public abstract class DecompileJarTask extends DefaultTask {
     public void execute() throws Exception {
         // TODO: get rid of these project references... somehow
         final Set<ArtifactModifier> modifiers = ((MinecraftExtensionImpl) this.getProject().getExtensions().getByType(MinecraftExtension.class)).modifiers();
-        this.getMinecraftProvider().get().resolver(this.getProject())
-            .produceAssociatedArtifactSync(this.getMinecraftPlatform().get(), this.getMinecraftVersion().get(), modifiers, "sources", (env, output) -> {
 
-                // Determine which parts of the configuration are MC, and which are its dependencies
-                final Set<File> dependencies = new HashSet<>();
-                File minecraftArtifact = null;
-                for (final ResolvedArtifactResult artifact : this.getInputArtifacts().get()) {
-                    if (artifact.getId() instanceof ModuleComponentArtifactIdentifier) {
-                        final ModuleComponentArtifactIdentifier id = (ModuleComponentArtifactIdentifier) artifact.getId();
-                        if (id.getComponentIdentifier().getGroup().equals(MinecraftPlatform.GROUP)) {
-                            if (env.decoratedArtifactId().equals(id.getComponentIdentifier().getModule())) {
-                                minecraftArtifact = artifact.getFile();
-                                continue;
+        this.getMinecraftProvider().get().resolver(this.getProject()).produceAssociatedArtifactSync(
+                this.getMinecraftPlatform().get(),
+                this.getMinecraftVersion().get(),
+                modifiers,
+                "sources",
+                EnumSet.of(AssociatedResolutionFlags.MODIFIES_ORIGINAL),
+                (env, output) -> {
+                    // Determine which parts of the configuration are MC, and which are its dependencies
+                    final Set<File> dependencies = new HashSet<>();
+                    for (final ResolvedArtifactResult artifact : this.getInputArtifacts().get()) {
+                        if (artifact.getId() instanceof ModuleComponentArtifactIdentifier) {
+                            final ModuleComponentArtifactIdentifier id = (ModuleComponentArtifactIdentifier) artifact.getId();
+                            if (id.getComponentIdentifier().getGroup().equals(MinecraftPlatform.GROUP)) {
+                                if (env.decoratedArtifactId().equals(id.getComponentIdentifier().getModule())) {
+                                    continue;
+                                }
                             }
                         }
+                        dependencies.add(artifact.getFile());
                     }
-                    dependencies.add(artifact.getFile());
-                }
 
-                if (minecraftArtifact == null) {
-                    throw new InvalidUserDataException("Minecraft could not be found among the resolved dependencies provided to this task");
-                }
+                    if (dependencies.isEmpty()) {
+                        throw new GradleException("No dependencies were found as part of the classpath");
+                    }
 
-                if (dependencies.isEmpty()) {
-                    throw new GradleException("No dependencies were found as part of the classpath");
-                }
-
-                // Execute in an isolated JVM that can access our customized classpath
-                // This actually performs the decompile
-                final long totalSystemMemoryBytes =
-                    ((OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getTotalPhysicalMemorySize() / (1024L * 1024L);
-                final File finalMinecraftArtifact = minecraftArtifact;
-                this.getWorkerExecutor().processIsolation(spec -> {
-                    spec.forkOptions(options -> {
-                        options.setMaxHeapSize(Math.max(totalSystemMemoryBytes / 4, 4096) + "M");
-                        // Enable toolchain support
-                        if (this.getJavaLauncher().isPresent()) {
-                            final JavaLauncher launcher = this.getJavaLauncher().get();
-                            options.setExecutable(launcher.getExecutablePath());
-                        }
+                    // Execute in an isolated JVM that can access our customized classpath
+                    // This actually performs the decompile
+                    final long totalSystemMemoryBytes =
+                        ((OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getTotalPhysicalMemorySize() / (1024L * 1024L);
+                    this.getWorkerExecutor().processIsolation(spec -> {
+                        spec.forkOptions(options -> {
+                            options.setMaxHeapSize(Math.max(totalSystemMemoryBytes / 4, 4096) + "M");
+                            // Enable toolchain support
+                            if (this.getJavaLauncher().isPresent()) {
+                                final JavaLauncher launcher = this.getJavaLauncher().get();
+                                options.setExecutable(launcher.getExecutablePath());
+                            }
+                        });
+                        spec.getClasspath().from(this.getWorkerClasspath());
+                    }).submit(JarDecompileWorker.class, parameters -> {
+                        parameters.getDecompileClasspath().from(dependencies);
+                        parameters.getInputJar().set(env.jar().toFile()); // Use the temporary jar
+                        parameters.getOutputJar().set(output.toFile());
                     });
-                    spec.getClasspath().from(this.getWorkerClasspath());
-                }).submit(JarDecompileWorker.class, parameters -> {
-                    parameters.getDecompileClasspath().from(dependencies);
-                    parameters.getInputJar().set(finalMinecraftArtifact);
-                    parameters.getOutputJar().set(output.toFile());
-                });
-                this.getWorkerExecutor().await();
-            });
+                    this.getWorkerExecutor().await();
+                }
+            );
 
     }
 }

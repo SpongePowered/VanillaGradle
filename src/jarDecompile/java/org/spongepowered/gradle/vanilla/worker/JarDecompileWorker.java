@@ -60,6 +60,7 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.UNIT_TEST_MODE, FALSE);
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.MAX_PROCESSING_METHOD, FALSE);
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.IGNORE_INVALID_BYTECODE, TRUE);
+        JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING, TRUE);
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.THREADS, Runtime.getRuntime().availableProcessors() - 1);
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.INDENT_STRING, "    " /* Constants.INDENT */);
     }
@@ -75,12 +76,17 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
         final Parameters params = this.getParameters();
 
         // Decompile
-        try (final Decompilation.CloseableBytecodeProvider bytecode = Decompilation.bytecodeFromJar()) {
-            final Fernflower decompiler = new Fernflower(bytecode, new ThreadSafeResultSaver(params.getOutputJar().get().getAsFile()),
-                JarDecompileWorker.OPTIONS, new SLF4JFernFlowerLogger(JarDecompileWorker.LOGGER));
+        final File input = params.getInputJar().get().getAsFile();
+        try (final Decompilation.VanillaGradleBytecodeProvider bytecode = Decompilation.bytecodeFromJar()) {
+            final Fernflower decompiler = new Fernflower(
+                bytecode,
+                new LineMappingResultSaver(input.getAbsolutePath(), params.getOutputJar().get().getAsFile(), bytecode),
+                JarDecompileWorker.OPTIONS,
+                new SLF4JFernFlowerLogger(JarDecompileWorker.LOGGER)
+            );
 
             // add classes
-            decompiler.addSource(params.getInputJar().get().getAsFile());
+            decompiler.addSource(input);
 
             for (final File library : params.getDecompileClasspath()) {
                 decompiler.addLibrary(library);
