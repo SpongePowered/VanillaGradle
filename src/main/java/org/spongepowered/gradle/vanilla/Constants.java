@@ -55,13 +55,7 @@ public final class Constants {
         public static final String CACHES = "caches";
         public static final String ASSETS = "assets";
         public static final String JARS = "jars";
-        public static final String REMAPPED = "remapped";
-        public static final String DECOMPILED = "decompiled";
-        public static final String ORIGINAL = "original";
-        public static final String MAPPINGS = "mappings";
-        public static final String FILTERED = "filtered";
         public static final String MANIFESTS = "manifests";
-        public static final String ACCESS_WIDENED = "aw";
         public static final List<Path> SHARED_ASSET_LOCATIONS = Collections.unmodifiableList(Stream.of(
             ".minecraft/assets", // linux, default launcher
             ".local/share/multimc/assets/", // linux, MultiMC
@@ -78,7 +72,6 @@ public final class Constants {
     }
 
     public static final class Manifests {
-        public static final String SKIP_CACHE = "vanillagradle.skipManifestCache";
         public static final String API_V2_ENDPOINT = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
         public static final long CACHE_TIMEOUT_SECONDS = 24 /* hours */ * 60 /* minutes/hr */ * 60 /* seconds/min */;
 
@@ -88,7 +81,6 @@ public final class Constants {
 
     public static final class Tasks {
 
-        public static final String ACCESS_WIDENER = "accessWidenMinecraft";
         public static final String DOWNLOAD_ASSETS = "downloadAssets";
         public static final String COLLECT_NATIVES = "collectNatives";
         public static final String PREPARE_WORKSPACE = "prepareWorkspace";
@@ -109,7 +101,7 @@ public final class Constants {
     public static final class WorkerDependencies {
         public static final String MERGE_TOOL = "net.minecraftforge:mergetool:1.1.1";
         public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:1.0.2";
-        public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:1.5.498.2";
+        public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:1.5.498.6";
 
         private WorkerDependencies() {
         }
@@ -137,7 +129,6 @@ public final class Constants {
 
     public static final class Configurations {
         public static final String MINECRAFT = "minecraft";
-        public static final String MINECRAFT_CLASSPATH = "minecraftClasspath";
         public static final String MINECRAFT_NATIVES = "minecraftNatives";
         public static final String MERGETOOL = "mergetool";
         public static final String ACCESS_WIDENER = "accessWidener";
