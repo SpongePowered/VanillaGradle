@@ -270,9 +270,4 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
         return this.targetVersion;
     }
 
-    @Override
-    public Dependency minecraftDependency() {
-        // TODO: even worth keeping this?
-        return this.project.getDependencies().create(MinecraftPlatform.GROUP + ':' + this.platform().get().artifactId() + ':' + this.version.get());
-    }
 }

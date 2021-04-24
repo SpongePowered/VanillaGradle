@@ -138,13 +138,4 @@ public interface MinecraftExtension extends MinecraftRepositoryExtension {
      */
     void runs(Action<RunConfigurationContainer> run);
 
-    /**
-     * Create a dependency that can be added to any configuration that needs
-     * Minecraft.
-     *
-     * @return a dependency containing a Minecraft distribution of the chosen
-     *     {@link #platform() platform} and {@link #version() version}.
-     */
-    Dependency minecraftDependency();
-
 }
