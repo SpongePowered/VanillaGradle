@@ -29,7 +29,6 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.workers.WorkAction;
 import org.gradle.workers.WorkParameters;
 import org.jetbrains.java.decompiler.main.Fernflower;
-import org.jetbrains.java.decompiler.main.decompiler.ThreadSafeResultSaver;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -5,6 +5,8 @@ plugins {
     id("net.kyori.indra") version indraVersion
     id("net.kyori.indra.license-header") version indraVersion
     id("net.kyori.indra.publishing.gradle-plugin") version indraVersion
+    eclipse
+    id("com.diffplug.eclipse.apt") version "3.29.1"
 }
 
 group = "org.spongepowered"
@@ -173,4 +175,11 @@ signing {
     } else {
         signatories = PgpSignatoryProvider() // don't use gpg agent
     }
+}
+
+// IDE-specific configuration
+eclipse {
+    // https://github.com/diffplug/goomph/issues/125
+    // buildship pls stop being broken thanks
+    synchronizationTasks(tasks.eclipseJdtApt, tasks.eclipseJdt, tasks.eclipseFactorypath)
 }

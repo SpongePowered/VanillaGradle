@@ -28,7 +28,6 @@ import org.immutables.gson.Gson;
 import org.immutables.value.Value;
 import org.spongepowered.gradle.vanilla.model.rule.RuleDeclaration;
 
-import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
 

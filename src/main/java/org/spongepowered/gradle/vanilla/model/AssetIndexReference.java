@@ -27,7 +27,6 @@ package org.spongepowered.gradle.vanilla.model;
 import org.immutables.gson.Gson;
 import org.immutables.value.Value;
 
-import java.io.Serializable;
 import java.net.URL;
 
 /**

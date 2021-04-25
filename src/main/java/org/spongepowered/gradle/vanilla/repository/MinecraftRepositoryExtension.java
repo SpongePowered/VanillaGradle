@@ -24,7 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
-import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
 
 import java.io.File;

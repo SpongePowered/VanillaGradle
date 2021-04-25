@@ -26,11 +26,6 @@ package org.spongepowered.gradle.vanilla.worker;
 
 import net.minecraftforge.mergetool.AnnotationVersion;
 import net.minecraftforge.mergetool.Merger;
-import org.gradle.api.file.RegularFileProperty;
-import org.gradle.workers.WorkAction;
-import org.gradle.workers.WorkParameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
