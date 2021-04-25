@@ -250,7 +250,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                     MinecraftResolverImpl.LOGGER.warn("Preparing Minecraft: Java Edition JOINED version {}", version);
                     this.cleanAssociatedArtifacts(MinecraftPlatform.JOINED, version);
 
-                    final Path outputTmp = Files.createTempDirectory("vanillagradle").resolve("mergetmp" + version + ".jar");
+                    final Path outputTmp = FileUtils.temporaryPath(outputJar.getParent(), "mergetmp" + version);
 
                     // apply jar merge worker as a (Path client, Path server, Path merged)
                     merge.execute(client.get().jar(), server.get().jar(), outputTmp);

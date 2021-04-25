@@ -28,6 +28,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -43,7 +44,7 @@ public final class FileUtils {
 
     public static void atomicMove(final Path source, final Path destination) throws IOException {
         try {
-            Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            FileUtils.atomicMoveIfPossible(source, destination);
         } catch (final AccessDeniedException ex) {
             // Sometimes because of file locking this will fail... Let's just try again and hope for the best
             // Thanks Windows!
@@ -51,7 +52,7 @@ public final class FileUtils {
                 // Pause for a bit
                 try {
                     Thread.sleep(10 * tries);
-                    Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                    FileUtils.atomicMoveIfPossible(source, destination);
                 } catch (final AccessDeniedException ex2) {
                     if (tries == FileUtils.MAX_TRIES - 1) {
                         throw ex;
@@ -61,6 +62,14 @@ public final class FileUtils {
                     throw ex;
                 }
             }
+        }
+    }
+
+    private static void atomicMoveIfPossible(final Path source, final Path destination) throws IOException {
+        try {
+            Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (final AtomicMoveNotSupportedException ex) {
+            Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
