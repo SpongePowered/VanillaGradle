@@ -25,9 +25,11 @@
 package org.spongepowered.gradle.vanilla.runs;
 
 import groovy.lang.Closure;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.Action;
 import org.gradle.api.DomainObjectCollection;
 import org.gradle.api.InvalidUserDataException;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.NamedDomainObjectCollectionSchema;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.NamedDomainObjectProvider;
@@ -39,10 +41,12 @@ import org.gradle.api.internal.NamedDomainObjectContainerConfigureDelegate;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
+import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.model.Argument;
 import org.spongepowered.gradle.vanilla.model.Arguments;
+import org.spongepowered.gradle.vanilla.model.JavaRuntimeVersion;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
 
@@ -56,7 +60,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 
 public class RunConfigurationContainer implements NamedDomainObjectContainer<RunConfiguration> {
@@ -118,30 +121,34 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
 
     private Action<RunConfiguration> configureClientRun() {
         return config -> {
-            config.mainClass().set(this.extension.targetVersion().map(VersionDescriptor.Full::mainClass));
-            config.requiresAssetsAndNatives().set(true);
-            final MapProperty<String, String> launcherTokens = config.parameterTokens();
+            config.getMainClass().set(this.extension.targetVersion().map(VersionDescriptor.Full::mainClass));
+            config.getRequiresAssetsAndNatives().set(true);
+            final MapProperty<String, String> launcherTokens = config.getParameterTokens();
             launcherTokens.put(ClientRunParameterTokens.VERSION_NAME, this.extension.targetVersion().map(VersionDescriptor.Full::id));
             launcherTokens.put(ClientRunParameterTokens.ASSETS_INDEX_NAME, this.extension.targetVersion().map(VersionDescriptor.Full::assets));
             launcherTokens.put(ClientRunParameterTokens.AUTH_ACCESS_TOKEN, "0");
-            launcherTokens.put(ClientRunParameterTokens.GAME_DIRECTORY, config.workingDirectory().map(x -> x.getAsFile().getAbsolutePath()));
+            launcherTokens.put(ClientRunParameterTokens.GAME_DIRECTORY, config.getWorkingDirectory().map(x -> x.getAsFile().getAbsolutePath()));
             launcherTokens.put(ClientRunParameterTokens.USER_TYPE, "legacy"); // or mojang
             launcherTokens.put(
                     ClientRunParameterTokens.VERSION_TYPE,
                     this.extension.targetVersion().map(v -> v.type().name().toLowerCase(Locale.ROOT)));
 
             final RuleContext context = RuleContext.create();
-            config.allArgumentProviders().add(new ManifestDerivedArgumentProvider(
+            config.getAllArgumentProviders().add(new ManifestDerivedArgumentProvider(
                     launcherTokens,
                     this.extension.targetVersion().map(v -> v.arguments().map(Arguments::game)
                         .orElseGet(() -> Collections.singletonList(Argument.of(Arrays.asList(v.legacyArguments().get().split(" ")))))),
                     context
             ));
-            config.allJvmArgumentProviders().add(new ManifestDerivedArgumentProvider(
+            config.getAllJvmArgumentProviders().add(new ManifestDerivedArgumentProvider(
                     launcherTokens,
                     this.extension.targetVersion().map(v -> v.arguments().map(Arguments::jvm).orElseGet(Collections::emptyList)),
                     context
             ));
+            config.getTargetVersion().set(this.extension.targetVersion().map(version -> {
+                final @Nullable JavaRuntimeVersion manifestRuntime = version.javaVersion();
+                return JavaLanguageVersion.of(manifestRuntime == null ? JavaVersion.current().ordinal() + 1 : manifestRuntime.majorVersion());
+            }));
         };
     }
 
@@ -192,7 +199,11 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
 
     private Action<RunConfiguration> configureServerRun() {
         return run -> {
-            run.mainClass().set("net.minecraft.server.Main"); // TODO: This does vary from version to version
+            run.getMainClass().set("net.minecraft.server.Main"); // TODO: This does vary from version to version
+            run.getTargetVersion().set(this.extension.targetVersion().map(version -> {
+                final @Nullable JavaRuntimeVersion manifestRuntime = version.javaVersion();
+                return JavaLanguageVersion.of(manifestRuntime == null ? JavaVersion.current().ordinal() + 1 : manifestRuntime.majorVersion());
+            }));
         };
     }
 

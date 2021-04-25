@@ -70,6 +70,7 @@ import org.spongepowered.gradle.vanilla.repository.MinecraftSide;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
+import org.spongepowered.gradle.vanilla.task.GenEclipseRuns;
 import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
 import org.spongepowered.gradle.vanilla.util.StringUtils;
 
@@ -123,10 +124,17 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             this.createRunTasks(minecraft, target.getTasks(), target.getExtensions().getByType(JavaToolchainService.class));
 
             // todo: this is not great, we should probably have a separate configuration for run classpath
-            minecraft.getRuns().configureEach(run -> run.classpath().from(minecraftConfig));
+            minecraft.getRuns().configureEach(run -> run.getClasspath().from(minecraftConfig));
         });
 
-
+        final org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer runs = minecraft.getRuns();
+        final File projectDir = target.getProjectDir();
+        final String projectName = target.getName();
+        target.getTasks().register("genEclipseRuns", GenEclipseRuns.class, task -> {
+            task.getRunConfigurations().set(runs);
+            task.getProjectDirectory().set(projectDir);
+            task.getProjectName().set(projectName);
+        });
 
         target.afterEvaluate(p -> {
             // Only add repositories if selected in extension
@@ -249,8 +257,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         });
 
         minecraft.getRuns().configureEach(run -> {
-            run.parameterTokens().put(ClientRunParameterTokens.ASSETS_ROOT, assetsDir.map(x -> x.getAsFile().getAbsolutePath()));
-            run.parameterTokens().put(ClientRunParameterTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
+            run.getParameterTokens().put(ClientRunParameterTokens.ASSETS_ROOT, assetsDir.map(x -> x.getAsFile().getAbsolutePath()));
+            run.getParameterTokens().put(ClientRunParameterTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
         });
 
         return downloadAssets;
@@ -288,7 +296,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                     (RunConfigurationContainer) ((ExtensionAware) ideaExtension).getExtensions().getByName("runConfigurations");
 
                 extension.getRuns().all(run -> {
-                    final String displayName = run.displayName().getOrNull();
+                    final String displayName = run.getDisplayName().getOrNull();
                     runConfigurations.create(displayName == null ? run.getName() + " (" + project.getName() + ")" : displayName, Application.class, ideaRun -> {
                         if (project.getTasks().getNames().contains(JavaPlugin.PROCESS_RESOURCES_TASK_NAME)) {
                             ideaRun.getBeforeRun().create(project.getPath() + JavaPlugin.PROCESS_RESOURCES_TASK_NAME, GradleTask.class,
@@ -296,20 +304,20 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                             );
                         }
 
-                        ideaRun.setMainClass(run.mainClass().get());
-                        final File runDirectory = run.workingDirectory().get().getAsFile();
+                        ideaRun.setMainClass(run.getMainClass().get());
+                        final File runDirectory = run.getWorkingDirectory().get().getAsFile();
                         ideaRun.setWorkingDirectory(runDirectory.getAbsolutePath());
                         runDirectory.mkdirs();
 
                         final SourceSet moduleSet;
-                        if (run.ideaRunSourceSet().isPresent()) {
-                            moduleSet = run.ideaRunSourceSet().get();
+                        if (run.getIdeaRunSourceSet().isPresent()) {
+                            moduleSet = run.getIdeaRunSourceSet().get();
                         } else {
                             moduleSet = project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
                         }
                         ideaRun.moduleRef(project, moduleSet);
-                        ideaRun.setJvmArgs(StringUtils.join(run.allJvmArgumentProviders(), true));
-                        ideaRun.setProgramParameters(StringUtils.join(run.allArgumentProviders(), false));
+                        ideaRun.setJvmArgs(StringUtils.join(run.getAllJvmArgumentProviders(), true));
+                        ideaRun.setProgramParameters(StringUtils.join(run.getAllArgumentProviders(), false));
                     });
                 });
 
@@ -317,7 +325,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
             @Override
             public void eclipse(final Project project, final EclipseModel eclipse) {
-                // TODO: Eclipse run configuration XMLs
+                eclipse.synchronizationTasks(project.getTasks().named(Constants.Tasks.GEN_ECLIPSE_RUNS));
             }
         });
     }
@@ -326,18 +334,18 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         extension.getRuns().all(config -> {
             tasks.register(config.getName(), JavaExec.class, exec -> {
                 exec.setGroup(Constants.TASK_GROUP + " runs");
-                if (config.displayName().isPresent()) {
-                    exec.setDescription(config.displayName().get());
+                if (config.getDisplayName().isPresent()) {
+                    exec.setDescription(config.getDisplayName().get());
                 }
-                exec.getJavaLauncher().convention(service.launcherFor(this.project.getExtensions().getByType(JavaPluginExtension.class).getToolchain()));
+                exec.getJavaLauncher().convention(service.launcherFor(spec -> spec.getLanguageVersion().set(config.getTargetVersion())));
                 exec.setStandardInput(System.in);
-                exec.getMainClass().set(config.mainClass());
-                exec.getMainModule().set(config.mainModule());
-                exec.classpath(config.classpath());
-                exec.setWorkingDir(config.workingDirectory());
-                exec.getJvmArgumentProviders().addAll(config.allJvmArgumentProviders());
-                exec.getArgumentProviders().addAll(config.allArgumentProviders());
-                if (config.requiresAssetsAndNatives().get()) {
+                exec.getMainClass().set(config.getMainClass());
+                exec.getMainModule().set(config.getMainModule());
+                exec.classpath(config.getClasspath());
+                exec.setWorkingDir(config.getWorkingDirectory());
+                exec.getJvmArgumentProviders().addAll(config.getAllJvmArgumentProviders());
+                exec.getArgumentProviders().addAll(config.getAllArgumentProviders());
+                if (config.getRequiresAssetsAndNatives().get()) {
                     exec.dependsOn(Constants.Tasks.DOWNLOAD_ASSETS);
                     exec.dependsOn(Constants.Tasks.COLLECT_NATIVES);
                 }

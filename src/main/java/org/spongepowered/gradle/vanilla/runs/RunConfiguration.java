@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.runs;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.gradle.api.Action;
 import org.gradle.api.Named;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -32,7 +33,11 @@ import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.spongepowered.gradle.vanilla.Constants;
 
@@ -43,7 +48,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import javax.annotation.Nonnull;
 import javax.inject.Inject;
 
 /**
@@ -65,6 +69,7 @@ public class RunConfiguration implements Named {
     private final MapProperty<String, String> parameterTokens;
     private final Property<Boolean> requiresAssetsAndNatives;
     private final Property<SourceSet> ideaSourceSet;
+    private final Property<JavaLanguageVersion> targetVersion;
 
     @Inject
     public RunConfiguration(final String name, final ProjectLayout layout, final ObjectFactory objects) {
@@ -83,13 +88,16 @@ public class RunConfiguration implements Named {
         this.parameterTokens = objects.mapProperty(String.class, String.class);
         this.requiresAssetsAndNatives = objects.property(Boolean.class).convention(false);
         this.ideaSourceSet = objects.property(SourceSet.class);
+        this.targetVersion = objects.property(JavaLanguageVersion.class);
 
         // Apply global environment here
         this.parameterTokens.put(ClientRunParameterTokens.LAUNCHER_NAME, Constants.NAME);
         this.parameterTokens.put(ClientRunParameterTokens.LAUNCHER_VERSION, Constants.VERSION);
     }
 
-    public Property<String> displayName() {
+    @Input
+    @Optional
+    public Property<String> getDisplayName() {
         return this.displayName;
     }
 
@@ -106,7 +114,8 @@ public class RunConfiguration implements Named {
      * @return a map of launcher meta tokens
      * @see ClientRunParameterTokens for known token names
      */
-    public MapProperty<String, String> parameterTokens() {
+    @Internal
+    public MapProperty<String, String> getParameterTokens() {
         return this.parameterTokens;
     }
 
@@ -114,7 +123,7 @@ public class RunConfiguration implements Named {
      * Operate on the run parameter tokens.
      *
      * @param action an action to apply to the parameter tokens map
-     * @see #parameterTokens() for an explanation of what parameter tokens are
+     * @see #getParameterTokens() for an explanation of what parameter tokens are
      */
     public void parameterTokens(final Action<MapProperty<String, String>> action) {
         Objects.requireNonNull(action).execute(this.parameterTokens);
@@ -126,7 +135,8 @@ public class RunConfiguration implements Named {
      *
      * @return the assets and natives property
      */
-    public Property<Boolean> requiresAssetsAndNatives() {
+    @Input
+    public Property<Boolean> getRequiresAssetsAndNatives() {
         return this.requiresAssetsAndNatives;
     }
 
@@ -135,7 +145,8 @@ public class RunConfiguration implements Named {
      *
      * @return the JVM classpath
      */
-    public ConfigurableFileCollection classpath() {
+    @Internal
+    public ConfigurableFileCollection getClasspath() {
         return this.classpath;
     }
 
@@ -145,11 +156,14 @@ public class RunConfiguration implements Named {
      * @return the source set to use
      * @since 0.2
      */
-    public Property<SourceSet> ideaRunSourceSet() {
+    @Input
+    @Optional
+    public Property<SourceSet> getIdeaRunSourceSet() {
         return this.ideaSourceSet;
     }
 
-    public List<CommandLineArgumentProvider> allArgumentProviders() {
+    @Internal
+    public List<CommandLineArgumentProvider> getAllArgumentProviders() {
         return this.allArgs;
     }
 
@@ -172,7 +186,8 @@ public class RunConfiguration implements Named {
         return values;
     }
 
-    public List<CommandLineArgumentProvider> allJvmArgumentProviders() {
+    @Internal
+    public List<CommandLineArgumentProvider> getAllJvmArgumentProviders() {
         return this.allJvmArgs;
     }
 
@@ -195,7 +210,8 @@ public class RunConfiguration implements Named {
         return values;
     }
 
-    public DirectoryProperty workingDirectory() {
+    @Internal
+    public DirectoryProperty getWorkingDirectory() {
         return this.workingDirectory;
     }
 
@@ -203,7 +219,8 @@ public class RunConfiguration implements Named {
         this.workingDirectory.set(directory);
     }
 
-    public Property<String> mainClass() {
+    @Input
+    public Property<String> getMainClass() {
         return this.mainClass;
     }
 
@@ -211,7 +228,9 @@ public class RunConfiguration implements Named {
         this.mainClass.set(mainClass);
     }
 
-    public Property<String> mainModule() {
+    @Input
+    @Optional
+    public Property<String> getMainModule() {
         return this.mainModule;
     }
 
@@ -219,8 +238,21 @@ public class RunConfiguration implements Named {
         this.mainModule.set(mainModule);
     }
 
+    public Property<JavaLanguageVersion> getTargetVersion() {
+        return this.targetVersion;
+    }
+
+    public void targetVersion(final JavaLanguageVersion version) {
+        this.targetVersion.set(version);
+    }
+
+    public void targetVersion(final int version) {
+        this.targetVersion.set(JavaLanguageVersion.of(version));
+    }
+
     @Override
-    public @Nonnull String getName() {
+    @Input
+    public @NonNull String getName() {
         return this.name;
     }
 

@@ -86,6 +86,7 @@ public final class Constants {
         public static final String COLLECT_NATIVES = "collectNatives";
         public static final String PREPARE_WORKSPACE = "prepareWorkspace";
         public static final String DECOMPILE = "decompile";
+        public static final String GEN_ECLIPSE_RUNS = "genEclipseRuns";
 
         private Tasks() {
         }

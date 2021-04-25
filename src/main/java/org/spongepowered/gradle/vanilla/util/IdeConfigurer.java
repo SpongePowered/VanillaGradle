@@ -38,12 +38,23 @@ import org.jetbrains.gradle.ext.ProjectSettings;
 public final class IdeConfigurer {
 
     /**
-     * Get whether this is an idea project import.
+     * Get whether Gradle is being invoked through IntelliJ IDEA.
      *
-     * @return whether this is an IntelliJ project import in progress
+     * <p>This can be through a project import, or a task execution.</p>
+     *
+     * @return whether this is an IntelliJ-based invocation
      */
     public static boolean isIdeaImport() {
         return Boolean.getBoolean("idea.active");
+    }
+
+    /**
+     * Get whether this Gradle invocation is from an Eclipse project import.
+     *
+     * @return whether an eclipse import is ongoing
+     */
+    public static boolean isEclipseImport() {
+        return System.getProperty("eclipse.application") != null;
     }
 
     /**

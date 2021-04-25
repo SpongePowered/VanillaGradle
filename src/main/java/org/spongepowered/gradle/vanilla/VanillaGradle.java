@@ -44,9 +44,6 @@ import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
-import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
-import org.spongepowered.gradle.vanilla.model.VersionClassifier;
-import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryPlugin;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
@@ -91,7 +88,7 @@ public final class VanillaGradle implements Plugin<Object> {
                 final NamedDomainObjectProvider<SourceSet> mainSourceSet =
                     p.getExtensions().getByType(SourceSetContainer.class).named(SourceSet.MAIN_SOURCE_SET_NAME);
                 minecraft.getRuns().configureEach(
-                    run -> run.classpath().from(mainSourceSet.map(SourceSet::getOutput), mainSourceSet.map(SourceSet::getRuntimeClasspath)));
+                    run -> run.getClasspath().from(mainSourceSet.map(SourceSet::getOutput), mainSourceSet.map(SourceSet::getRuntimeClasspath)));
             });
         });
 
