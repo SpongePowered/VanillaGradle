@@ -34,6 +34,7 @@ import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -47,7 +48,7 @@ public final class Decompilation {
             @Override
             public void setBytecode(final String external, final String internal, final byte[] bytes) throws IOException {
                 final Path result = this.zipFile(external).getPath(internal);
-                Files.write(result, bytes);
+                Files.write(result, bytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
             }
 
             @Override
