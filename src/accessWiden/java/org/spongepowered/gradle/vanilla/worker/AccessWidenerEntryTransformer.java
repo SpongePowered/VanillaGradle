@@ -33,6 +33,8 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
+import java.lang.reflect.Modifier;
+
 final class AccessWidenerEntryTransformer implements JarEntryTransformer {
     private final AccessWidener widener;
 
@@ -42,15 +44,13 @@ final class AccessWidenerEntryTransformer implements JarEntryTransformer {
 
     @Override
     public JarClassEntry transform(final JarClassEntry entry) {
-        final String entryNameWithoutExtension = entry.getName().substring(0, entry.getName().length() - entry.getExtension().length() - 1);
-        if (this.widener.getTargets().contains(entryNameWithoutExtension.replace('/', '.'))) {
-            final ClassReader reader = new ClassReader(entry.getContents());
-            final ClassWriter writer = new ClassWriter(reader, 0);
-            // TODO: Expose the ASM version constant somewhere visible to this worker
-            final ClassVisitor visitor = AccessWidenerVisitor.createClassVisitor(Opcodes.ASM9, writer, this.widener);
-            reader.accept(visitor, 0);
-            return new JarClassEntry(entry.getName(), entry.getTime(), writer.toByteArray());
-        }
-        return JarEntryTransformer.super.transform(entry);
+        // Because InnerClass attributes can be present in any class AW'd classes
+        // are referenced from, we have to target every class to get a correct output.
+        final ClassReader reader = new ClassReader(entry.getContents());
+        final ClassWriter writer = new ClassWriter(reader, 0);
+        // TODO: Expose the ASM version constant somewhere visible to this worker
+        final ClassVisitor visitor = AccessWidenerVisitor.createClassVisitor(Opcodes.ASM9, writer, this.widener);
+        reader.accept(visitor, 0);
+        return new JarClassEntry(entry.getName(), entry.getTime(), writer.toByteArray());
     }
 }
