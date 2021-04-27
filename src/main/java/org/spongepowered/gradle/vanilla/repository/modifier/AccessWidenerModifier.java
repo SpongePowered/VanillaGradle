@@ -27,6 +27,7 @@ package org.spongepowered.gradle.vanilla.repository.modifier;
 import org.cadixdev.atlas.AtlasTransformerContext;
 import org.cadixdev.bombe.jar.JarEntryTransformer;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.repository.ResolvableTool;
@@ -92,7 +93,7 @@ public final class AccessWidenerModifier implements ArtifactModifier {
         final Supplier<URLClassLoader> loaderProvider = context.classLoaderWithTool(ResolvableTool.ACCESS_WIDENER);
         return AsyncUtils.failableFuture(() -> new AtlasPopulator() {
             private final URLClassLoader loader = loaderProvider.get();
-            private final Function<Set<Path>, JarEntryTransformer> accessWidenerLoader = (Function<Set<Path>, JarEntryTransformer>) Class.forName(
+            private @Nullable Function<Set<Path>, JarEntryTransformer> accessWidenerLoader = (Function<Set<Path>, JarEntryTransformer>) Class.forName(
                 "org.spongepowered.gradle.vanilla.worker.AccessWidenerTransformerProvider",
                 true,
                 this.loader
@@ -102,12 +103,16 @@ public final class AccessWidenerModifier implements ArtifactModifier {
 
             @Override
             public JarEntryTransformer provide(final AtlasTransformerContext context) {
+                if (this.accessWidenerLoader == null) {
+                    throw new IllegalStateException("Already closed!");
+                }
                 return this.accessWidenerLoader.apply(AccessWidenerModifier.this.wideners);
             }
 
             @Override
             public void close() throws IOException {
                 this.loader.close();
+                this.accessWidenerLoader = null;
             }
         }, context.executor());
     }

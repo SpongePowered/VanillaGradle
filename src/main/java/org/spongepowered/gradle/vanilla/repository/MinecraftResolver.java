@@ -79,15 +79,19 @@ public interface MinecraftResolver {
      * executing the provider function. This allows for operating in
      * concurrency-sensitive environments, such as a Gradle build.</p>
      *
+     * <p>To de-duplicate resolution actions, a future may be returned if this
+     * action has already been performed, or is in process on another thread.
+     * In these cases, the provided provider function will not be executed
+     * at all.</p>
+     *
      * @param side the platform to base off of
      * @param version the version to base off of
      * @param id An identifier for this artifact
      * @param flags flags to configure this resolution
      * @param action the action needed to produce a variant, taking the input environment and a target path
-     * @return the path of the jar
+     * @return a future returning the result of resolving a jar path
      */
-    ResolutionResult<Path> produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id, final Set<AssociatedResolutionFlags> flags, final BiConsumer<MinecraftEnvironment, Path> action)
-        throws Exception;
+    CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id, final Set<AssociatedResolutionFlags> flags, final BiConsumer<MinecraftEnvironment, Path> action);
 
     interface MinecraftEnvironment {
 

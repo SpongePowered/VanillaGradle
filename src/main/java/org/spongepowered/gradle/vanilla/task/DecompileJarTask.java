@@ -26,6 +26,7 @@ package org.spongepowered.gradle.vanilla.task;
 
 import com.sun.management.OperatingSystemMXBean;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.ArtifactCollection;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
@@ -55,10 +56,15 @@ import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.inject.Inject;
 
 public abstract class DecompileJarTask extends DefaultTask {
+
+    private static final ReentrantLock DECOMPILE_LOCK = new ReentrantLock();
 
     public DecompileJarTask() {
         this.setGroup(Constants.TASK_GROUP);
@@ -97,11 +103,17 @@ public abstract class DecompileJarTask extends DefaultTask {
     protected abstract WorkerExecutor getWorkerExecutor();
 
     @TaskAction
-    public void execute() throws Exception {
+    public void execute() {
         // TODO: get rid of these project references... somehow
-        final Set<ArtifactModifier> modifiers = ((MinecraftExtensionImpl) this.getProject().getExtensions().getByType(MinecraftExtension.class)).modifiers();
+        // TODO: also find a less hacky way to ensure we don't acquire a Project lock before a task executing on a different thread can resolve the
+        // dependencies necessary (mergetool, AW, etc)
+        DecompileJarTask.DECOMPILE_LOCK.lock(); // gradle is super picky about how we resolve configurations, so this lock is a hack fix...
+        final CompletableFuture<ResolutionResult<Path>> resultFuture;
+        try {
+            final Set<ArtifactModifier> modifiers =
+                ((MinecraftExtensionImpl) this.getProject().getExtensions().getByType(MinecraftExtension.class)).modifiers();
 
-        final ResolutionResult<Path> result = this.getMinecraftProvider().get().resolver(this.getProject()).produceAssociatedArtifactSync(
+            resultFuture = this.getMinecraftProvider().get().resolver(this.getProject()).produceAssociatedArtifactSync(
                 this.getMinecraftPlatform().get(),
                 this.getMinecraftVersion().get(),
                 modifiers,
@@ -148,8 +160,19 @@ public abstract class DecompileJarTask extends DefaultTask {
                     this.getWorkerExecutor().await();
                 }
             );
+        } finally {
+            DecompileJarTask.DECOMPILE_LOCK.unlock();
+        }
 
-        this.setDidWork(!result.upToDate());
-
+        try {
+            final ResolutionResult<Path> result = resultFuture.get();
+            this.setDidWork(!result.upToDate());
+        } catch (final ExecutionException ex) {
+            throw new GradleException("Failed to decompile " + this.getMinecraftVersion().get(), ex.getCause());
+        } catch (final InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new GradleException("Interrupted");
+        }
     }
+
 }
