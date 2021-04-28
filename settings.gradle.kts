@@ -1,6 +1,8 @@
 pluginManagement {
     repositories {
-        maven("https://repo.spongepowered.org/repository/maven-public/")
+        maven("https://repo.spongepowered.org/repository/maven-public/") {
+            name = "sponge"
+        }
     }
 }
 

@@ -1,11 +1,11 @@
 plugins {
-    id("com.gradle.plugin-publish") version "0.14.0"
     `java-gradle-plugin`
-    val indraVersion = "1.3.1"
+    eclipse
+    id("com.gradle.plugin-publish") version "0.14.0"
+    val indraVersion = "2.0.1"
     id("net.kyori.indra") version indraVersion
     id("net.kyori.indra.license-header") version indraVersion
     id("net.kyori.indra.publishing.gradle-plugin") version indraVersion
-    eclipse
     id("com.diffplug.eclipse.apt") version "3.29.1"
 }
 
@@ -92,9 +92,8 @@ tasks.jar {
 }
 
 tasks.withType(Jar::class).configureEach {
+    indraGit.applyVcsInformationToManifest(manifest)
     manifest.attributes(
-            "Git-Commit" to grgit.head().id,
-            "Git-Branch" to grgit.branch.current().name,
             "Specification-Title" to "VanillaGradle",
             "Specification-Vendor" to "SpongePowered",
             "Specification-Version" to project.version,
@@ -106,12 +105,11 @@ tasks.withType(Jar::class).configureEach {
 
 tasks.withType(JavaCompile::class).configureEach {
     options.compilerArgs.add("-Xlint:-processing")
-
 }
 
 indra {
     github("SpongePowered", "VanillaGradle") {
-        ci = true
+        ci(true)
     }
     mitLicense()
 
@@ -138,28 +136,26 @@ indra {
 }
 
 indraPluginPublishing {
+    website("https://spongepowered.org")
+    bundleTags(listOf("minecraft", "vanilla"))
     plugin(
-            id = "gradle.vanilla",
-            mainClass = "org.spongepowered.gradle.vanilla.VanillaGradle",
-            displayName = "VanillaGradle",
-            description = "Set up a Minecraft workspace for project development",
-            tags = listOf("minecraft", "vanilla")
+        /* id = */ "gradle.vanilla",
+        /* mainClass = */ "org.spongepowered.gradle.vanilla.VanillaGradle",
+        /* displayName = */ "VanillaGradle",
+        /* description = */ "Set up a Minecraft workspace for project development"
     )
 }
 
-pluginBundle.website = "https://spongepowered.org"
-
 license {
-    val name: String by project
     val organization: String by project
     val projectUrl: String by project
 
-    (this as ExtensionAware).extra.apply {
+    properties {
         this["name"] = "VanillaGradle"
         this["organization"] = organization
         this["url"] = projectUrl
     }
-    header = project.file("HEADER.txt")
+    header("HEADER.txt")
 }
 
 signing {
@@ -175,11 +171,4 @@ signing {
     } else {
         signatories = PgpSignatoryProvider() // don't use gpg agent
     }
-}
-
-// IDE-specific configuration
-eclipse {
-    // https://github.com/diffplug/goomph/issues/125
-    // buildship pls stop being broken thanks
-    synchronizationTasks(tasks.eclipseJdtApt, tasks.eclipseJdt, tasks.eclipseFactorypath)
 }

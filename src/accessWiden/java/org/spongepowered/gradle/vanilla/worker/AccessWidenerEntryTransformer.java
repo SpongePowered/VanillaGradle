@@ -33,8 +33,6 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
-import java.lang.reflect.Modifier;
-
 final class AccessWidenerEntryTransformer implements JarEntryTransformer {
     private final AccessWidener widener;
 
