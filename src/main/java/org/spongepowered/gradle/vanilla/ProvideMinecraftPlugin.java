@@ -42,7 +42,6 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemLocation;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
-import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
@@ -56,7 +55,6 @@ import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.jetbrains.gradle.ext.Application;
-import org.jetbrains.gradle.ext.GradleTask;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.model.Library;
@@ -298,12 +296,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 extension.getRuns().all(run -> {
                     final String displayName = run.getDisplayName().getOrNull();
                     runConfigurations.create(displayName == null ? run.getName() + " (" + project.getName() + ")" : displayName, Application.class, ideaRun -> {
-                        if (project.getTasks().getNames().contains(JavaPlugin.PROCESS_RESOURCES_TASK_NAME)) {
-                            ideaRun.getBeforeRun().create(project.getPath() + JavaPlugin.PROCESS_RESOURCES_TASK_NAME, GradleTask.class,
-                                action -> action.setTask(project.getTasks().getByName(JavaPlugin.PROCESS_RESOURCES_TASK_NAME))
-                            );
-                        }
-
                         ideaRun.setMainClass(run.getMainClass().get());
                         final File runDirectory = run.getWorkingDirectory().get().getAsFile();
                         ideaRun.setWorkingDirectory(runDirectory.getAbsolutePath());
@@ -320,7 +312,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                         ideaRun.setProgramParameters(StringUtils.join(run.getAllArgumentProviders(), false));
                     });
                 });
-
             }
 
             @Override
