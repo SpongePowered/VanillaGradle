@@ -108,7 +108,7 @@ public class SyntheticParameterAnnotationsFix extends ClassVisitor {
 
         @Override
         public SignatureVisitor visitParameterType() {
-            count++;
+            this.count++;
             return super.visitParameterType();
         }
     }

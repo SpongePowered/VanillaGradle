@@ -110,7 +110,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
         final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, minecraftProvider, target.getTasks());
 
-        final TaskProvider<DecompileJarTask> decompileJar = this.createJarDecompile(minecraftConfig, minecraftProvider, minecraft);
+        this.createJarDecompile(minecraftConfig, minecraftProvider, minecraft);
 
         final TaskProvider<?> prepareWorkspace = target.getTasks().register(Constants.Tasks.PREPARE_WORKSPACE, task -> {
             task.setGroup(Constants.TASK_GROUP);

@@ -61,24 +61,28 @@ public interface MinecraftRepositoryExtension {
     /**
      * Inject a version from the provided file
      *
-     * <p>This allows building against Minecraft versions that may not be
-     * available in the ordinary version list, such as combat snapshots.</p>
+     * <p>This allows building against Minecraft versions that may not be available
+     * in the ordinary version list, such as combat snapshots.</p>
      *
-     * <p>This will override whatever data may be present in the manifest repository</p>
+     * <p>This will override whatever data may be present in the manifest
+     * repository</p>
      *
      * @param file a path relative to the root directory
+     * @return the ID of the injected version
      */
     String injectVersion(final String file);
 
     /**
      * Inject a version from the provided file
      *
-     * <p>This allows building against Minecraft versions that may not be
-     * available in the ordinary version list, such as combat snapshots.</p>
+     * <p>This allows building against Minecraft versions that may not be available
+     * in the ordinary version list, such as combat snapshots.</p>
      *
-     * <p>This will override whatever data may be present in the manifest repository</p>
+     * <p>This will override whatever data may be present in the manifest
+     * repository</p>
      *
      * @param file a file to load
+     * @return the ID of the injected version
      */
     String injectVersion(final File file);
 }

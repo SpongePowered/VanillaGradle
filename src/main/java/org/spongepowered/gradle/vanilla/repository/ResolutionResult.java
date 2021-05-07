@@ -39,6 +39,7 @@ import java.util.stream.Collector;
  * resolution was an up-to-date response, or required information to be
  * re-processed.</p>
  *
+ * @param <V> the result type
  */
 public final class ResolutionResult<V> {
     private final @Nullable V result;

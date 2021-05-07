@@ -47,7 +47,6 @@ import org.spongepowered.gradle.vanilla.util.AsyncUtils;
 import org.spongepowered.gradle.vanilla.util.FileUtils;
 import org.spongepowered.gradle.vanilla.util.SelfPreferringClassLoader;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -192,8 +191,9 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         final Path outputTmp = Files.createTempDirectory("vanillagradle").resolve("output" + side.name() + ".jar");
                         FileUtils.createDirectoriesSymlinkSafe(outputJar.getParent());
                         final MappingSet scratchMappings = MappingSet.create();
-                        try (final BufferedReader reader = Files.newBufferedReader(mappingsFile.get(), StandardCharsets.UTF_8)) {
-                            final ProGuardReader proguard = new ProGuardReader(reader);
+                        try (
+                            final ProGuardReader proguard = new ProGuardReader(Files.newBufferedReader(mappingsFile.get(), StandardCharsets.UTF_8))
+                        ) {
                             proguard.read(scratchMappings);
                         } catch (final IOException ex) {
                             throw new GradleException("Failed to read mappings from " + mappingsFile, ex);

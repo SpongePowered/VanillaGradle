@@ -59,13 +59,14 @@ public interface ArtifactModifier {
     String stateKey();
 
     /**
-     * Create a new populator for performing transformations.
-     *
-     * <p>This will always be called from the thread where resolution
-     * is initiated.</p>
-     *
+     * Create a new populator for performing transformations. 
+     * 
+     * <p>This will always be called from the thread where resolution is initiated.</p> 
+     * 
      * <p>The populator returned must remain valid until it is closed.</p>
      *
+     * @param context the context available when preparing a populator, safe to use
+     *     asynchronously
      * @return a future providing the populator
      */
     CompletableFuture<AtlasPopulator> providePopulator(final MinecraftResolver.Context context);

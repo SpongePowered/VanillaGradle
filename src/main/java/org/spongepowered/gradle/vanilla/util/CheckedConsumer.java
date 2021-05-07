@@ -28,6 +28,9 @@ import java.util.function.Consumer;
 
 /**
  * A {@link Consumer} that can throw exceptions.
+ * 
+ * @param <V> input value type
+ * @param <E> exception type thrown
  */
 @FunctionalInterface
 public interface CheckedConsumer<V, E extends Exception> {

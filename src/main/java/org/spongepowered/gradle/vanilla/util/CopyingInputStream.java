@@ -37,10 +37,13 @@ public final class CopyingInputStream extends FilterInputStream {
     private final OutputStream copy;
 
     /**
-     * Creates a <code>FilterInputStream</code> by assigning the  argument <code>in</code> to the field <code>this.in</code> so as to remember it for
+     * Creates a <code>FilterInputStream</code> by assigning the argument
+     * <code>in</code> to the field <code>this.in</code> so as to remember it for
      * later use.
      *
-     * @param in the underlying input stream, or <code>null</code> if this instance is to be created without an underlying stream.
+     * @param in the underlying input stream, or <code>null</code> if this instance
+     *     is to be created without an underlying stream.
+     * @param copy the output stream to copy writes to
      */
     public CopyingInputStream(final InputStream in, final OutputStream copy) {
         super(in);

@@ -67,7 +67,7 @@ public final class FeatureRule implements Rule<Map<String, Boolean>> {
      * @see Features for a selection of known features
      */
     public static void setFeature(final RuleContext context, final String feature, final boolean value) {
-        context.computeIfAbsent(FeatureRule.CTX_FEATURES, $ -> new HashMap<String, Boolean>()).put(feature, value);
+        context.computeIfAbsent(FeatureRule.CTX_FEATURES, $ -> new HashMap<>()).put(feature, value);
     }
 
     @Override

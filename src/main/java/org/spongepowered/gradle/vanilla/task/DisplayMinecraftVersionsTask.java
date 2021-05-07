@@ -25,13 +25,9 @@
 package org.spongepowered.gradle.vanilla.task;
 
 import org.gradle.api.DefaultTask;
-import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;

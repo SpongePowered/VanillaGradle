@@ -85,11 +85,13 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     /**
-     * Create a run configuration pre-configured with standard settings to start
-     * the Minecraft client.
+     * Create a run configuration pre-configured with standard settings to start the
+     * Minecraft client.
      *
      * <p>Will return a reference if the client configuration already exists.</p>
      *
+     * @param configureAction an action to perform to customize standard client
+     *     configuration
      * @return a provider for the configuration
      */
     public NamedDomainObjectProvider<RunConfiguration> client(final @Nullable Action<? super RunConfiguration> configureAction) {
@@ -97,12 +99,15 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     /**
-     * Create a run configuration pre-configured with standard settings to start
-     * the Minecraft client.
+     * Create a run configuration pre-configured with standard settings to start the
+     * Minecraft client.
      *
-     * <p>Will return a reference if the client configuration already exists,
-     * while applying the configuration action.</p>
+     * <p>Will return a reference if the client configuration already exists, while
+     * applying the configuration action.</p>
      *
+     * @param taskName the name of the task/IDE configuration to generate
+     * @param configureAction an action to perform to customize standard client
+     *     configuration
      * @return a provider for the configuration
      */
     public NamedDomainObjectProvider<RunConfiguration> client(final String taskName,
@@ -164,10 +169,13 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     /**
-     * Create a run configuration pre-configured with standard settings to start the Minecraft server.
+     * Create a run configuration pre-configured with standard settings to start the
+     * Minecraft server.
      *
      * <p>Will return a reference if the server configuration already exists.</p>
      *
+     * @param configureAction an action to perform to customize standard client
+     *     configuration
      * @return a provider for the configuration
      */
     public NamedDomainObjectProvider<RunConfiguration> server(final Action<? super RunConfiguration> configureAction) {
@@ -175,12 +183,15 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     }
 
     /**
-     * Create a run configuration pre-configured with standard settings to start
-     * the Minecraft server.
+     * Create a run configuration pre-configured with standard settings to start the
+     * Minecraft server.
      *
-     * <p>Will return a reference if the server configuration already exists,
-     * while applying the configuration action.</p>
+     * <p>Will return a reference if the server configuration already exists, while
+     * applying the configuration action.</p>
      *
+     * @param taskName the name of the task/IDE configuration to generate
+     * @param configureAction an action to perform to customize standard client
+     *     configuration
      * @return a provider for the configuration
      */
     public NamedDomainObjectProvider<RunConfiguration> server(final String taskName,
