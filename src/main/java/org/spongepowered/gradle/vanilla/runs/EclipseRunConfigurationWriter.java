@@ -54,12 +54,6 @@ public class EclipseRunConfigurationWriter implements AutoCloseable {
     private final XMLStreamWriter writer;
     private @MonotonicNonNull String projectName;
 
-    public EclipseRunConfigurationWriter(final Writer output) throws XMLStreamException {
-        this.managedOutput = false;
-        this.output = output;
-        this.writer = new IndentingXmlStreamWriter(EclipseRunConfigurationWriter.OUTPUT_FACTORY.createXMLStreamWriter(output), Constants.INDENT);
-    }
-
     public EclipseRunConfigurationWriter(final Path target) throws IOException, XMLStreamException {
         this.managedOutput = true;
         this.output = Files.newBufferedWriter(target);
@@ -81,11 +75,6 @@ public class EclipseRunConfigurationWriter implements AutoCloseable {
         this.writer.writeAttribute("type", this.launching("localJavaApplication"));
 
         // TODO: debug("core.MAPPED_RESOURCE_PATHS") maybe
-
-        this.listAttribute(this.debug("ui.favoriteGroups"), Arrays.asList(
-            this.debug("ui.launchGroup.debug"),
-            this.debug("ui.launchGroup.run")
-        ));
 
         this.booleanAttribute(this.launching("ATTR_ATTR_USE_ARGFILE"), false);
         this.booleanAttribute(this.launching("ATTR_SHOW_CODEDETAILS_IN_EXCEPTION_MESSAGES"), true);
