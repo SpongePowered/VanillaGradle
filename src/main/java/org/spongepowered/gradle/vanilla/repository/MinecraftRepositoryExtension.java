@@ -39,8 +39,8 @@ public interface MinecraftRepositoryExtension {
      * that are present in the following repositories:</p>
      * <ul>
      *     <li>Maven Central</li>
-     *     <li><a href="https://libraries.minecraft.net/">https://libraries.minecraft.net</a></li>
-     *     <li><a href="https://files.minecraftforge.net/maven/">https://files.minecraftforge.net/maven/</a></li>
+     *     <li><a href="https://libraries.minecraft.net/">https://libraries.minecraft.net/</a></li>
+     *     <li><a href="https://maven.minecraftforge.net/">https://maven.minecraftforge.net/</a></li>
      * </ul>
      *
      * <p>This list is subject to change in any feature release without that

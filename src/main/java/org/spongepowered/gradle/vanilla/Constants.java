@@ -111,7 +111,7 @@ public final class Constants {
 
     public static final class Repositories {
         public static final String MINECRAFT = "https://libraries.minecraft.net/";
-        public static final String MINECRAFT_FORGE = "https://files.minecraftforge.net/maven/";
+        public static final String MINECRAFT_FORGE = "https://maven.minecraftforge.net/";
 
         private Repositories() {
         }
