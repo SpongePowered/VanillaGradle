@@ -28,6 +28,9 @@ val jarDecompile by sourceSets.creating {
 val accessWiden by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
+val shadow by sourceSets.creating {
+    configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
+}
 
 configurations.implementation {
     extendsFrom(commonDeps)
@@ -81,6 +84,9 @@ dependencies {
     }
     implementation(accessWiden.output)
 
+    "shadowCompileOnly"("com.github.jengelman.gradle.plugins:shadow:6.1.0")
+    implementation(shadow.output)
+
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 }
@@ -89,6 +95,7 @@ tasks.jar {
     from(jarMerge.output)
     from(jarDecompile.output)
     from(accessWiden.output)
+    from(shadow.output)
 }
 
 tasks.withType(Jar::class).configureEach {

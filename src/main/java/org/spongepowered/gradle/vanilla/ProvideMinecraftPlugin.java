@@ -120,9 +120,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
         target.getPlugins().withType(JavaPlugin.class, $ -> {
             this.createRunTasks(minecraft, target.getTasks(), target.getExtensions().getByType(JavaToolchainService.class));
-
-            // todo: this is not great, we should probably have a separate configuration for run classpath
-            minecraft.getRuns().configureEach(run -> run.getClasspath().from(minecraftConfig));
         });
 
         final org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer runs = minecraft.getRuns();

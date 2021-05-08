@@ -77,8 +77,8 @@ public final class VanillaGradle implements Plugin<Object> {
         project.getPlugins().apply(ProvideMinecraftPlugin.class);
         final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) project.getExtensions().getByType(MinecraftExtension.class);
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
-            Stream.of(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME).forEach(config -> {
-                final NamedDomainObjectProvider<Configuration> minecraftConfig = project.getConfigurations().named(Constants.Configurations.MINECRAFT);
+            final NamedDomainObjectProvider<Configuration> minecraftConfig = project.getConfigurations().named(Constants.Configurations.MINECRAFT);
+            Stream.of(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME, JavaPlugin.RUNTIME_ONLY_CONFIGURATION_NAME).forEach(config -> {
                 project.getConfigurations().named(config, c -> {
                     c.extendsFrom(minecraftConfig.get());
                 });
@@ -90,6 +90,10 @@ public final class VanillaGradle implements Plugin<Object> {
                 minecraft.getRuns().configureEach(
                     run -> run.getClasspath().from(mainSourceSet.map(SourceSet::getOutput), mainSourceSet.map(SourceSet::getRuntimeClasspath)));
             });
+        });
+
+        project.getPluginManager().withPlugin("com.github.johnrengelman.shadow", plugin -> {
+            ShadowConfigurationApplier.applyShadowConfiguration(project.getTasks());
         });
 
         this.createDisplayMinecraftVersions(project.getPlugins().getPlugin(MinecraftRepositoryPlugin.class).service(), project.getTasks());
