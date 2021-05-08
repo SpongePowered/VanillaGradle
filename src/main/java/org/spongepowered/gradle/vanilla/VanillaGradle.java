@@ -48,7 +48,12 @@ import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryPlugin;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
+import org.spongepowered.gradle.vanilla.util.SelfPreferringClassLoader;
 
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
@@ -56,6 +61,8 @@ import java.util.stream.Stream;
  * A plugin that actually adds the provided Minecraft artifacts to the project classpath.
  */
 public final class VanillaGradle implements Plugin<Object> {
+
+    private static final String SHADOW_JAR_TASK_CLASS_NAME = "com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar";
     private static final AtomicBoolean VERSION_ANNOUNCED = new AtomicBoolean();
 
     @Override
@@ -92,8 +99,8 @@ public final class VanillaGradle implements Plugin<Object> {
             });
         });
 
-        project.getPluginManager().withPlugin("com.github.johnrengelman.shadow", plugin -> {
-            ShadowConfigurationApplier.applyShadowConfiguration(project.getTasks());
+        project.getPlugins().withId("com.github.johnrengelman.shadow", plugin -> {
+            VanillaGradle.applyShadowConfiguration(project.getTasks(), plugin);
         });
 
         this.createDisplayMinecraftVersions(project.getPlugins().getPlugin(MinecraftRepositoryPlugin.class).service(), project.getTasks());
@@ -144,6 +151,31 @@ public final class VanillaGradle implements Plugin<Object> {
                 eclipse.synchronizationTasks(prepareWorkspaceTask);
             }
         });
+    }
+
+    private static void applyShadowConfiguration(final TaskContainer tasks, final Plugin<?> shadowPlugin) {
+        // Gradle seems to have some sort of classloader isolation................
+        // When VanillaGradle is on the root project classpath and also used in
+        // subprojects, but the shadow plugin is only applied in subprojects,
+        // the shadow plugin classloader will be a separate child loader of the
+        // class loader containing VanillaGradle.
+
+        try {
+            Class.forName(VanillaGradle.SHADOW_JAR_TASK_CLASS_NAME);
+            ShadowConfigurationApplier.actuallyApplyShadowConfiguration(tasks);
+        } catch (final ClassNotFoundException ex) {
+            // Isolation
+            try (final URLClassLoader classLoader = new SelfPreferringClassLoader(
+                new URL[]{VanillaGradle.class.getProtectionDomain().getCodeSource().getLocation()},
+                shadowPlugin.getClass().getClassLoader()
+            )) {
+                Class.forName(ShadowConfigurationApplier.class.getName(), true, classLoader)
+                    .getDeclaredMethod("actuallyApplyShadowConfiguration", TaskContainer.class)
+                    .invoke(null, tasks);
+            } catch (final IOException | ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ex2) {
+                throw new GradleException("Failed to configure shadow plugin integration", ex2);
+            }
+        }
     }
 
 }
