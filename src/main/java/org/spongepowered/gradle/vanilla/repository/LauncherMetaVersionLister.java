@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import javax.inject.Inject;
+
 /**
  * Provide available Minecraft versions based on the configured manifest.
  */
@@ -42,6 +44,7 @@ public class LauncherMetaVersionLister implements ComponentMetadataVersionLister
     private static final Logger LOGGER = LoggerFactory.getLogger(LauncherMetaVersionLister.class);
     private final Provider<MinecraftProviderService> manifests;
 
+    @Inject
     public LauncherMetaVersionLister(final Provider<MinecraftProviderService> manifests) {
         this.manifests = manifests;
     }
@@ -51,7 +54,6 @@ public class LauncherMetaVersionLister implements ComponentMetadataVersionLister
         if (!MinecraftPlatform.GROUP.equals(version.getModuleIdentifier().getGroup())) {
             return;
         }
-        LauncherMetaVersionLister.LOGGER.info("Listing versions for {}", version.getModuleIdentifier());
 
         try {
             final List<? extends VersionDescriptor> versions = this.manifests.get().versions().availableVersions().get();

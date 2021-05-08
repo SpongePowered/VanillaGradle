@@ -52,7 +52,7 @@ public class LauncherMetaMetadataSupplier implements ComponentMetadataSupplier {
     public void execute(final ComponentMetadataSupplierDetails details) {
         final ModuleComponentIdentifier id = details.getId();
         final ComponentMetadataBuilder result = details.getResult();
-        LauncherMetaMetadataSupplier.LOGGER.warn("Preparing metadata for {}", id.getVersion());
+        LauncherMetaMetadataSupplier.LOGGER.info("Preparing metadata for {}", id.getVersion());
 
         // This is designed for a fast lookup to be able to resolve dynamic versions
         final VersionDescriptor.@Nullable Reference descriptor;

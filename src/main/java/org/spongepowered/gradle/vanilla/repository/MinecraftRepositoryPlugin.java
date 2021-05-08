@@ -123,15 +123,6 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                     return;
                 }
 
-
-                // TODO:
-                // could be:
-                // <an actual version>
-                // <latest.release_type (release, snapshot)>
-                // another gradle range
-                // or will Gradle just give us the actual version? please??
-                // compute which version of MC is desired, then produce that into a local maven repository in the global cache
-                // minecraftService.prepare(version).get();
                 final @Nullable String version = dep.getVersion();
                 logger.info("Attempting to resolve minecraft {} version {}", dep.getName(), version);
                 if (version != null) {
@@ -151,7 +142,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                         Thread.currentThread().interrupt();
                     } catch (final ExecutionException ex) {
                         // log exception but don't throw, dependency resolution failure will come when expected.
-                        logger.error("Failed to resolve Minecraft {} version {}:", platform.get(), version, ex);
+                        logger.error("Failed to resolve Minecraft {} version {}:", platform.get(), version, ex.getCause());
                     }
                 }
             }
