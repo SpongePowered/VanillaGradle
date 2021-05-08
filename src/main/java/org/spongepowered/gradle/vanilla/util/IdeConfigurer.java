@@ -71,16 +71,20 @@ public final class IdeConfigurer {
             if (!IdeConfigurer.isIdeaImport()) {
                 return;
             }
+
+            // Apply the IDE plugin to the root project
             final Project rootProject = project.getRootProject();
             if (project != rootProject) {
                 rootProject.getPlugins().apply(IdeaExtPlugin.class);
-                final IdeaModel model = rootProject.getExtensions().findByType(IdeaModel.class);
-                if (model == null || model.getProject() == null) {
-                    return;
-                }
-                final ProjectSettings ideaExt = ((ExtensionAware) model.getProject()).getExtensions().getByType(ProjectSettings.class);
-                toPerform.idea(project, model, ideaExt);
             }
+            final IdeaModel model = rootProject.getExtensions().findByType(IdeaModel.class);
+            if (model == null || model.getProject() == null) {
+                return;
+            }
+            final ProjectSettings ideaExt = ((ExtensionAware) model.getProject()).getExtensions().getByType(ProjectSettings.class);
+
+            // But actually perform the configuration with the subproject context
+            toPerform.idea(project, model, ideaExt);
         });
         project.getPlugins().withType(EclipsePlugin.class, plugin -> {
             final EclipseModel model = project.getExtensions().findByType(EclipseModel.class);
