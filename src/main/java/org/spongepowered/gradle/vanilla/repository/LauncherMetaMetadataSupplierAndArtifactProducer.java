@@ -24,7 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.artifacts.ComponentMetadataBuilder;
 import org.gradle.api.artifacts.ComponentMetadataSupplier;
 import org.gradle.api.artifacts.ComponentMetadataSupplierDetails;
@@ -35,43 +34,60 @@ import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
 
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
 
-public class LauncherMetaMetadataSupplier implements ComponentMetadataSupplier {
-    private static final Logger LOGGER = LoggerFactory.getLogger(LauncherMetaMetadataSupplier.class);
-    private final Provider<MinecraftProviderService> versions;
+public class LauncherMetaMetadataSupplierAndArtifactProducer implements ComponentMetadataSupplier {
+    private static final Logger LOGGER = LoggerFactory.getLogger(LauncherMetaMetadataSupplierAndArtifactProducer.class);
+    private final Provider<MinecraftProviderService> providerService;
 
     @Inject
-    public LauncherMetaMetadataSupplier(final Provider<MinecraftProviderService> versions) {
-        this.versions = versions;
+    public LauncherMetaMetadataSupplierAndArtifactProducer(final Provider<MinecraftProviderService> providerService) {
+        this.providerService = providerService;
     }
 
     @Override
     public void execute(final ComponentMetadataSupplierDetails details) {
         final ModuleComponentIdentifier id = details.getId();
         final ComponentMetadataBuilder result = details.getResult();
-        LauncherMetaMetadataSupplier.LOGGER.info("Preparing metadata for {}", id.getVersion());
+        LauncherMetaMetadataSupplierAndArtifactProducer.LOGGER.info("Preparing metadata for {}", id.getVersion());
+        final String[] components = id.getModule().split("_", 2); // any manually specified components will exist, but can't be resolved
+        if (components.length == 0) {
+            return; // failed
+        }
+        final Optional<MinecraftPlatform> platform = MinecraftPlatform.byId(components[0]);
+        if (!platform.isPresent()) {
+            return;
+        }
 
-        // This is designed for a fast lookup to be able to resolve dynamic versions
-        final VersionDescriptor.@Nullable Reference descriptor;
+        final MinecraftProviderService providerService = this.providerService.get();
+
+        final String version = id.getVersion();
+        final VersionDescriptor.Full descriptor;
+        LauncherMetaMetadataSupplierAndArtifactProducer.LOGGER.info("Attempting to resolve minecraft {} version {}", id.getModule(), version);
         try {
-            descriptor = this.versions.get().versions().manifest().get().findDescriptor(id.getVersion()).orElse(null);
+            final MinecraftResolver resolver = providerService.resolver();
+            // Request the appropriate jar, block until it's provided
+            // TODO: maybe validate that the state keys of the provided modifiers actually match the artifact ID?
+            final ResolutionResult<MinecraftResolver.MinecraftEnvironment> resolution = resolver.provide(platform.get(), version, providerService.peekModifiers()).get();
+            if (!resolution.isPresent()) {
+                return;
+            }
+
+            descriptor = resolution.get().metadata();
         } catch (final InterruptedException ex) {
             Thread.currentThread().interrupt();
             return;
         } catch (final ExecutionException ex) {
-            LauncherMetaMetadataSupplier.LOGGER.warn("Failed to resolve version manifest while populating component metadata: ", ex);
+            // log exception but don't throw, dependency resolution failure will come anyways when Gradle provides a message
+            LauncherMetaMetadataSupplierAndArtifactProducer.LOGGER.error("Failed to resolve Minecraft {} version {}:", platform.get(), version, ex.getCause());
             return;
         }
 
         // Status
         result.setStatusScheme(VersionClassifier.ids());
-        if (descriptor == null) {
-            return;
-        }
-
         result.setStatus(descriptor.type().id());
     }
 }

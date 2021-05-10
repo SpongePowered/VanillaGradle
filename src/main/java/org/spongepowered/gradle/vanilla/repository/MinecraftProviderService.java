@@ -24,7 +24,9 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.file.DirectoryProperty;
@@ -37,15 +39,16 @@ import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
 import org.spongepowered.gradle.vanilla.network.ApacheHttpDownloader;
 import org.spongepowered.gradle.vanilla.network.Downloader;
+import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 public abstract class MinecraftProviderService implements BuildService<MinecraftProviderService.Parameters>, AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(MinecraftProviderService.class);
@@ -54,6 +57,37 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
     private volatile @Nullable MinecraftResolverImpl resolver;
     private volatile @Nullable VersionManifestRepository versions;
     private final ExecutorService executor;
+    private final ThreadLocal<ResolverState> activeState = ThreadLocal.withInitial(ResolverState::new);
+
+    /**
+     * Prepare the resolver to receive a resolution request from a context.
+     *
+     * <p>This is intended for situations where artifact resolution needs to
+     * step through multiple hooks within Gradle to gather all necessary
+     * information. We track these bits of information, to be consumed at the
+     * next artifact resolution.</p>
+     *
+     * @param project the project to use for resolving dependencies
+     * @param modifiers the artifact modifiers to apply to the eventual output artifact
+     */
+    public void primeResolver(final Project project, final Set<ArtifactModifier> modifiers) {
+        final ResolverState state = this.activeState.get();
+        state.configurationSource = project.getConfigurations();
+        state.modifiers = modifiers;
+    }
+
+    public Set<ArtifactModifier> peekModifiers() {
+        final ResolverState state = this.activeState.get();
+        final @Nullable Set<ArtifactModifier> modifiers = state.modifiers;
+        if (modifiers == null) {
+            throw new GradleException("No artifact modifiers were staged for resolution operation!");
+        }
+        return modifiers;
+    }
+
+    void dropState() {
+        this.activeState.remove();
+    }
 
     public interface Parameters extends BuildServiceParameters {
         DirectoryProperty getSharedCache(); // global cache
@@ -95,7 +129,7 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
         return downloader;
     }
 
-    public MinecraftResolver resolver(final Project project) {
+    public MinecraftResolver resolver() {
         @Nullable MinecraftResolverImpl resolver = this.resolver;
         if (resolver == null) {
             synchronized (this) {
@@ -105,19 +139,23 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
                         this.downloader().withBaseDir(this.downloader().baseDir().resolve(Constants.Directories.JARS)),
                         this.getParameters().getRootProjectCache().get().getAsFile().toPath().resolve(Constants.Directories.JARS),
                         this.executor,
+                        this::resolveTool,
                         this.getParameters().getRefreshDependencies().get()
                     );
                 } else {
-                    return this.resolver.setResolver(this.toolResolver(project));
+                    return this.resolver;
                 }
             }
         }
-        return resolver.setResolver(this.toolResolver(project));
+        return resolver;
     }
 
-    private Function<ResolvableTool, URL[]> toolResolver(final Project project) {
-        final ConfigurationContainer container = project.getConfigurations();
-        return tool -> container.getByName(tool.id()).resolve().stream()
+    private URL[] resolveTool(final ResolvableTool tool) {
+        final @Nullable ConfigurationContainer configurations = this.activeState.get().configurationSource;
+        if (configurations == null) {
+            throw new IllegalArgumentException("Tried to perform a configuration resolution outside of a project-managed context!");
+        }
+        return configurations.getByName(tool.id()).resolve().stream()
             .map(file -> {
                 try {
                     return file.toURI().toURL();
@@ -165,6 +203,13 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
         if (downloader != null) {
             downloader.close();
         }
+    }
+
+    static final class ResolverState {
+
+        @MonotonicNonNull ConfigurationContainer configurationSource;
+        @Nullable Set<ArtifactModifier> modifiers;
+
     }
 
 }

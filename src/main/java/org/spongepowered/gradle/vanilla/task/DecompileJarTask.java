@@ -110,10 +110,12 @@ public abstract class DecompileJarTask extends DefaultTask {
         DecompileJarTask.DECOMPILE_LOCK.lock(); // gradle is super picky about how we resolve configurations, so this lock is a hack fix...
         final CompletableFuture<ResolutionResult<Path>> resultFuture;
         try {
+            final MinecraftProviderService minecraftProvider = this.getMinecraftProvider().get();
             final Set<ArtifactModifier> modifiers =
                 ((MinecraftExtensionImpl) this.getProject().getExtensions().getByType(MinecraftExtension.class)).modifiers();
 
-            resultFuture = this.getMinecraftProvider().get().resolver(this.getProject()).produceAssociatedArtifactSync(
+            minecraftProvider.primeResolver(this.getProject(), modifiers);
+            resultFuture = minecraftProvider.resolver().produceAssociatedArtifactSync(
                 this.getMinecraftPlatform().get(),
                 this.getMinecraftVersion().get(),
                 modifiers,

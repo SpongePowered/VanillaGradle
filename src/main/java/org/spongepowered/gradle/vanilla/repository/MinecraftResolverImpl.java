@@ -29,7 +29,6 @@ import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.io.proguard.ProGuardReader;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.GradleException;
-import org.gradle.api.InvalidUserDataException;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +78,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     private final Downloader downloader;
     private final ExecutorService executor;
     private final Path privateCache;
-    private @Nullable Function<ResolvableTool, URL[]> toolResolver;
+    private final Function<ResolvableTool, URL[]> toolResolver;
     private final ConcurrentMap<EnvironmentKey, CompletableFuture<ResolutionResult<MinecraftEnvironment>>> artifacts = new ConcurrentHashMap<>();
     private final ConcurrentMap<EnvironmentKey, CompletableFuture<ResolutionResult<Path>>> associatedArtifacts = new ConcurrentHashMap<>();
     private final boolean forceRefresh;
@@ -89,18 +88,15 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         final Downloader downloader,
         final Path privateCache,
         final ExecutorService executor,
+        final Function<ResolvableTool, URL[]> toolResolver,
         final boolean forceRefresh
     ) {
         this.manifests = manifests;
         this.downloader = downloader;
         this.privateCache = privateCache;
         this.executor = executor;
-        this.forceRefresh = forceRefresh;
-    }
-
-    public MinecraftResolverImpl setResolver(final Function<ResolvableTool, URL[]> toolResolver) {
         this.toolResolver = toolResolver;
-        return this;
+        this.forceRefresh = forceRefresh;
     }
 
     @Override
@@ -141,7 +137,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
             final CompletableFuture<ResolutionResult<VersionDescriptor.Full>> descriptorFuture = this.manifests.fullVersion(key.versionId());
             return descriptorFuture.thenComposeAsync(potentialDescriptor -> {
                 if (!potentialDescriptor.isPresent()) {
-                    throw new InvalidUserDataException("No minecraft version with the id '" + key.versionId() + "' could be found!");
+                    return CompletableFuture.completedFuture(ResolutionResult.notFound());
                 }
                 final VersionDescriptor.Full descriptor = potentialDescriptor.get();
                 final Download jarDownload = descriptor.requireDownload(side.executableArtifact());
@@ -312,6 +308,10 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     public CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(
         final MinecraftPlatform side, final String version
     ) {
+        return this.provide0(side, version);
+    }
+
+    private CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide0(final MinecraftPlatform side, final String version) {
         final Path output;
         try {
             output = this.sharedArtifactPath(side, version, null, "jar");
@@ -327,27 +327,22 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     public CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(
         final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers
     ) {
-        final CompletableFuture<ResolutionResult<MinecraftEnvironment>> unmodified = this.provide(side, version);
+        final CompletableFuture<ResolutionResult<MinecraftEnvironment>> unmodified = this.provide0(side, version);
         if (modifiers.isEmpty()) { // no modifiers provided, follow the normal path
             return unmodified;
         }
 
+        final String decoratedArtifact = ArtifactModifier.decorateArtifactId(side.artifactId(), modifiers);
         boolean requiresLocalStorage = false;
-        final StringBuilder decoratedArtifactBuilder = new StringBuilder(side.artifactId().length() + 10 * modifiers.size());
-        decoratedArtifactBuilder.append(side.artifactId());
         // Synchronously compute the modifier populator providers
         @SuppressWarnings({"unchecked", "rawtypes"})
         final CompletableFuture<ArtifactModifier.AtlasPopulator>[] populators = new CompletableFuture[modifiers.size()];
+
         int idx = 0;
         for (final ArtifactModifier modifier : modifiers) {
-            decoratedArtifactBuilder.append(ArtifactModifier.ENTRY_SEPARATOR)
-                .append(modifier.key())
-                .append(ArtifactModifier.KEY_VALUE_SEPARATOR)
-                .append(modifier.stateKey());
             requiresLocalStorage |= modifier.requiresLocalStorage();
             populators[idx++] = modifier.providePopulator(this);
         }
-        final String decoratedArtifact = decoratedArtifactBuilder.toString();
 
         final boolean finalRequiresLocalStorage = requiresLocalStorage;
         return this.artifacts.computeIfAbsent(EnvironmentKey.of(side, version, decoratedArtifact), $ -> unmodified.thenCombineAsync(
@@ -366,6 +361,10 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         this.writeMetaIfNecessary(side, decoratedArtifact, input.mapIfPresent((upToDate, env) -> env.metadata()), output.getParent());
                         return ResolutionResult.result(new MinecraftEnvironmentImpl(decoratedArtifact, output, input.get().metadata()), true);
                     } else {
+                        if (!input.isPresent()) {
+                            return ResolutionResult.notFound();
+                        }
+
                         final Path outputTmp = Files.createTempDirectory("vanillagradle").resolve("output" + decoratedArtifact + ".jar");
                         FileUtils.createDirectoriesSymlinkSafe(output.getParent());
 
@@ -428,16 +427,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         final BiConsumer<MinecraftEnvironment, Path> action
     ) {
         // We need to compute our own key to be able to query the map
-        final StringBuilder decoratedArtifactBuilder = new StringBuilder(side.artifactId().length() + 10 * modifiers.size());
-        decoratedArtifactBuilder.append(side.artifactId());
-        for (final ArtifactModifier modifier : modifiers) {
-            decoratedArtifactBuilder.append(ArtifactModifier.ENTRY_SEPARATOR)
-                .append(modifier.key())
-                .append(ArtifactModifier.KEY_VALUE_SEPARATOR)
-                .append(modifier.stateKey());
-        }
-        decoratedArtifactBuilder.append('-').append(id);
-        final String decoratedArtifact = decoratedArtifactBuilder.toString();
+        final String decoratedArtifact = ArtifactModifier.decorateArtifactId(side.artifactId(), modifiers) + '-' + id;
         final CompletableFuture<ResolutionResult<Path>> ourResult = new CompletableFuture<>();
         final @Nullable CompletableFuture<ResolutionResult<Path>> existing = this.associatedArtifacts.putIfAbsent(EnvironmentKey.of(side, version, decoratedArtifact), ourResult);
         if (existing != null) { // don't resolve twice

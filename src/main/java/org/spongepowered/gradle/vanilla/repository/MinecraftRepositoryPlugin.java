@@ -26,21 +26,25 @@ package org.spongepowered.gradle.vanilla.repository;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.Action;
+import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.ModuleVersionSelector;
 import org.gradle.api.artifacts.ResolutionStrategy;
+import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.dsl.ComponentMetadataHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.initialization.Settings;
 import org.gradle.api.invocation.Gradle;
-import org.gradle.api.logging.Logger;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.Provider;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.MinecraftExtensionImpl;
+import org.spongepowered.gradle.vanilla.model.VersionClassifier;
+import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.repository.rule.JoinedProvidesClientAndServerRule;
 import org.spongepowered.gradle.vanilla.repository.rule.MinecraftIvyModuleExtraDataApplierRule;
 
@@ -60,6 +64,8 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
      * into account our metadata revision number.
      */
     public static final String IVY_METADATA_PATTERN = "[organisation]/[module]/[revision]/ivy-[revision]-vg" + MinecraftResolver.METADATA_VERSION + ".xml";
+
+    private static final String LATEST_PREFIX = "latest.";
 
     private @Nullable Provider<MinecraftProviderService> service;
 
@@ -94,6 +100,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         if (!project.getGradle().getPlugins().hasPlugin(MinecraftRepositoryPlugin.class)) {
             this.createRepositories(project.getRepositories(), service, sharedCacheDirectory, rootProjectCache);
             this.registerComponentMetadataRules(project.getDependencies().getComponents());
+            this.registerPostTaskListener(service, project.getGradle());
         }
 
         // Register tool configurations
@@ -106,10 +113,15 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         }
 
         // Hook into resolution to provide the Minecraft artifact
-        project.getConfigurations().configureEach(configuration -> this.configureResolutionStrategy(project.getLogger(), service, project, configuration.getResolutionStrategy()));
+        project.getConfigurations().configureEach(configuration -> this.configureResolutionStrategy(service, project, configuration.getResolutionStrategy(), configuration.getIncoming()));
     }
 
-    private void configureResolutionStrategy(final Logger logger, final Provider<MinecraftProviderService> service, final Project project, final ResolutionStrategy strategy) {
+    private void configureResolutionStrategy(
+        final Provider<MinecraftProviderService> service,
+        final Project project,
+        final ResolutionStrategy strategy,
+        final ResolvableDependencies incoming
+    ) {
         JoinedProvidesClientAndServerRule.configureResolution(strategy.getCapabilitiesResolution());
         strategy.eachDependency(dependency -> {
             final ModuleVersionSelector dep = dependency.getTarget();
@@ -123,30 +135,64 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                     return;
                 }
 
-                final @Nullable String version = dep.getVersion();
-                logger.info("Attempting to resolve minecraft {} version {}", dep.getName(), version);
-                if (version != null) {
-                    try {
-                        final MinecraftResolver resolver = service.get().resolver(project);
-                        final @Nullable MinecraftExtensionImpl extension = (MinecraftExtensionImpl) project.getExtensions().findByType(MinecraftExtension.class);
-                        if (extension != null) {
-                            final ResolutionResult<MinecraftResolver.MinecraftEnvironment> env = resolver.provide(platform.get(), version, extension.modifiers()).get();
-                            if (env.isPresent()) {
-                                dependency.useTarget(MinecraftPlatform.GROUP + ':' + env.get().decoratedArtifactId() + ':' + version);
-                            }
-                        } else {
-                            // Request the appropriate jar, block until it's provided
-                            resolver.provide(platform.get(), version).get();
+                // Stage 1: This is early enough that we can transform the artifact ID, and apply ArtifactModifiers
+                // For static versions, we test here -- for dynamic versions, we'll test in LauncherMetaMetadataSupplierAndArtifactProducer
+                // Gradle makes us work for this :(
+                final @Nullable MinecraftExtensionImpl extension = (MinecraftExtensionImpl) project.getExtensions().findByType(MinecraftExtension.class);
+                final MinecraftProviderService providerService = service.get();
+                // We need to bypass the metadata supplier, or else we will produce artifacts for every single version Gradle tests
+                final @Nullable String version = this.preProcessVersion(providerService, dep.getVersion());
+                if (extension != null) {
+                    dependency.useTarget(
+                        MinecraftPlatform.GROUP
+                            + ':' + ArtifactModifier.decorateArtifactId(platform.get().artifactId(), extension.modifiers())
+                            + (version == null ? "" : ':' + version)
+                    );
+                    service.get().primeResolver(project, extension.modifiers());
+                    final MinecraftResolver resolver = providerService.resolver();
+
+                    // If we do have a version, try to resolve that fixed version
+                    if (version != null) {
+                        try {
+                            resolver.provide(platform.get(), version, providerService.peekModifiers()).get();
+                        } catch (final InterruptedException ex) {
+                            Thread.currentThread().interrupt();
+                        } catch (final ExecutionException ex) {
+                            project.getLogger().error("Failed to resolve Minecraft {} version {}:", platform.get(), version, ex.getCause());
                         }
-                    } catch (final InterruptedException ex) {
-                        Thread.currentThread().interrupt();
-                    } catch (final ExecutionException ex) {
-                        // log exception but don't throw, dependency resolution failure will come when expected.
-                        logger.error("Failed to resolve Minecraft {} version {}:", platform.get(), version, ex.getCause());
                     }
                 }
             }
         });
+        incoming.afterResolve(resolved -> {
+            if (service.isPresent()) {
+                service.get().dropState(); // make sure we don't leak references
+            }
+        });
+    }
+
+    private @Nullable String preProcessVersion(final MinecraftProviderService service, final @Nullable String inputVersion) {
+        if (inputVersion == null) {
+            return null;
+        }
+
+        if (inputVersion.startsWith(MinecraftRepositoryPlugin.LATEST_PREFIX)) {
+            final String status = inputVersion.substring(MinecraftRepositoryPlugin.LATEST_PREFIX.length());
+            final @Nullable VersionClassifier classifier = VersionClassifier.byId(status);
+            if (classifier != null) {
+                try {
+                    // TODO: this won't work for old_alpha, old_beta, or pending -- but most of those don't have official mappings anyways
+                    final Optional<String> version = service.versions().latestVersion(classifier).get();
+                    return version.orElseThrow(() -> new InvalidUserDataException("Unable to determine latest version for type " + classifier));
+                } catch (final InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    // fall-through
+                } catch (final ExecutionException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+        return inputVersion;
     }
 
     private void applyToSettings(final Settings settings) {
@@ -158,6 +204,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         // Apply VanillaGradle caches
         this.createRepositories(settings.getDependencyResolutionManagement().getRepositories(), service, sharedCacheDirectory, rootProjectCache);
         this.registerComponentMetadataRules(settings.getDependencyResolutionManagement().getComponents());
+        this.registerPostTaskListener(service, settings.getGradle());
 
         final MinecraftRepositoryExtension extension = this.registerExtension(settings, service, settings.getRootDir());
 
@@ -173,6 +220,15 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
     }
 
     // Common handling //
+
+    private void registerPostTaskListener(final Provider<MinecraftProviderService> service, final Gradle gradle) {
+        gradle.getTaskGraph().afterTask(new Action<Task>() {
+            @Override
+            public void execute(final Task task) {
+                service.get().dropState();
+            }
+        });
+    }
 
     private MinecraftRepositoryExtension registerExtension(final ExtensionAware holder, final Provider<MinecraftProviderService> service, final File rootdir) {
         final MinecraftRepositoryExtensionImpl
@@ -219,13 +275,10 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                }
            });
            ivy.setComponentVersionsLister(LauncherMetaVersionLister.class, params -> params.params(service));
-           ivy.setMetadataSupplier(LauncherMetaMetadataSupplier.class, params -> params.params(service));
+           ivy.setMetadataSupplier(LauncherMetaMetadataSupplierAndArtifactProducer.class, params -> params.params(service));
            ivy.setAllowInsecureProtocol(true);
            ivy.getResolve().setDynamicMode(false);
-           ivy.metadataSources(sources -> {
-               sources.ivyDescriptor();
-               sources.artifact();
-           });
+           ivy.metadataSources(IvyArtifactRepository.MetadataSources::ivyDescriptor);
        };
     }
 

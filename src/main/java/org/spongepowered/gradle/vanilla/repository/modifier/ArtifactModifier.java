@@ -30,6 +30,7 @@ import org.cadixdev.bombe.jar.JarEntryTransformer;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -40,6 +41,23 @@ public interface ArtifactModifier {
     char ENTRY_SEPARATOR = '_';
 
     char KEY_VALUE_SEPARATOR = '-';
+
+    static String decorateArtifactId(final String originalId, final Set<ArtifactModifier> modifiers) {
+        if (modifiers.isEmpty()) {
+            return originalId;
+        }
+
+        // We need to compute our own key to be able to query the map
+        final StringBuilder decoratedArtifactBuilder = new StringBuilder(originalId.length() + 10 * modifiers.size());
+        decoratedArtifactBuilder.append(originalId);
+        for (final ArtifactModifier modifier : modifiers) {
+            decoratedArtifactBuilder.append(ArtifactModifier.ENTRY_SEPARATOR)
+                .append(modifier.key())
+                .append(ArtifactModifier.KEY_VALUE_SEPARATOR)
+                .append(modifier.stateKey());
+        }
+        return decoratedArtifactBuilder.toString();
+    }
 
     /**
      * A short (1-3 character) identifier for this type of

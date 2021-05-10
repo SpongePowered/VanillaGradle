@@ -25,11 +25,14 @@
 package org.spongepowered.gradle.vanilla.model;
 
 import com.google.gson.annotations.SerializedName;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Known types of versions published by mojang.
@@ -49,7 +52,8 @@ public enum VersionClassifier {
     @SerializedName("release")
     RELEASE;
 
-    private static final List<String> BY_NAME;
+    private static final List<String> NAMES;
+    private static final Map<String, VersionClassifier> BY_NAME;
 
     private final String id;
 
@@ -61,7 +65,17 @@ public enum VersionClassifier {
      * @return an unmodifiable list of known version classifier IDs.
      */
     public static List<String> ids() {
-        return VersionClassifier.BY_NAME;
+        return VersionClassifier.NAMES;
+    }
+
+    /**
+     * Look up a classifier by case-insensitive ID.
+     *
+     * @param id case-insensitive ID
+     * @return a version classifier, or null if unknown
+     */
+    public static @Nullable VersionClassifier byId(final String id) {
+        return VersionClassifier.BY_NAME.get(id.toLowerCase(Locale.ROOT));
     }
 
     public String id() {
@@ -71,9 +85,12 @@ public enum VersionClassifier {
     static {
         final VersionClassifier[] classifiers = VersionClassifier.values();
         final List<String> values = new ArrayList<>(classifiers.length);
+        final Map<String, VersionClassifier> mapping = new HashMap<>(classifiers.length);
         for (final VersionClassifier classifier : classifiers) {
             values.add(classifier.id);
+            mapping.put(classifier.id, classifier);
         }
-        BY_NAME = Collections.unmodifiableList(values);
+        NAMES = Collections.unmodifiableList(values);
+        BY_NAME = Collections.unmodifiableMap(mapping);
     }
 }
