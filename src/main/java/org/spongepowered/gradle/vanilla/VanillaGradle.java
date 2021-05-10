@@ -85,7 +85,7 @@ public final class VanillaGradle implements Plugin<Object> {
         final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) project.getExtensions().getByType(MinecraftExtension.class);
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
             final NamedDomainObjectProvider<Configuration> minecraftConfig = project.getConfigurations().named(Constants.Configurations.MINECRAFT);
-            Stream.of(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME, JavaPlugin.RUNTIME_ONLY_CONFIGURATION_NAME).forEach(config -> {
+            Stream.of(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME, JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).forEach(config -> {
                 project.getConfigurations().named(config, c -> {
                     c.extendsFrom(minecraftConfig.get());
                 });
