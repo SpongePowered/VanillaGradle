@@ -40,6 +40,7 @@ import org.gradle.api.initialization.Settings;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.Provider;
+import org.gradle.build.event.BuildEventsListenerRegistry;
 import org.spongepowered.gradle.vanilla.Constants;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.MinecraftExtensionImpl;
@@ -54,6 +55,8 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 
+import javax.inject.Inject;
+
 /**
  * The minimum plugin to add the minecraft repository to projects or globally.
  */
@@ -67,7 +70,14 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
 
     private static final String LATEST_PREFIX = "latest.";
 
+    private final BuildEventsListenerRegistry repositoryServiceLifetimeHack;
     private @Nullable Provider<MinecraftProviderService> service;
+
+    @Inject
+    public MinecraftRepositoryPlugin(final BuildEventsListenerRegistry registry) {
+        // see https://github.com/diffplug/spotless/pull/720#issuecomment-713399731
+        this.repositoryServiceLifetimeHack = registry;
+    }
 
     @Override
     public void apply(final Object target) {
@@ -291,12 +301,17 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
     }
 
     private Provider<MinecraftProviderService> registerService(final Gradle gradle, final Path sharedCacheDir, final Path rootProjectCacheDir) {
-        return this.service = gradle.getSharedServices().registerIfAbsent("vanillaGradleMinecraft", MinecraftProviderService.class, params -> {
+        final Provider<MinecraftProviderService> service = this.service = gradle.getSharedServices().registerIfAbsent("vanillaGradleMinecraft", MinecraftProviderService.class, params -> {
             final MinecraftProviderService.Parameters options = params.getParameters();
             options.getSharedCache().set(sharedCacheDir.toFile());
             options.getRootProjectCache().set(rootProjectCacheDir.toFile());
             options.getOfflineMode().set(gradle.getStartParameter().isOffline());
             options.getRefreshDependencies().set(gradle.getStartParameter().isRefreshDependencies());
         });
+
+        // see https://github.com/diffplug/spotless/pull/720#issuecomment-713399731
+        this.repositoryServiceLifetimeHack.onTaskCompletion(service);
+
+        return service;
     }
 }

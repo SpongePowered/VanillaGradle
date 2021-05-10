@@ -33,6 +33,10 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.services.BuildService;
 import org.gradle.api.services.BuildServiceParameters;
+import org.gradle.build.event.BuildEventsListenerRegistry;
+import org.gradle.internal.operations.BuildOperationListener;
+import org.gradle.tooling.events.FinishEvent;
+import org.gradle.tooling.events.OperationCompletionListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.Constants;
@@ -50,7 +54,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public abstract class MinecraftProviderService implements BuildService<MinecraftProviderService.Parameters>, AutoCloseable {
+public abstract class MinecraftProviderService implements
+    BuildService<MinecraftProviderService.Parameters>,
+    AutoCloseable,
+    OperationCompletionListener {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MinecraftProviderService.class);
 
     private volatile @Nullable Downloader downloader;
@@ -58,6 +66,12 @@ public abstract class MinecraftProviderService implements BuildService<Minecraft
     private volatile @Nullable VersionManifestRepository versions;
     private final ExecutorService executor;
     private final ThreadLocal<ResolverState> activeState = ThreadLocal.withInitial(ResolverState::new);
+
+    @Override
+    public void onFinish(final FinishEvent finishEvent) {
+        // no-op, a workaround to keep the service alive for the entire build
+        // see https://github.com/diffplug/spotless/pull/720#issuecomment-713399731
+    }
 
     /**
      * Prepare the resolver to receive a resolution request from a context.
