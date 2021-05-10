@@ -133,6 +133,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         final ResolvableDependencies incoming
     ) {
         JoinedProvidesClientAndServerRule.configureResolution(strategy.getCapabilitiesResolution());
+        final boolean[] minecraftResolved = {false}; // a sentinel to make sure we only drop state when done resolving for *our* configuration
         strategy.eachDependency(dependency -> {
             final ModuleVersionSelector dep = dependency.getTarget();
             if (MinecraftPlatform.GROUP.equals(dep.getGroup())) {
@@ -158,6 +159,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                             + ':' + ArtifactModifier.decorateArtifactId(platform.get().artifactId(), extension.modifiers())
                             + (version == null ? "" : ':' + version)
                     );
+                    minecraftResolved[0] = true;
                     service.get().primeResolver(project, extension.modifiers());
                     final MinecraftResolver resolver = providerService.resolver();
 
@@ -175,7 +177,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
             }
         });
         incoming.afterResolve(resolved -> {
-            if (service.isPresent()) {
+            if (minecraftResolved[0]) {
                 service.get().dropState(); // make sure we don't leak references
             }
         });

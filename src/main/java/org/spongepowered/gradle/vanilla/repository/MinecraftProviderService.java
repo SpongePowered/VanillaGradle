@@ -33,8 +33,6 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.services.BuildService;
 import org.gradle.api.services.BuildServiceParameters;
-import org.gradle.build.event.BuildEventsListenerRegistry;
-import org.gradle.internal.operations.BuildOperationListener;
 import org.gradle.tooling.events.FinishEvent;
 import org.gradle.tooling.events.OperationCompletionListener;
 import org.slf4j.Logger;
@@ -66,6 +64,19 @@ public abstract class MinecraftProviderService implements
     private volatile @Nullable VersionManifestRepository versions;
     private final ExecutorService executor;
     private final ThreadLocal<ResolverState> activeState = ThreadLocal.withInitial(ResolverState::new);
+
+    public interface Parameters extends BuildServiceParameters {
+        DirectoryProperty getSharedCache(); // global cache
+        DirectoryProperty getRootProjectCache(); // root project cache, used for any transformed artifacts that are reliant on project data
+        Property<Boolean> getOfflineMode(); // gradle -o offline mode parameter, only resolve from local cache
+        Property<Boolean> getRefreshDependencies(); // gradle --refresh-dependencies start parameter, ignore existing data in local cache
+    }
+
+    public MinecraftProviderService() {
+        final int availableCpus = Runtime.getRuntime().availableProcessors();
+        this.executor = Executors.newWorkStealingPool(Math.min(Math.max(4, availableCpus * 2), 64));
+        MinecraftProviderService.LOGGER.info(Constants.NAME + ": Creating minecraft provider service");
+    }
 
     @Override
     public void onFinish(final FinishEvent finishEvent) {
@@ -101,19 +112,6 @@ public abstract class MinecraftProviderService implements
 
     void dropState() {
         this.activeState.remove();
-    }
-
-    public interface Parameters extends BuildServiceParameters {
-        DirectoryProperty getSharedCache(); // global cache
-        DirectoryProperty getRootProjectCache(); // root project cache, used for any transformed artifacts that are reliant on project data
-        Property<Boolean> getOfflineMode(); // gradle -o offline mode parameter, only resolve from local cache
-        Property<Boolean> getRefreshDependencies(); // gradle --refresh-dependencies start parameter, ignore existing data in local cache
-    }
-
-    public MinecraftProviderService() {
-        final int availableCpus = Runtime.getRuntime().availableProcessors();
-        this.executor = Executors.newWorkStealingPool(Math.min(Math.max(4, availableCpus * 2), 64));
-        MinecraftProviderService.LOGGER.info(Constants.NAME + ": Creating minecraft provider service");
     }
 
     public Downloader downloader() {
