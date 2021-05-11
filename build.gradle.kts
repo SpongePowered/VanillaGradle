@@ -2,7 +2,7 @@ plugins {
     `java-gradle-plugin`
     eclipse
     id("com.gradle.plugin-publish") version "0.14.0"
-    val indraVersion = "2.0.1"
+    val indraVersion = "2.0.3"
     id("net.kyori.indra") version indraVersion
     id("net.kyori.indra.license-header") version indraVersion
     id("net.kyori.indra.publishing.gradle-plugin") version indraVersion
