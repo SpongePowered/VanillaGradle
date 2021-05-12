@@ -104,6 +104,7 @@ public final class Constants {
         public static final String MERGE_TOOL = "net.minecraftforge:mergetool:1.1.1";
         public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:1.0.2";
         public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:1.5.498.6";
+        public static final String FORCED_ASM = "9.1";
 
         private WorkerDependencies() {
         }

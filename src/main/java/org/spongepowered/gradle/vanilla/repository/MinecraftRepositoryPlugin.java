@@ -34,6 +34,7 @@ import org.gradle.api.artifacts.ModuleVersionSelector;
 import org.gradle.api.artifacts.ResolutionStrategy;
 import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.dsl.ComponentMetadataHandler;
+import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.IvyArtifactRepository;
 import org.gradle.api.initialization.Settings;
@@ -120,10 +121,22 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                     deps.add(project.getDependencies().create(tool.notation()));
                 });
             });
+            this.constrainToNewAsm(project.getDependencies(), tool);
         }
 
         // Hook into resolution to provide the Minecraft artifact
         project.getConfigurations().configureEach(configuration -> this.configureResolutionStrategy(service, project, configuration.getResolutionStrategy(), configuration.getIncoming()));
+    }
+
+    private void constrainToNewAsm(final DependencyHandler handler, final ResolvableTool tool) {
+        final String[] asmModules = { "asm", "asm-util", "asm-tree", "asm-analysis" };
+        for (final String component : asmModules) {
+            handler.getConstraints().add(tool.id(), "org.ow2.asm:" + component, constraint -> {
+                constraint.version(v -> {
+                    v.require(Constants.WorkerDependencies.FORCED_ASM);
+                });
+            });
+        }
     }
 
     private void configureResolutionStrategy(
