@@ -27,6 +27,7 @@ package org.spongepowered.gradle.vanilla.model.rule;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
+import org.spongepowered.gradle.vanilla.internal.model.rule.OperatingSystemRule;
 
 public class OperatingSystemRuleTest {
 

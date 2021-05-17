@@ -32,19 +32,21 @@ import org.gradle.api.GradleException;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongepowered.gradle.vanilla.Constants;
-import org.spongepowered.gradle.vanilla.model.Download;
-import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
-import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
-import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
-import org.spongepowered.gradle.vanilla.network.Downloader;
-import org.spongepowered.gradle.vanilla.network.HashAlgorithm;
-import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
-import org.spongepowered.gradle.vanilla.repository.modifier.AssociatedResolutionFlags;
-import org.spongepowered.gradle.vanilla.transformer.AtlasTransformers;
-import org.spongepowered.gradle.vanilla.util.AsyncUtils;
-import org.spongepowered.gradle.vanilla.util.FileUtils;
-import org.spongepowered.gradle.vanilla.util.SelfPreferringClassLoader;
+import org.spongepowered.gradle.vanilla.internal.Constants;
+import org.spongepowered.gradle.vanilla.internal.model.Download;
+import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.internal.model.VersionManifestRepository;
+import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.internal.network.network.Downloader;
+import org.spongepowered.gradle.vanilla.internal.network.network.HashAlgorithm;
+import org.spongepowered.gradle.vanilla.internal.repository.IvyModuleWriter;
+import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
+import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
+import org.spongepowered.gradle.vanilla.internal.repository.modifier.AssociatedResolutionFlags;
+import org.spongepowered.gradle.vanilla.internal.transformer.AtlasTransformers;
+import org.spongepowered.gradle.vanilla.internal.util.AsyncUtils;
+import org.spongepowered.gradle.vanilla.internal.util.FileUtils;
+import org.spongepowered.gradle.vanilla.internal.util.SelfPreferringClassLoader;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -230,7 +232,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
             // For now, let's resolve everything ahead-of-time
             // Shouldn't really do this in a `computeIfAbsent`, but oh well... what gradle tells us, we must do
             final CompletableFuture<ResolutionResult<VersionDescriptor.Full>> descriptorFuture = this.manifests.fullVersion(key.versionId());
-            final Executable merge = this.prepareChildLoader(ResolvableTool.JAR_MERGE, "org.spongepowered.gradle.vanilla.worker.JarMerger", "execute");
+            final Executable merge = this.prepareChildLoader(ResolvableTool.JAR_MERGE, "org.spongepowered.gradle.vanilla.internal.worker.JarMerger", "execute");
 
             return descriptorFuture.thenComposeAsync(potentialDescriptor -> clientFuture.thenCombineAsync(serverFuture, (client, server) -> {
                 try {

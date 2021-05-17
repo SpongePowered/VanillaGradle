@@ -44,11 +44,15 @@ import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
-import org.spongepowered.gradle.vanilla.repository.MinecraftProviderService;
-import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryPlugin;
+import org.spongepowered.gradle.vanilla.internal.Constants;
+import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
+import org.spongepowered.gradle.vanilla.internal.ProvideMinecraftPlugin;
+import org.spongepowered.gradle.vanilla.internal.ShadowConfigurationApplier;
+import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
+import org.spongepowered.gradle.vanilla.internal.repository.MinecraftRepositoryPlugin;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
-import org.spongepowered.gradle.vanilla.util.IdeConfigurer;
-import org.spongepowered.gradle.vanilla.util.SelfPreferringClassLoader;
+import org.spongepowered.gradle.vanilla.internal.util.IdeConfigurer;
+import org.spongepowered.gradle.vanilla.internal.util.SelfPreferringClassLoader;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -76,7 +80,7 @@ public final class VanillaGradle implements Plugin<Object> {
         }
     }
 
-    public void applyToProject(final Project project) {
+    private void applyToProject(final Project project) {
         if (VanillaGradle.VERSION_ANNOUNCED.compareAndSet(false, true)) {
             project.getLogger().lifecycle(String.format("SpongePowered Vanilla 'GRADLE' Toolset Version '%s'", Constants.VERSION));
         }

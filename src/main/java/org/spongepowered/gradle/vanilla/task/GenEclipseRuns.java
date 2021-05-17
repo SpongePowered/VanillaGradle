@@ -33,7 +33,7 @@ import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.TaskAction;
-import org.spongepowered.gradle.vanilla.runs.EclipseRunConfigurationWriter;
+import org.spongepowered.gradle.vanilla.internal.runs.EclipseRunConfigurationWriter;
 import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
 
 import java.io.IOException;

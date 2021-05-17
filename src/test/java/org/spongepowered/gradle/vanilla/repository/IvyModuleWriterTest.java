@@ -27,10 +27,11 @@ package org.spongepowered.gradle.vanilla.repository;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
-import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
-import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
-import org.spongepowered.gradle.vanilla.util.GsonUtils;
+import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.internal.model.rule.OperatingSystemRule;
+import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.internal.repository.IvyModuleWriter;
+import org.spongepowered.gradle.vanilla.internal.util.GsonUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;

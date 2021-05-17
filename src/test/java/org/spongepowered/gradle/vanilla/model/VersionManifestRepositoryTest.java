@@ -26,10 +26,14 @@ package org.spongepowered.gradle.vanilla.model;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.spongepowered.gradle.vanilla.model.rule.OperatingSystemRule;
-import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
-import org.spongepowered.gradle.vanilla.network.ApacheHttpDownloader;
-import org.spongepowered.gradle.vanilla.network.Downloader;
+import org.spongepowered.gradle.vanilla.internal.model.Library;
+import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
+import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.internal.model.VersionManifestRepository;
+import org.spongepowered.gradle.vanilla.internal.model.rule.OperatingSystemRule;
+import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.internal.network.network.ApacheHttpDownloader;
+import org.spongepowered.gradle.vanilla.internal.network.network.Downloader;
 import org.spongepowered.gradle.vanilla.repository.ResolutionResult;
 
 import java.io.IOException;

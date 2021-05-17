@@ -24,11 +24,12 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
-import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
-import org.spongepowered.gradle.vanilla.model.VersionManifestRepository;
-import org.spongepowered.gradle.vanilla.network.Downloader;
-import org.spongepowered.gradle.vanilla.repository.modifier.ArtifactModifier;
-import org.spongepowered.gradle.vanilla.repository.modifier.AssociatedResolutionFlags;
+import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.internal.model.VersionManifestRepository;
+import org.spongepowered.gradle.vanilla.internal.network.network.Downloader;
+import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
+import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
+import org.spongepowered.gradle.vanilla.internal.repository.modifier.AssociatedResolutionFlags;
 
 import java.net.URLClassLoader;
 import java.nio.file.Path;

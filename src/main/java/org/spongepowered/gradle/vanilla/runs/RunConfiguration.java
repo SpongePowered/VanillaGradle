@@ -40,7 +40,7 @@ import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.process.CommandLineArgumentProvider;
-import org.spongepowered.gradle.vanilla.Constants;
+import org.spongepowered.gradle.vanilla.internal.Constants;
 
 import java.io.File;
 import java.util.ArrayList;

@@ -43,12 +43,12 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.util.ConfigureUtil;
-import org.spongepowered.gradle.vanilla.MinecraftExtensionImpl;
-import org.spongepowered.gradle.vanilla.model.Argument;
-import org.spongepowered.gradle.vanilla.model.Arguments;
-import org.spongepowered.gradle.vanilla.model.JavaRuntimeVersion;
-import org.spongepowered.gradle.vanilla.model.VersionDescriptor;
-import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
+import org.spongepowered.gradle.vanilla.internal.model.Argument;
+import org.spongepowered.gradle.vanilla.internal.model.Arguments;
+import org.spongepowered.gradle.vanilla.internal.model.JavaRuntimeVersion;
+import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
 
 import java.util.Arrays;
 import java.util.Collection;

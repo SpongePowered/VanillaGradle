@@ -24,11 +24,11 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
-import org.spongepowered.gradle.vanilla.Constants;
-import org.spongepowered.gradle.vanilla.model.DownloadClassifier;
-import org.spongepowered.gradle.vanilla.model.GroupArtifactVersion;
-import org.spongepowered.gradle.vanilla.model.Library;
-import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.internal.Constants;
+import org.spongepowered.gradle.vanilla.internal.model.DownloadClassifier;
+import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
+import org.spongepowered.gradle.vanilla.internal.model.Library;
+import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
 
 import java.util.Collections;
 import java.util.HashSet;

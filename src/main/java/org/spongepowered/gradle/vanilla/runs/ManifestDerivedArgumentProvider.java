@@ -27,8 +27,8 @@ package org.spongepowered.gradle.vanilla.runs;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
 import org.gradle.process.CommandLineArgumentProvider;
-import org.spongepowered.gradle.vanilla.model.Argument;
-import org.spongepowered.gradle.vanilla.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.internal.model.Argument;
+import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
 
 import java.util.ArrayList;
 import java.util.List;
