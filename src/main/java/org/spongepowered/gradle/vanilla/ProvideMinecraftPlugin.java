@@ -237,12 +237,12 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         final TaskProvider<Copy> gatherNatives = tasks.register(Constants.Tasks.COLLECT_NATIVES, Copy.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.from(extractedNatives);
-            task.into(nativesDir.get());
+            task.into(nativesDir);
             task.exclude("META-INF/**");
             task.setDuplicatesStrategy(DuplicatesStrategy.WARN); // just in case Mojang change things up on us!
         });
 
-        final DirectoryProperty assetsDir = minecraft.assetsDirectory();
+        final Provider<String> assetsDir = minecraft.assetsDirectory().map(d -> d.getAsFile().getAbsolutePath());
         final Property<String> targetVersion = minecraft.version();
         final TaskProvider<DownloadAssetsTask> downloadAssets = tasks.register(Constants.Tasks.DOWNLOAD_ASSETS, DownloadAssetsTask.class, task -> {
             task.dependsOn(gatherNatives);
@@ -252,7 +252,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         });
 
         minecraft.getRuns().configureEach(run -> {
-            run.getParameterTokens().put(ClientRunParameterTokens.ASSETS_ROOT, assetsDir.map(x -> x.getAsFile().getAbsolutePath()));
+            run.getParameterTokens().put(ClientRunParameterTokens.ASSETS_ROOT, assetsDir);
             run.getParameterTokens().put(ClientRunParameterTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
         });
 

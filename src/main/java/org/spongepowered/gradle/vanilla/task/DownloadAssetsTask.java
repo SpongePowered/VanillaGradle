@@ -46,6 +46,7 @@ import org.spongepowered.gradle.vanilla.util.Pair;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -56,8 +57,8 @@ import java.util.concurrent.ExecutionException;
 
 public abstract class DownloadAssetsTask extends DefaultTask {
 
-    @OutputDirectory
-    public abstract DirectoryProperty getAssetsDirectory();
+    @Input
+    public abstract Property<String> getAssetsDirectory();
 
     @Input
     public abstract Property<String> getTargetVersion();
@@ -73,7 +74,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
 
     @TaskAction
     public void execute() {
-        final Path assetsDirectory = this.getAssetsDirectory().get().getAsFile().toPath();
+        final Path assetsDirectory = Paths.get(this.getAssetsDirectory().get());
         final Downloader downloader = this.getMinecraftProvider().get().downloader().withBaseDir(assetsDirectory);
 
         // Fetch asset index
