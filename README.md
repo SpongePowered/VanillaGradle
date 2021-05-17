@@ -1,8 +1,7 @@
 ![VanillaGradle Logo](docs/logo.png?raw=true)
 
 **VanillaGradle** is a toolchain for *Minecraft: Java Edition* that provides a workspace to interact with the game using official mappings provided 
-by Mojang Studios. This plugin requires at least Gradle 6.7 to run, though it is only actively tested against the latest release of every major Gradle 
-series supported (currently 6.x and 7.x).
+by Mojang Studios. This plugin requires at least Gradle 6.7 and Java 8 to run, though it is only actively tested against the latest release of every major Gradle series supported (currently 6.x and 7.x).
 
 ### Documentation
 
@@ -35,7 +34,7 @@ minecraft {
 }
 ```
 
-Within IntelliJ IDEA, this will generate run configurations named `runClient` and `runServer`
+Within IntelliJ IDEA and Eclipse, this will generate run configurations named `runClient` and `runServer`
 
 To have browsable sources in-IDE, run `./gradlew decompile`
 
@@ -50,6 +49,10 @@ your system you can instead run the supplied Gradle wrapper `gradlew`)*
 
 ### Version History
 
+**Compatibility:** We use [Semantic Versioning](https://semver.org/) for the user-visible API in VanillaGradle. This applies to every public class 
+outside of the `org.spongepowered.gradle.vanilla.internal` package. The contents of the `internal` package are considered implementation details 
+and are subject to change at any time.
+
 <table width="100%">
   <thead>
     <tr>
@@ -61,7 +64,7 @@ your system you can instead run the supplied Gradle wrapper `gradlew`)*
   <tbody>
     <tr>
       <td valign="top"><b>0.2</b></td>
-      <td valign="top">Map 2021</td>
+      <td valign="top">May 2021</td>
       <td valign="top">
         <ul>
           <li>Run configurations are generated for Eclipse</li>
