@@ -125,7 +125,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         final org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer runs = minecraft.getRuns();
         final File projectDir = target.getProjectDir();
         final String projectName = target.getName();
-        target.getTasks().register("genEclipseRuns", GenEclipseRuns.class, task -> {
+        target.getTasks().register(Constants.Tasks.GEN_ECLIPSE_RUNS, GenEclipseRuns.class, task -> {
+            task.dependsOn(assets);
             task.getRunConfigurations().set(runs);
             task.getProjectDirectory().set(projectDir);
             task.getProjectName().set(projectName);

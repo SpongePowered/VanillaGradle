@@ -35,6 +35,7 @@ import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
@@ -114,7 +115,7 @@ public class RunConfiguration implements Named {
      * @return a map of launcher meta tokens
      * @see ClientRunParameterTokens for known token names
      */
-    @Internal
+    @Nested
     public MapProperty<String, String> getParameterTokens() {
         return this.parameterTokens;
     }
@@ -162,7 +163,7 @@ public class RunConfiguration implements Named {
         return this.ideaSourceSet;
     }
 
-    @Internal
+    @Nested
     public List<CommandLineArgumentProvider> getAllArgumentProviders() {
         return this.allArgs;
     }
@@ -186,7 +187,7 @@ public class RunConfiguration implements Named {
         return values;
     }
 
-    @Internal
+    @Nested
     public List<CommandLineArgumentProvider> getAllJvmArgumentProviders() {
         return this.allJvmArgs;
     }
@@ -238,6 +239,7 @@ public class RunConfiguration implements Named {
         this.mainModule.set(mainModule);
     }
 
+    @Input
     public Property<JavaLanguageVersion> getTargetVersion() {
         return this.targetVersion;
     }
@@ -261,6 +263,12 @@ public class RunConfiguration implements Named {
 
         ConstantListProvider(final List<String> contents) {
             this.contents = contents;
+        }
+
+        @Input
+        @Optional
+        public List<String> getContents() {
+            return this.contents;
         }
 
         @Override
