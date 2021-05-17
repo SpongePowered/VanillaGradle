@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "org.spongepowered"
-version = "0.2-SNAPSHOT"
+version = "0.2"
 
 repositories {
     maven("https://repo.spongepowered.org/repository/maven-public/") {
