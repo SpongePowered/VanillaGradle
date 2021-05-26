@@ -307,7 +307,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                         }
                         ideaRun.moduleRef(project, moduleSet);
                         ideaRun.setJvmArgs(StringUtils.join(run.getAllJvmArgumentProviders(), true));
-                        ideaRun.setProgramParameters(StringUtils.join(run.getAllArgumentProviders(), false));
+                        ideaRun.setProgramParameters(StringUtils.join(run.getAllArgumentProviders(), true));
                     });
                 });
             }
