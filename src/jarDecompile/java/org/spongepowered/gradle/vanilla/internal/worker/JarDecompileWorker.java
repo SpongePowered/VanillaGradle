@@ -26,6 +26,7 @@ package org.spongepowered.gradle.vanilla.internal.worker;
 
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.workers.WorkAction;
 import org.gradle.workers.WorkParameters;
 import org.jetbrains.java.decompiler.main.Fernflower;
@@ -68,11 +69,17 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
         public abstract ConfigurableFileCollection getDecompileClasspath();
         public abstract RegularFileProperty getInputJar();
         public abstract RegularFileProperty getOutputJar();
+        public abstract MapProperty<String, String> getExtraArgs();
     }
 
     @Override
     public void execute() {
         final Parameters params = this.getParameters();
+
+        final Map<String, Object> ffArgs = new HashMap<>(params.getExtraArgs().get());
+        for (final Map.Entry<String, Object> defaultArg : JarDecompileWorker.OPTIONS.entrySet()) {
+            ffArgs.putIfAbsent(defaultArg.getKey(), defaultArg.getValue()); // don't override user-specified options
+        }
 
         // Decompile
         final File input = params.getInputJar().get().getAsFile();
@@ -80,7 +87,7 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
             final Fernflower decompiler = new Fernflower(
                 bytecode,
                 new LineMappingResultSaver(input.getAbsolutePath(), params.getOutputJar().get().getAsFile(), bytecode),
-                JarDecompileWorker.OPTIONS,
+                ffArgs,
                 new SLF4JFernFlowerLogger(JarDecompileWorker.LOGGER)
             );
 

@@ -31,10 +31,12 @@ import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.ArtifactCollection;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.FileCollection;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
@@ -53,6 +55,7 @@ import org.spongepowered.gradle.vanilla.internal.worker.JarDecompileWorker;
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
@@ -98,6 +101,15 @@ public abstract class DecompileJarTask extends DefaultTask {
     @Input
     @Optional
     public abstract Property<JavaLauncher> getJavaLauncher();
+
+    /**
+     * Extra arguments to pass to fernflower, to override VanillaGradle's defaults.
+     *
+     * @return extra arguments
+     */
+    @Nested
+    @Optional
+    public abstract MapProperty<String, String> getExtraFernFlowerArgs();
 
     @Inject
     protected abstract WorkerExecutor getWorkerExecutor();
@@ -156,6 +168,7 @@ public abstract class DecompileJarTask extends DefaultTask {
                         spec.getClasspath().from(this.getWorkerClasspath());
                     }).submit(JarDecompileWorker.class, parameters -> {
                         parameters.getDecompileClasspath().from(dependencies);
+                        parameters.getExtraArgs().set(this.getExtraFernFlowerArgs().orElse(Collections.emptyMap()));
                         parameters.getInputJar().set(env.jar().toFile()); // Use the temporary jar
                         parameters.getOutputJar().set(output.toFile());
                     });
