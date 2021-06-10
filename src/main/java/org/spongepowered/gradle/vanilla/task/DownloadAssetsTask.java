@@ -100,6 +100,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
 
         this.getLogger().info("Downloading and verifying {} assets for {}", index.objects().size(), this.getTargetVersion().get());
         final Path objectsDirectory = assetsDirectory.resolve("objects");
+        final Downloader objectDownloader = downloader.withBaseDir(objectsDirectory);
         // For every asset in the index, resolve create a future providing the resolution result
         // The asset index will handle resolution
         final Set<CompletableFuture<ResolutionResult<AssetIndex.Asset>>> results = new HashSet<>();
@@ -107,9 +108,9 @@ public abstract class DownloadAssetsTask extends DefaultTask {
 
         // Send out all the requests
         for (final Map.Entry<String, AssetIndex.Asset> asset : index.objects().entrySet()) {
-            results.add(downloader.downloadAndValidate(
+            results.add(objectDownloader.downloadAndValidate(
                 this.assetUrl(asset.getValue()),
-                objectsDirectory.resolve(asset.getValue().fileName()),
+                asset.getValue().fileName(),
                 HashAlgorithm.SHA1,
                 asset.getValue().hash()
             )

@@ -145,14 +145,8 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                 final Download jarDownload = descriptor.requireDownload(side.executableArtifact());
                 final Download mappingsDownload = descriptor.requireDownload(side.mappingsArtifact());
 
-                final Path jarPath;
-                final Path mappingsPath;
-                try {
-                    jarPath = this.sharedArtifactPath(platform.artifactId() + "_m-obf", version, null, "jar");
-                    mappingsPath = this.sharedArtifactPath(platform.artifactId() + "_m-obf", version, "mappings", "txt");
-                } catch (final IOException ex) {
-                    return AsyncUtils.failedFuture(ex);
-                }
+                final String jarPath = this.sharedArtifactFileName(platform.artifactId() + "_m-obf", version, null, "jar");
+                final String mappingsPath = this.sharedArtifactFileName(platform.artifactId() + "_m-obf", version, "mappings", "txt");
 
                 final CompletableFuture<ResolutionResult<Path>> jarFuture = this.downloader.downloadAndValidate(
                     jarDownload.url(),
@@ -316,7 +310,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     private CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide0(final MinecraftPlatform side, final String version) {
         final Path output;
         try {
-            output = this.sharedArtifactPath(side, version, null, "jar");
+            output = this.sharedArtifactPath(side.artifactId(), version, null, "jar");
         } catch (final IOException ex) {
             return AsyncUtils.failedFuture(ex);
         }
@@ -400,7 +394,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     }
 
     private void cleanAssociatedArtifacts(final MinecraftPlatform platform, final String version) throws IOException {
-        final Path baseArtifact = this.sharedArtifactPath(platform, version, null, "jar");
+        final Path baseArtifact = this.sharedArtifactPath(platform.artifactId(), version, null, "jar");
         int errorCount = 0;
         try (final DirectoryStream<Path> siblings = Files.newDirectoryStream(baseArtifact.getParent(), x -> x.getFileName().toString().endsWith(".jar"))) {
             for (final Path file : siblings) {
@@ -479,15 +473,14 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         return ourResult;
     }
 
-    private Path sharedArtifactPath(
-        final MinecraftPlatform platform,
+    private String sharedArtifactFileName(
+        final String artifactId,
         final String version,
         final @Nullable String classifier,
         final String extension
-    ) throws IOException {
-        return this.artifactPath(
-            this.downloader.baseDir(),
-            platform.artifactId(),
+    ) {
+        return this.artifactFileName(
+            artifactId,
             version,
             classifier,
             extension
@@ -516,10 +509,19 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         final @Nullable String classifier,
         final String extension
     ) throws IOException {
+        final Path artifactPath = baseDir.resolve(this.artifactFileName(artifact, version, classifier, extension));
+        FileUtils.createDirectoriesSymlinkSafe(artifactPath.getParent());
+        return artifactPath;
+    }
+
+    private String artifactFileName(
+        final String artifact,
+        final String version,
+        final @Nullable String classifier,
+        final String extension
+    ) {
         final String fileName = classifier == null ? artifact + '-' + version + '.' + extension : artifact + '-' + version + '-' + classifier + '.' + extension;
-        final Path directory = baseDir.resolve("net/minecraft").resolve(artifact).resolve(version);
-        FileUtils.createDirectoriesSymlinkSafe(directory);
-        return directory.resolve(fileName);
+        return "net/minecraft/" + artifact + '/' + version + '/' + fileName;
     }
 
     private void writeMetaIfNecessary(

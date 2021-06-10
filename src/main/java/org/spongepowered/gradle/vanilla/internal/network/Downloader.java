@@ -115,12 +115,12 @@ public interface Downloader extends AutoCloseable {
      * the downloader's caching policy.</p>
      *
      * @param source the URL to download from.
-     * @param destination the location to download to
+     * @param destination a relative path to download to
      * @return a future returning the downloaded patch once a download is complete
      */
-    CompletableFuture<ResolutionResult<Path>> download(final URL source, final Path destination);
+    CompletableFuture<ResolutionResult<Path>> download(final URL source, final String destination);
 
-    CompletableFuture<ResolutionResult<Path>> downloadAndValidate(final URL source, final Path destination, final HashAlgorithm algorithm, final String hash);
+    CompletableFuture<ResolutionResult<Path>> downloadAndValidate(final URL source, final String destination, final HashAlgorithm algorithm, final String hash);
 
     @Override
     void close() throws IOException;

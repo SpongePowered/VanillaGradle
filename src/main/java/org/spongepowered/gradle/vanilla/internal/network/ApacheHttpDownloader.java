@@ -221,19 +221,19 @@ public final class ApacheHttpDownloader implements AutoCloseable, Downloader {
     }
 
     @Override
-    public CompletableFuture<ResolutionResult<Path>> download(final URL source, final Path destination) {
+    public CompletableFuture<ResolutionResult<Path>> download(final URL source, final String destination) {
         return this.download(
             source,
-            destination,
+            this.baseDirectory.resolve(destination),
             ToPathEntityConsumer::new,
             CompletableFuture::completedFuture
         );
     }
 
     @Override
-    public CompletableFuture<ResolutionResult<Path>> downloadAndValidate(final URL source, final Path destination, final HashAlgorithm algorithm, final String hash) {
+    public CompletableFuture<ResolutionResult<Path>> downloadAndValidate(final URL source, final String destination, final HashAlgorithm algorithm, final String hash) {
         return this.downloadValidating(
-            source, destination, algorithm, hash,
+            source, this.baseDirectory.resolve(destination), algorithm, hash,
             ToPathEntityConsumer::new,
             CompletableFuture::completedFuture
         );
