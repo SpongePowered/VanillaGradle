@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import org.spongepowered.gradle.vanilla.internal.network.network.Downloader;
+import org.spongepowered.gradle.vanilla.internal.network.Downloader;
 import org.spongepowered.gradle.vanilla.repository.ResolutionResult;
 
 import java.io.File;

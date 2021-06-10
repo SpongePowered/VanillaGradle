@@ -28,7 +28,7 @@ import org.cadixdev.atlas.AtlasTransformerContext;
 import org.cadixdev.bombe.jar.JarEntryTransformer;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.spongepowered.gradle.vanilla.internal.network.network.HashAlgorithm;
+import org.spongepowered.gradle.vanilla.internal.network.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
 import org.spongepowered.gradle.vanilla.internal.util.AsyncUtils;

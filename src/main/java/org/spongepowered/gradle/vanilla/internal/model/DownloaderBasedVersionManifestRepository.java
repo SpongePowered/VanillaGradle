@@ -28,8 +28,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.internal.Constants;
-import org.spongepowered.gradle.vanilla.internal.network.network.Downloader;
-import org.spongepowered.gradle.vanilla.internal.network.network.HashAlgorithm;
+import org.spongepowered.gradle.vanilla.internal.network.Downloader;
+import org.spongepowered.gradle.vanilla.internal.network.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.repository.ResolutionResult;
 import org.spongepowered.gradle.vanilla.internal.util.GsonUtils;
 

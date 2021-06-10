@@ -22,7 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.internal.network.network;
+package org.spongepowered.gradle.vanilla.internal.network;
 
 import java.io.IOException;
 import java.net.URL;
