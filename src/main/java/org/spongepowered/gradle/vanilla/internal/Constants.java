@@ -105,6 +105,7 @@ public final class Constants {
         public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:1.0.2";
         public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:1.5.498.6";
         public static final String FORCED_ASM = "9.1";
+        public static final String ASM_UTIL = "org.ow2.asm:asm-util:" + WorkerDependencies.FORCED_ASM;
 
         private WorkerDependencies() {
         }
@@ -136,6 +137,7 @@ public final class Constants {
         public static final String MERGETOOL = "mergetool";
         public static final String ACCESS_WIDENER = "accessWidener";
         public static final String FORGE_FLOWER = "forgeFlower";
+        public static final String CLASS_DUMP = "classDump";
 
         private Configurations() {
         }

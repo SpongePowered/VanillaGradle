@@ -49,6 +49,7 @@ import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.internal.repository.rule.JoinedProvidesClientAndServerRule;
 import org.spongepowered.gradle.vanilla.internal.repository.rule.MinecraftIvyModuleExtraDataApplierRule;
+import org.spongepowered.gradle.vanilla.internal.util.ConfigurationUtils;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
@@ -123,6 +124,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                 config.defaultDependencies(deps -> {
                     deps.add(project.getDependencies().create(tool.notation()));
                 });
+                ConfigurationUtils.markAsJavaRuntime(project.getObjects(), config);
             });
             this.constrainToNewAsm(project.getDependencies(), tool);
         }

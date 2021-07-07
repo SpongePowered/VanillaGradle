@@ -50,9 +50,11 @@ import org.spongepowered.gradle.vanilla.internal.ProvideMinecraftPlugin;
 import org.spongepowered.gradle.vanilla.internal.ShadowConfigurationApplier;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftRepositoryPlugin;
+import org.spongepowered.gradle.vanilla.internal.util.ConfigurationUtils;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.internal.util.IdeConfigurer;
 import org.spongepowered.gradle.vanilla.internal.util.SelfPreferringClassLoader;
+import org.spongepowered.gradle.vanilla.task.DumpClassTask;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -87,8 +89,8 @@ public final class VanillaGradle implements Plugin<Object> {
 
         project.getPlugins().apply(ProvideMinecraftPlugin.class);
         final MinecraftExtensionImpl minecraft = (MinecraftExtensionImpl) project.getExtensions().getByType(MinecraftExtension.class);
+        final NamedDomainObjectProvider<Configuration> minecraftConfig = project.getConfigurations().named(Constants.Configurations.MINECRAFT);
         project.getPlugins().withType(JavaPlugin.class, plugin -> {
-            final NamedDomainObjectProvider<Configuration> minecraftConfig = project.getConfigurations().named(Constants.Configurations.MINECRAFT);
             Stream.of(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME, JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).forEach(config -> {
                 project.getConfigurations().named(config, c -> {
                     c.extendsFrom(minecraftConfig.get());
@@ -107,6 +109,7 @@ public final class VanillaGradle implements Plugin<Object> {
             VanillaGradle.applyShadowConfiguration(project.getTasks(), plugin);
         });
 
+        this.createDumpClass(project, minecraftConfig);
         this.createDisplayMinecraftVersions(project.getPlugins().getPlugin(MinecraftRepositoryPlugin.class).service(), project.getTasks());
         project.afterEvaluate(p -> {
             if (minecraft.targetVersion().isPresent()) {
@@ -121,6 +124,24 @@ public final class VanillaGradle implements Plugin<Object> {
                 project,
                 p.getTasks().named(Constants.Tasks.PREPARE_WORKSPACE)
             );
+        });
+    }
+
+    private void createDumpClass(
+        final Project project, final NamedDomainObjectProvider<Configuration> minecraftConfig
+    ) {
+        final NamedDomainObjectProvider<Configuration> asmUtilConfiguration = project.getConfigurations().register(Constants.Configurations.CLASS_DUMP, config -> {
+            config.setCanBeConsumed(false);
+            config.setCanBeResolved(true);
+            config.defaultDependencies(deps -> {
+                deps.add(project.getDependencies().create(Constants.WorkerDependencies.ASM_UTIL));
+            });
+            ConfigurationUtils.markAsJavaRuntime(project.getObjects(), config);
+        });
+        project.getTasks().register("dumpClass", DumpClassTask.class, task -> {
+            task.setGroup(Constants.TASK_GROUP);
+            task.getMinecraftClasspath().from(minecraftConfig.get());
+            task.getAsmUtilClasspath().from(asmUtilConfiguration);
         });
     }
 
