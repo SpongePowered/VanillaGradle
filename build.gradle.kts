@@ -1,12 +1,15 @@
+import org.jetbrains.gradle.ext.TaskTriggersConfig
+
 plugins {
     `java-gradle-plugin`
     eclipse
-    id("com.gradle.plugin-publish") version "0.14.0"
-    val indraVersion = "2.0.3"
+    id("com.gradle.plugin-publish") version "0.15.0"
+    id("org.jetbrains.gradle.plugin.idea-ext") version "1.0.1"
+    val indraVersion = "2.0.5"
     id("net.kyori.indra") version indraVersion
     id("net.kyori.indra.license-header") version indraVersion
     id("net.kyori.indra.publishing.gradle-plugin") version indraVersion
-    id("com.diffplug.eclipse.apt") version "3.29.1"
+    id("com.diffplug.eclipse.apt") version "3.30.0"
 }
 
 group = "org.spongepowered"
@@ -36,10 +39,12 @@ configurations.implementation {
     extendsFrom(commonDeps)
 }
 
+val accessWidenerVersion: String by project
+val asmVersion: String by project
+val forgeFlowerVersion: String by project
+val junitVersion: String by project
+val mergeToolVersion: String by project
 dependencies {
-    val asmVersion: String by project
-    val junitVersion: String by project
-
     // All source sets
     commonDeps(gradleApi())
     commonDeps("org.ow2.asm:asm:$asmVersion")
@@ -50,7 +55,7 @@ dependencies {
     }
 
     // Just main
-    implementation("com.google.code.gson:gson:2.8.6")
+    implementation("com.google.code.gson:gson:2.8.7")
     implementation("org.cadixdev:lorenz:0.5.6")
     implementation("org.cadixdev:lorenz-asm:0.5.6") {
         exclude("org.ow2.asm") // Use our own ASM
@@ -58,7 +63,7 @@ dependencies {
 
     implementation("org.cadixdev:lorenz-io-proguard:0.5.6")
 
-    compileOnlyApi("org.checkerframework:checker-qual:3.12.0")
+    compileOnlyApi("org.checkerframework:checker-qual:3.15.0")
     annotationProcessor("org.immutables:value:2.8.8")
     compileOnlyApi("org.immutables:value:2.8.8:annotations")
     api("org.immutables:gson:2.8.8")
@@ -66,20 +71,20 @@ dependencies {
     implementation("org.apache.httpcomponents.client5:httpclient5:5.0.3")
 
     // IDE support
-    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.0")
+    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.0.1")
 
     // Jar merge worker (match with Constants)
-    "jarMergeCompileOnly"("net.minecraftforge:mergetool:1.1.1") {
+    "jarMergeCompileOnly"("net.minecraftforge:mergetool:$mergeToolVersion") {
         exclude("org.ow2.asm")
     }
     implementation(jarMerge.output)
 
     // Jar decompile worker (match with Constants)
-    "jarDecompileCompileOnly"("net.minecraftforge:forgeflower:1.5.498.6")
+    "jarDecompileCompileOnly"("net.minecraftforge:forgeflower:$forgeFlowerVersion")
     implementation(jarDecompile.output)
 
     // Access widener worker (match with Constants)
-    "accessWidenCompileOnly"("net.fabricmc:access-widener:1.0.2") {
+    "accessWidenCompileOnly"("net.fabricmc:access-widener:$accessWidenerVersion") {
         exclude("org.ow2.asm")
     }
     implementation(accessWiden.output)
@@ -91,27 +96,62 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 }
 
-tasks.jar {
-    from(jarMerge.output)
-    from(jarDecompile.output)
-    from(accessWiden.output)
-    from(shadow.output)
-}
 
-tasks.withType(Jar::class).configureEach {
-    indraGit.applyVcsInformationToManifest(manifest)
-    manifest.attributes(
-            "Specification-Title" to "VanillaGradle",
-            "Specification-Vendor" to "SpongePowered",
-            "Specification-Version" to project.version,
-            "Implementation-Title" to project.name,
-            "Implementation-Version" to project.version,
-            "Implementation-Vendor" to "SpongePowered"
-    )
-}
+tasks {
+    // Generate source templates
+    val templateSource = project.file("src/main/templates")
+    val templateDest = project.layout.buildDirectory.dir("generated/sources/templates")
+    val generateTemplates by registering(Copy::class) {
+        group = "sponge"
+        description = "Generate classes from templates for the SpongeVanilla installer"
+        val properties = mutableMapOf(
+            "asmVersion" to asmVersion,
+            "forgeFlowerVersion" to forgeFlowerVersion,
+            "mergeToolVersion" to mergeToolVersion,
+            "accessWidenerVersion" to accessWidenerVersion
+        )
+        inputs.properties(properties)
 
-tasks.withType(JavaCompile::class).configureEach {
-    options.compilerArgs.add("-Xlint:-processing")
+        // Copy template
+        from(templateSource)
+        into(templateDest)
+        expand(properties)
+    }
+
+    sourceSets.main {
+        java.srcDir(generateTemplates.map { it.outputs })
+    }
+
+    // Generate templates on IDE import as well
+    (rootProject.idea.project as? ExtensionAware)?.also {
+        (it.extensions["settings"] as ExtensionAware).extensions.getByType(TaskTriggersConfig::class).afterSync(generateTemplates)
+    }
+    project.eclipse {
+        synchronizationTasks(generateTemplates)
+    }
+
+    jar {
+        from(jarMerge.output)
+        from(jarDecompile.output)
+        from(accessWiden.output)
+        from(shadow.output)
+    }
+
+    withType(Jar::class).configureEach {
+        indraGit.applyVcsInformationToManifest(manifest)
+        manifest.attributes(
+                "Specification-Title" to "VanillaGradle",
+                "Specification-Vendor" to "SpongePowered",
+                "Specification-Version" to project.version,
+                "Implementation-Title" to project.name,
+                "Implementation-Version" to project.version,
+                "Implementation-Vendor" to "SpongePowered"
+        )
+    }
+
+    withType(JavaCompile::class).configureEach {
+        options.compilerArgs.add("-Xlint:-processing")
+    }
 }
 
 indra {

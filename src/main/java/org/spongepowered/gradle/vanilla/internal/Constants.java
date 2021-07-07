@@ -101,10 +101,10 @@ public final class Constants {
     }
 
     public static final class WorkerDependencies {
-        public static final String MERGE_TOOL = "net.minecraftforge:mergetool:1.1.1";
-        public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:1.0.2";
-        public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:1.5.498.6";
-        public static final String FORCED_ASM = "9.1";
+        public static final String MERGE_TOOL = "net.minecraftforge:mergetool:" + BuildVersions.MERGE_TOOL;
+        public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:" + BuildVersions.ACCESS_WIDENER;
+        public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:" + BuildVersions.FORGEFLOWER;
+        public static final String FORCED_ASM = BuildVersions.ASM;
         public static final String ASM_UTIL = "org.ow2.asm:asm-util:" + WorkerDependencies.FORCED_ASM;
 
         private WorkerDependencies() {
