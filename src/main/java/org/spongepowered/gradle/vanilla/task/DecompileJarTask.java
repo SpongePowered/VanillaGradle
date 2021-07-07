@@ -39,6 +39,7 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.options.Option;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.workers.WorkerExecutor;
@@ -111,6 +112,11 @@ public abstract class DecompileJarTask extends DefaultTask {
     @Optional
     public abstract MapProperty<String, String> getExtraFernFlowerArgs();
 
+    @Input
+    @Optional
+    @Option(option = "force", description = "Whether to decompile again, even if an input file already exists")
+    public abstract Property<Boolean> getForced();
+
     @Inject
     protected abstract WorkerExecutor getWorkerExecutor();
 
@@ -127,12 +133,16 @@ public abstract class DecompileJarTask extends DefaultTask {
                 ((MinecraftExtensionImpl) this.getProject().getExtensions().getByType(MinecraftExtension.class)).modifiers();
 
             minecraftProvider.primeResolver(this.getProject(), modifiers);
+            final Set<AssociatedResolutionFlags> flags = EnumSet.of(AssociatedResolutionFlags.MODIFIES_ORIGINAL);
+            if (this.getForced().getOrElse(false)) {
+                flags.add(AssociatedResolutionFlags.FORCE_REGENERATE);
+            }
             resultFuture = minecraftProvider.resolver().produceAssociatedArtifactSync(
                 this.getMinecraftPlatform().get(),
                 this.getMinecraftVersion().get(),
                 modifiers,
                 "sources",
-                EnumSet.of(AssociatedResolutionFlags.MODIFIES_ORIGINAL),
+                flags,
                 (env, output) -> {
                     // Determine which parts of the configuration are MC, and which are its dependencies
                     final Set<File> dependencies = new HashSet<>();
