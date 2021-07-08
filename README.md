@@ -3,6 +3,8 @@
 **VanillaGradle** is a toolchain for *Minecraft: Java Edition* that provides a workspace to interact with the game using official mappings provided 
 by Mojang Studios. This plugin requires at least Gradle 6.7 and Java 8 to run, though it is only actively tested against the latest release of every major Gradle series supported (currently 6.x and 7.x).
 
+**VANILLAGRADLE IS NOT DESIGNED AND IS NOT GENERALLY USEFUL FOR END-USER USE. IT IS FOR TOOLING AND PLATFORM DEVELOPERS WHO HAVE A SOLID WORKING KNOWLEDGE OF GRADLE ONLY!**
+
 ### Documentation
 
 The main documentation for **VanillaGradle** can be found in the [Wiki](../../wiki).
