@@ -63,24 +63,26 @@ subprojects {
         header(rootProject.file("HEADER.txt"))
     }
 
-    extensions.configure(SigningExtension::class) {
-        val spongeSigningKey = project.findProperty("spongeSigningKey") as String?
-        val spongeSigningPassword = project.findProperty("spongeSigningPassword") as String?
-        if (spongeSigningKey != null && spongeSigningPassword != null) {
-            val keyFile = rootProject.file(spongeSigningKey)
-            if (keyFile.exists()) {
-                useInMemoryPgpKeys(keyFile.readText(Charsets.UTF_8), spongeSigningPassword)
+    afterEvaluate {
+        extensions.configure(SigningExtension::class) {
+            val spongeSigningKey = project.findProperty("spongeSigningKey") as String?
+            val spongeSigningPassword = project.findProperty("spongeSigningPassword") as String?
+            if (spongeSigningKey != null && spongeSigningPassword != null) {
+                val keyFile = rootProject.file(spongeSigningKey)
+                if (keyFile.exists()) {
+                    useInMemoryPgpKeys(keyFile.readText(Charsets.UTF_8), spongeSigningPassword)
+                } else {
+                    useInMemoryPgpKeys(spongeSigningKey, spongeSigningPassword)
+                }
             } else {
-                useInMemoryPgpKeys(spongeSigningKey, spongeSigningPassword)
+                signatories = PgpSignatoryProvider() // don't use gpg agent
             }
-        } else {
-            signatories = PgpSignatoryProvider() // don't use gpg agent
         }
     }
 
     tasks {
         withType(Jar::class).configureEach {
-            project.extensions.getByType(net.kyori.indra.git.IndraGitExtension::class).applyVcsInformationToManifest(manifest)
+            // project.extensions.getByType(net.kyori.indra.git.IndraGitExtension::class).applyVcsInformationToManifest(manifest)
             manifest.attributes(
                 "Specification-Title" to "VanillaGradle",
                 "Specification-Vendor" to "SpongePowered",
