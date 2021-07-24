@@ -35,11 +35,13 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 final class ValidatingDigestingEntityConsumer<V> extends DigestingEntityConsumer<V> {
+    private final HashAlgorithm algorithm;
     private final String expected;
 
     public ValidatingDigestingEntityConsumer(final AsyncEntityConsumer<V> wrapped, final HashAlgorithm algorithm, final String expected)
         throws NoSuchAlgorithmException {
         super(algorithm.digestName(), wrapped);
+        this.algorithm = algorithm;
         this.expected = expected;
     }
 
@@ -47,8 +49,8 @@ final class ValidatingDigestingEntityConsumer<V> extends DigestingEntityConsumer
     public void streamEnd(final List<? extends Header> trailers) throws HttpException, IOException {
         super.streamEnd(trailers);
         final String actual = HashAlgorithm.toHexString(this.getDigest());
-        if (!HashAlgorithm.toHexString(this.getDigest()).equals(this.expected)) {
-            throw new IOException("Failed to validate SHA-1 hash. Expected " + this.expected + ", but got " + actual);
+        if (!actual.equals(this.expected)) {
+            throw new IOException("Failed to validate " + this.algorithm.digestName() + " hash. Expected " + this.expected + ", but got " + actual);
         }
     }
 }
