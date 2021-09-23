@@ -22,36 +22,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.internal.transformer;
+package org.spongepowered.gradle.vanilla.internal.asm;
 
 import org.cadixdev.bombe.analysis.InheritanceProvider;
-import org.cadixdev.bombe.asm.jar.JarEntryRemappingTransformer;
-import org.cadixdev.bombe.jar.JarEntryTransformer;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.asm.LorenzRemapper;
-import org.spongepowered.gradle.vanilla.internal.asm.EnhancedClassRemapper;
-import org.spongepowered.gradle.vanilla.internal.asm.EnhancedRemapper;
-import org.spongepowered.gradle.vanilla.internal.asm.LocalVariableNamingClassVisitor;
-import org.spongepowered.gradle.vanilla.internal.asm.SyntheticParameterAnnotationsFix;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Opcodes;
 
-import java.util.Set;
+public class EnhancedRemapper extends LorenzRemapper {
 
-public final class AtlasTransformers {
-
-    private AtlasTransformers() {
+    public EnhancedRemapper(final MappingSet mappings, final InheritanceProvider inheritanceProvider) {
+        super(mappings, inheritanceProvider);
     }
 
-    public static JarEntryTransformer filterEntries(final Set<String> allowedPackages) {
-        return new FilterClassesTransformer(allowedPackages);
-    }
+    @Override
+    public Object mapValue(final Object value) {
+        if (value instanceof Handle) {
+            // Backport of ASM!327 https://gitlab.ow2.org/asm/asm/-/merge_requests/327
+            final Handle handle = (Handle) value;
+            final boolean isFieldHandle = handle.getTag() <= Opcodes.H_PUTSTATIC;
 
-    public static JarEntryTransformer stripSignatures() {
-        return SignatureStripperTransformer.INSTANCE;
+            return new Handle(
+                handle.getTag(),
+                this.mapType(handle.getOwner()),
+                isFieldHandle
+                ? this.mapFieldName(handle.getOwner(), handle.getName(), handle.getDesc())
+                : this.mapMethodName(handle.getOwner(), handle.getName(), handle.getDesc()),
+                isFieldHandle ? this.mapDesc(handle.getDesc()) : this.mapMethodDesc(handle.getDesc()),
+                handle.isInterface());
+        } else {
+            return super.mapValue(value);
+        }
     }
-
-    public static JarEntryTransformer remap(final MappingSet mappings, final InheritanceProvider inheritanceProvider) {
-        return new JarEntryRemappingTransformer(new EnhancedRemapper(mappings, inheritanceProvider), (parent, mapper) ->
-            new EnhancedClassRemapper(new SyntheticParameterAnnotationsFix(new LocalVariableNamingClassVisitor(parent)), mapper));
-    }
-
 }
