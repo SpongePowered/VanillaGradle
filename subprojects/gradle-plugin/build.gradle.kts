@@ -49,7 +49,14 @@ dependencies {
         exclude("org.ow2.asm") // Use our own ASM
     }
 
+    // Mappings
     implementation("org.cadixdev:lorenz-io-proguard:0.5.7")
+    implementation("net.fabricmc:lorenz-tiny:4.0.1") {
+        isTransitive = false
+    }
+    implementation("org.parchmentmc:feather:0.6.5.3-dev-SNAPSHOT")
+    implementation("org.parchmentmc.feather:io-gson:0.6.5.3-dev-SNAPSHOT")
+    implementation("net.fabricmc:mapping-io:0.2.1")
 
     compileOnlyApi("org.checkerframework:checker-qual:3.15.0")
     annotationProcessor("org.immutables:value:2.8.8")

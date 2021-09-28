@@ -64,7 +64,7 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     // User-set properties
     private final Provider<MinecraftProviderService> providerService;
     private final Property<String> version;
-    private final Property<MinecraftPlatform> platform;
+	private final Property<MinecraftPlatform> platform;
     private final Property<Boolean> injectRepositories;
     private final DirectoryProperty sharedCache;
     private final DirectoryProperty projectCache;
@@ -223,7 +223,7 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
         this.accessWideners.from(files);
     }
 
-    public ConfigurableFileCollection accessWideners() {
+	public ConfigurableFileCollection accessWideners() {
         return this.accessWideners;
     }
 

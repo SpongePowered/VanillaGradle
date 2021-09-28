@@ -26,7 +26,9 @@ package org.spongepowered.gradle.vanilla.internal.resolver;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
