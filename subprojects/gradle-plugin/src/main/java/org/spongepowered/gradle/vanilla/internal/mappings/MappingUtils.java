@@ -53,29 +53,29 @@ public class MappingUtils {
         MappingSet mappings = MappingSet.create();
         MappingType type = getMappingType(mappingsFile);
         FileSystem fileSystem = null; // If a filesystem is created in a jar, we need to close it manually
-        AtomicReference<Path> path = new AtomicReference<>(mappingsFile);
+        Path[] path = new Path[]{mappingsFile};
 
-        switch (type) {
-            case ZIP:
-            case JAR: {
-                // We need to find the mappings. Find the first valid mapping file we can.
-                try {
-                    fileSystem = FileSystems.newFileSystem(mappingsFile, (ClassLoader) null);
-                    fileSystem.getRootDirectories().forEach(p -> {
-                        String name = p.toString();
+        if (type == MappingType.JAR || type == MappingType.ZIP) {
+            // We need to find the mappings. Find the first valid mapping file we can.
+            try {
+                fileSystem = FileSystems.newFileSystem(mappingsFile, (ClassLoader) null);
+                fileSystem.getRootDirectories().forEach(p -> {
+                    String name = p.toString();
 
-                        // A bit hacky, but yarn bundle more than mappings in their jars
-                        if (name.contains("mappings") || name.contains("parchment")) {
-                            path.set(p);
-                        }
-                    });
-                } catch (IOException ex) {
-                    throw new GradleException("Failed to read mappings from " + mappingsFile, ex);
-                }
+                    // A bit hacky, but yarn bundle more than mappings in their jars
+                    if (name.contains("mappings") || name.contains("parchment")) {
+                        path[0] = p;
+                    }
+                });
+            } catch (IOException ex) {
+                throw new GradleException("Failed to read mappings from " + mappingsFile, ex);
             }
+        }
 
+        type = getMappingType(path[0]);
+        switch (type) {
             case PROGUARD: {
-                try (BufferedReader reader = Files.newBufferedReader(path.get(), StandardCharsets.UTF_8)) {
+                try (BufferedReader reader = Files.newBufferedReader(path[0], StandardCharsets.UTF_8)) {
                     final ProGuardReader proguard = new ProGuardReader(reader);
                     proguard.read(mappings);
                     mappings = mappings.reverse(); // Flip from named -> obf to named -> obf
@@ -87,7 +87,7 @@ public class MappingUtils {
 
             case TINY: {
                 try {
-                    mappings = TinyMappingFormat.DETECT.read(path.get(), "official", "named");
+                    mappings = TinyMappingFormat.DETECT.read(path[0], "official", "named");
                 } catch (IOException ex) {
                     throw new GradleException("Failed to read mappings from " + mappingsFile, ex);
                 }
@@ -96,7 +96,7 @@ public class MappingUtils {
 
             case SRG: {
                 final MappingSet finalMappings = mappings;
-                read(path.get(), (reader) -> {
+                read(path[0], (reader) -> {
                     final SrgReader srg = new SrgReader(reader);
                     srg.read(finalMappings);
                 });
@@ -105,7 +105,7 @@ public class MappingUtils {
 
             case TSRG: {
                 final MappingSet finalMappings = mappings;
-                read(path.get(), (reader) -> {
+                read(path[0], (reader) -> {
                     final TSrgReader tsrg = new TSrgReader(reader);
                     tsrg.read(finalMappings);
                 });
@@ -115,7 +115,7 @@ public class MappingUtils {
             case PARCHMENT: {
                 final MappingSet finalMappings = mappings;
 
-                read(path.get(), (reader) -> {
+                read(path[0], (reader) -> {
                     //TODO: complete. This is a bit trickier than the others.
                     // We need to first get the mapping set for mojmap, then apply Parchment on top.
                     // But how do we know which mojmap to use? probably could just guess by using the version.
@@ -157,7 +157,7 @@ public class MappingUtils {
      * @param mappingsFile The {@link Path} of the mappings
      */
     private static MappingType getMappingType(Path mappingsFile) {
-        return getMappingType(mappingsFile.getFileName());
+        return getMappingType(mappingsFile.toString());
     }
 
     /**
