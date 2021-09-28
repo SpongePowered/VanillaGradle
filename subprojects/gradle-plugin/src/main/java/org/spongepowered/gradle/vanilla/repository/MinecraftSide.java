@@ -92,7 +92,7 @@ public enum MinecraftSide {
         return this.executableArtifact;
     }
 
-	@Deprecated
+    @Deprecated
     public final DownloadClassifier mappingsArtifact() {
         return this.mappingsArtifact;
     }
