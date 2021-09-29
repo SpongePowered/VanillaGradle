@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -97,10 +98,11 @@ public abstract class MinecraftProviderService implements
      * @param project the project to use for resolving dependencies
      * @param modifiers the artifact modifiers to apply to the eventual output artifact
      */
-    public void primeResolver(final Project project, final Set<ArtifactModifier> modifiers) {
+    public void primeResolver(final Project project, final Set<ArtifactModifier> modifiers, final List<String> mappings) {
         final ResolverState state = this.activeState.get();
         state.configurationSource = project.getConfigurations();
         state.modifiers = modifiers;
+        state.mappings = mappings;
     }
 
     public Set<ArtifactModifier> peekModifiers() {
@@ -110,6 +112,15 @@ public abstract class MinecraftProviderService implements
             throw new GradleException("No artifact modifiers were staged for resolution operation!");
         }
         return modifiers;
+    }
+
+    public List<String> peekMappings() {
+        final ResolverState state = this.activeState.get();
+        final @Nullable List<String> mappings = state.mappings;
+        if (mappings == null) {
+            throw new GradleException("No artifact modifiers were staged for resolution operation!");
+        }
+        return mappings;
     }
 
     public void dropState() {
@@ -223,6 +234,7 @@ public abstract class MinecraftProviderService implements
 
         @MonotonicNonNull ConfigurationContainer configurationSource;
         @Nullable Set<ArtifactModifier> modifiers;
+        @Nullable List<String> mappings;
 
     }
 

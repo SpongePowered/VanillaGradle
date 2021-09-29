@@ -178,13 +178,13 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                             + (version == null ? "" : ':' + version)
                     );
                     minecraftResolved[0] = true;
-                    service.get().primeResolver(project, extension.modifiers());
+                    service.get().primeResolver(project, extension.modifiers(), extension.mappings());
                     final MinecraftResolver resolver = providerService.resolver();
 
                     // If we do have a version, try to resolve that fixed version
                     if (version != null) {
                         try {
-                            resolver.provide(platform.get(), version, providerService.peekModifiers()).get();
+                            resolver.provide(platform.get(), version, providerService.peekModifiers(), extension.mappings()).get();
                         } catch (final InterruptedException ex) {
                             Thread.currentThread().interrupt();
                         } catch (final ExecutionException ex) {

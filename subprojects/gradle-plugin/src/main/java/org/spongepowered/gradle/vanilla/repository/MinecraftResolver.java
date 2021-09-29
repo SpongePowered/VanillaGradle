@@ -34,6 +34,7 @@ import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.net.URLClassLoader;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -70,9 +71,9 @@ public interface MinecraftResolver {
     // we simply strip all entries from the client jar that are also present in the server jar
     // The client artifact would depend on the server artifact
 
-    CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version);
+    CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version, List<String> mappings);
 
-    CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers);
+    CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, List<String> mappings);
 
     /**
      * Given a standard Minecraft artifact, produce a variant of that artifact.
@@ -89,13 +90,14 @@ public interface MinecraftResolver {
      * @param version the version to base off of
      * @param modifiers any modifiers to complete the description of the provided
      *     argument
-     * @param id An identifier for this artifact
+     * @param mappings
      * @param flags flags to configure this resolution
      * @param action the action needed to produce a variant, taking the input
      *     environment and a target path
+     * @param id An identifier for this artifact
      * @return a future returning the result of resolving a jar path
      */
-    CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id, final Set<AssociatedResolutionFlags> flags, final BiConsumer<MinecraftEnvironment, Path> action);
+    CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, List<String> mappings, final Set<AssociatedResolutionFlags> flags, final BiConsumer<MinecraftEnvironment, Path> action, final String id);
 
     interface MinecraftEnvironment {
 

@@ -33,6 +33,7 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.util.ConfigureUtil;
@@ -51,10 +52,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
@@ -64,6 +62,7 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     // User-set properties
     private final Provider<MinecraftProviderService> providerService;
     private final Property<String> version;
+    private final ListProperty<String> mappings;
     private final Property<MinecraftPlatform> platform;
     private final Property<Boolean> injectRepositories;
     private final DirectoryProperty sharedCache;
@@ -84,6 +83,7 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
         this.project = project;
         this.providerService = providerService;
         this.version = factory.property(String.class);
+        this.mappings = factory.listProperty(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.JOINED);
         this.injectRepositories = factory.property(Boolean.class).convention(project.provider(() -> !gradle.getPlugins().hasPlugin(MinecraftRepositoryPlugin.class))); // only inject if we aren't already in Settings
         this.accessWideners = factory.fileCollection();
@@ -221,6 +221,16 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     @Override
     public void accessWideners(final Object... files) {
         this.accessWideners.from(files);
+    }
+
+    @Override
+    public void mappings(String... dependencies) {
+        this.mappings.set(Arrays.asList(dependencies));
+    }
+
+    @Override
+    public List<String> mappings() {
+        return this.mappings.get();
     }
 
     public ConfigurableFileCollection accessWideners() {

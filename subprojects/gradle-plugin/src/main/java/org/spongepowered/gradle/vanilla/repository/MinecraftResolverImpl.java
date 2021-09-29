@@ -25,27 +25,30 @@
 package org.spongepowered.gradle.vanilla.repository;
 
 import org.cadixdev.atlas.Atlas;
+import org.cadixdev.lorenz.MappingSet;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.internal.Constants;
+import org.spongepowered.gradle.vanilla.internal.mappings.MappingUtils;
 import org.spongepowered.gradle.vanilla.internal.model.Download;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.model.VersionManifestRepository;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
-import org.spongepowered.gradle.vanilla.resolver.Downloader;
-import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.internal.repository.IvyModuleWriter;
 import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.AssociatedResolutionFlags;
-import org.spongepowered.gradle.vanilla.internal.transformer.AtlasTransformers;
 import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;
 import org.spongepowered.gradle.vanilla.internal.resolver.FileUtils;
+import org.spongepowered.gradle.vanilla.internal.transformer.AtlasTransformers;
 import org.spongepowered.gradle.vanilla.internal.util.SelfPreferringClassLoader;
+import org.spongepowered.gradle.vanilla.resolver.Downloader;
+import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
+import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -55,20 +58,14 @@ import java.net.URLClassLoader;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import javax.xml.stream.XMLStreamException;
 
 public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolver.Context {
 
@@ -195,6 +192,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         final CompletableFuture<ResolutionResult<MinecraftEnvironment>> clientFuture,
         final CompletableFuture<ResolutionResult<MinecraftEnvironment>> serverFuture,
         final String version,
+        List<String> mappingDependencies,
         final Path outputJar
     ) {
         return this.artifacts.computeIfAbsent(EnvironmentKey.of(MinecraftPlatform.JOINED, version, null), key -> {
@@ -226,10 +224,17 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                     this.writeMetaIfNecessary(MinecraftPlatform.JOINED, potentialDescriptor, outputJar.getParent());
 					MinecraftResolverImpl.LOGGER.warn("Preparing Minecraft: Java Edition JOINED & REMAPPED version {}", version);
 
-					try (final Atlas atlas = new Atlas(this.executor)) {
-                        //TODO: provide mappings
-						atlas.install(ctx -> AtlasTransformers.remap(null, ctx.inheritanceProvider()));
+                    // prepare mappings for remapping
+                    // TODO: make this not ugly
+                    String destination = mappingDependencies.get(0).replace(":", ".");
+                    this.downloader.download(
+                            new URL("https://maven.fabricmc.net/net/fabricmc/yarn/21w38a%2Bbuild.9/yarn-21w38a%2Bbuild.9-mergedv2.jar"),
+                            destination
+                    ).complete(ResolutionResult.result(Paths.get(destination), false));
+                    MappingSet mappings = MappingUtils.readMappings(Paths.get(destination));
 
+					try (final Atlas atlas = new Atlas(this.executor)) {
+						atlas.install(ctx -> AtlasTransformers.remap(mappings, ctx.inheritanceProvider()));
 						atlas.run(mergeOutputTmp, outputJar);
 					}
 
@@ -285,12 +290,12 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
     @Override
     public CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(
-        final MinecraftPlatform side, final String version
-    ) {
-        return this.provide0(side, version);
+            final MinecraftPlatform side, final String version,
+            List<String> mappings) {
+        return this.provide0(side, version, mappings);
     }
 
-    private CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide0(final MinecraftPlatform side, final String version) {
+    private CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide0(final MinecraftPlatform side, final String version, List<String> mappings) {
         final Path output;
         try {
             output = this.sharedArtifactPath(side.artifactId(), version, null, "jar");
@@ -299,14 +304,14 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         }
 
         // Each platform is responsible for its own up-to-date checks
-        return side.resolveMinecraft(this, version, output);
+        return side.resolveMinecraft(this, version, mappings, output);
     }
 
     @Override
     public CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(
-        final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers
-    ) {
-        final CompletableFuture<ResolutionResult<MinecraftEnvironment>> unmodified = this.provide0(side, version);
+            final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers,
+            List<String> mappings) {
+        final CompletableFuture<ResolutionResult<MinecraftEnvironment>> unmodified = this.provide0(side, version, mappings);
         if (modifiers.isEmpty()) { // no modifiers provided, follow the normal path
             return unmodified;
         }
@@ -398,12 +403,10 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
     @Override
     public CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifactSync(
-        final MinecraftPlatform side,
-        final String version,
-        final Set<ArtifactModifier> modifiers,
-        final String id,
-        final Set<AssociatedResolutionFlags> flags,
-        final BiConsumer<MinecraftEnvironment, Path> action
+            final MinecraftPlatform side,
+            final String version,
+            final Set<ArtifactModifier> modifiers,
+            List<String> mappings, final Set<AssociatedResolutionFlags> flags, final BiConsumer<MinecraftEnvironment, Path> action, final String id
     ) {
         // We need to compute our own key to be able to query the map
         final String decoratedArtifact = ArtifactModifier.decorateArtifactId(side.artifactId(), modifiers) + '-' + id;
@@ -416,7 +419,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         // there's nothing yet, it's our time to resolve
         final ResolutionResult<MinecraftEnvironment> envResult;
         try {
-            envResult = this.provide(side, version, modifiers).get();
+            envResult = this.provide(side, version, modifiers, mappings).get();
         } catch (final ExecutionException ex) {
             ourResult.completeExceptionally(ex.getCause());
             return ourResult;
