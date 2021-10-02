@@ -22,40 +22,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.internal.model;
+package org.spongepowered.gradle.vanilla.internal.util;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
-import org.immutables.value.Value;
+import java.util.Objects;
+import java.util.function.Supplier;
 
-@Value.Immutable(builder = false)
-public abstract class GroupArtifactVersion {
+public class FunctionalUtils {
 
-    public static GroupArtifactVersion of(final String group, final String artifact, final @Nullable String version) {
-        return new GroupArtifactVersionImpl(group, artifact, version);
+    private FunctionalUtils() {
     }
 
-    public static GroupArtifactVersion parse(final String notation) {
-        final String[] split = notation.split(":");
-        if (split.length > 4 || split.length < 2) {
-            throw new IllegalArgumentException("Unsupported notation '" + notation + "', must be in the format of group:artifact[:version[:classifier]]");
-        }
-        return GroupArtifactVersion.of(split[0], split[1], split.length > 2 ? split[2] : null);
+    public static <T> Supplier<T> memoizeSupplier(final Supplier<T> in) {
+        Objects.requireNonNull(in, "in");
+        return new Supplier<T>() {
+            private volatile boolean initialized;
+            private T value;
+            @Override
+            public T get() {
+                if (!this.initialized) {
+                    synchronized (this) {
+                        if (!this.initialized) {
+                            this.value = in.get();
+                            this.initialized = true;
+                        }
+                    }
+                }
+                return this.value;
+            }
+        };
     }
 
-    GroupArtifactVersion() {
-    }
-
-    @Value.Parameter
-    public abstract String group();
-
-    @Value.Parameter
-    public abstract String artifact();
-
-    @Value.Parameter
-    public abstract @Nullable String version();
-
-    @Override
-    public final String toString() {
-        return this.group() + ':' + this.artifact() + (this.version() == null ? "" : ':' + this.version());
-    }
 }

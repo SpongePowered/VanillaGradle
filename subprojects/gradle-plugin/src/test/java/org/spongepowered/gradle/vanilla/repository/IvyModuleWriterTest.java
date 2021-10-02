@@ -27,6 +27,8 @@ package org.spongepowered.gradle.vanilla.repository;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
+import org.spongepowered.gradle.vanilla.internal.model.Library;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
@@ -40,7 +42,11 @@ import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -66,14 +72,15 @@ public class IvyModuleWriterTest {
         final StringWriter writer = new StringWriter();
 
         try (final IvyModuleWriter ivy = new IvyModuleWriter(writer)) {
-            ivy.write(version, MinecraftPlatform.JOINED, IvyModuleWriterTest.TEST_CONTEXT);
+            ivy
+                .dependencies(IvyModuleWriterTest.manifestLibraries(version, IvyModuleWriterTest.TEST_CONTEXT, lib -> !lib.isNatives()))
+                .write(version, MinecraftPlatform.JOINED);
         }
 
         Assertions.assertLinesMatch(
             IvyModuleWriterTest.readLinesFromResource("expected-ivy-1.16.5.xml"),
             IvyModuleWriterTest.NEWLINE.splitAsStream(writer.getBuffer()).collect(Collectors.toList())
         );
-
     }
 
     @Test
@@ -83,13 +90,24 @@ public class IvyModuleWriterTest {
         final StringWriter writer = new StringWriter();
 
         try (final IvyModuleWriter ivy = new IvyModuleWriter(writer)) {
-            ivy.write(version, MinecraftPlatform.JOINED, IvyModuleWriterTest.TEST_CONTEXT);
+            ivy
+                .dependencies(IvyModuleWriterTest.manifestLibraries(version, IvyModuleWriterTest.TEST_CONTEXT, lib -> !lib.isNatives()))
+                .write(version, MinecraftPlatform.JOINED);
         }
+    }
 
-        Assertions.assertLinesMatch(
-            IvyModuleWriterTest.readLinesFromResource("expected-ivy-21w15a.xml"),
-            IvyModuleWriterTest.NEWLINE.splitAsStream(writer.getBuffer()).collect(Collectors.toList())
-        );
+    private static Set<GroupArtifactVersion> manifestLibraries(
+        final VersionDescriptor.Full manifest,
+        final RuleContext rules,
+        final Predicate<Library> filter
+    ) {
+        final Set<GroupArtifactVersion> ret = new LinkedHashSet<>();
+        for (final Library library : manifest.libraries()) {
+            if (library.rules().test(rules) && filter.test(library)) {
+                ret.add(library.name());
+            }
+        }
+        return Collections.unmodifiableSet(ret);
     }
 
     private static List<String> readLinesFromResource(final String resource) throws IOException {

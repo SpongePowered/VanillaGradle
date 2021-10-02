@@ -22,40 +22,54 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.internal.model;
+package org.spongepowered.gradle.vanilla.internal.bundler;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.immutables.value.Value;
+import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
 
-@Value.Immutable(builder = false)
-public abstract class GroupArtifactVersion {
+/**
+ * A single entry in a bundle.
+ *
+ * <p>In bundle format version {@code 1.0}, these elements are declared as
+ * rows of tab-separated values.</p>
+ */
+@Value.Immutable
+public interface BundleElement {
 
-    public static GroupArtifactVersion of(final String group, final String artifact, final @Nullable String version) {
-        return new GroupArtifactVersionImpl(group, artifact, version);
+    /**
+     * Create a new bundle element.
+     *
+     * @param sha256 the sha-265 hash
+     * @param id the ID of the bundle element
+     * @param path the path in the jar
+     * @return a new element
+     */
+    static BundleElement of(final String sha256, final String id, final String path) {
+        return new BundleElementImpl(sha256, id, path);
     }
 
-    public static GroupArtifactVersion parse(final String notation) {
-        final String[] split = notation.split(":");
-        if (split.length > 4 || split.length < 2) {
-            throw new IllegalArgumentException("Unsupported notation '" + notation + "', must be in the format of group:artifact[:version[:classifier]]");
-        }
-        return GroupArtifactVersion.of(split[0], split[1], split.length > 2 ? split[2] : null);
-    }
-
-    GroupArtifactVersion() {
-    }
-
+    /**
+     * The expected hash of the file in the jar.
+     *
+     * @return SHA-265 hash string
+     */
     @Value.Parameter
-    public abstract String group();
+    String sha256();
 
+    /**
+     * The maven coordinates corresponding to this artifact.
+     *
+     * @return the maven coordinates
+     */
     @Value.Parameter
-    public abstract String artifact();
+    String id();
 
+    /**
+     * The path of the index entry in the jar.
+     *
+     * @return the path relative to the jar
+     */
     @Value.Parameter
-    public abstract @Nullable String version();
+    String path();
 
-    @Override
-    public final String toString() {
-        return this.group() + ':' + this.artifact() + (this.version() == null ? "" : ':' + this.version());
-    }
 }

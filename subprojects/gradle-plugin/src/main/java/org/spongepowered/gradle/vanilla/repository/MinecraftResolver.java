@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
+import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.model.VersionManifestRepository;
 import org.spongepowered.gradle.vanilla.resolver.Downloader;
@@ -113,6 +114,16 @@ public interface MinecraftResolver {
          * @return the output jar
          */
         Path jar();
+
+        /**
+         * The dependencies to apply for this environment, given the active OS.
+         *
+         * <p>This may be derived from the client launcher metadata, the server
+         * bundler metadata, or other sources yet unknown.</p>
+         *
+         * @return the dependencies
+         */
+        Set<GroupArtifactVersion> dependencies();
 
         /**
          * The Mojang-provided metadata for a certain Minecraft environment.

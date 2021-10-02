@@ -24,31 +24,37 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.gradle.vanilla.internal.Constants;
+import org.spongepowered.gradle.vanilla.internal.bundler.BundleElement;
+import org.spongepowered.gradle.vanilla.internal.bundler.BundlerMetadata;
 import org.spongepowered.gradle.vanilla.internal.model.DownloadClassifier;
 import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
 import org.spongepowered.gradle.vanilla.internal.model.Library;
+import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 
 public enum MinecraftSide {
     CLIENT(DownloadClassifier.CLIENT, DownloadClassifier.CLIENT_MAPPINGS) {
         @Override
-        public <E extends Exception> void applyLibraries(
-            final DependencyAccepter<E> handler,
-            final List<Library> knownLibraries,
-            final RuleContext rules
-        ) throws E {
+        public Set<GroupArtifactVersion> dependencies(
+            final VersionDescriptor.Full descriptor,
+            final @Nullable BundlerMetadata bundleMetadata
+        ) {
             // Client gets all libraries
-            for (final Library library : knownLibraries) {
-                if (!library.isNatives() && library.rules().test(rules)) {
-                    handler.accept(library.name());
-                }
-            }
+            return MinecraftSide.manifestLibraries(descriptor, RuleContext.create(), lib -> !lib.isNatives());
         }
     },
     SERVER(DownloadClassifier.SERVER, DownloadClassifier.SERVER_MAPPINGS) {
@@ -61,21 +67,47 @@ public enum MinecraftSide {
         }
 
         @Override
-        public <E extends Exception> void applyLibraries(
-                final DependencyAccepter<E> handler, final List<Library> knownLibraries,
-                final RuleContext rules) throws E {
-            // TODO: This is kinda ugly, using a hardcoded list
-            // Unfortunately Gradle both lets you tweak the metadata of an incoming artifact, and transform the artifact itself, but not both at
-            // the same time.
-            for (final Library library : knownLibraries) {
-                if (!library.isNatives() && !Constants.CLIENT_ONLY_DEPENDENCY_GROUPS.contains(library.name().group()) && library.rules().test(rules)) {
-                    handler.accept(library.name());
+        public Set<GroupArtifactVersion> dependencies(
+            final VersionDescriptor.Full descriptor,
+            final @Nullable BundlerMetadata metadata
+        ) {
+            if (metadata == null) {
+                // Unfortunately Gradle both lets you tweak the metadata of an incoming artifact, and transform the artifact itself, but not both at
+                // the same time.
+                // Legacy (use a hardcoded list... bleurgh)
+                return MinecraftSide.manifestLibraries(
+                    descriptor,
+                    RuleContext.create(),
+                    lib -> !lib.isNatives() && !Constants.CLIENT_ONLY_DEPENDENCY_GROUPS.contains(lib.name().group())
+                );
+            } else {
+                // 21w39+
+                return Collections.unmodifiableSet(metadata.libraries().stream()
+                    .map(el -> GroupArtifactVersion.parse(el.id()))
+                    .collect(Collectors.toSet()));
+            }
+        }
+
+        @Override
+        public void extractJar(
+            final Path downloaded, final Path output, final @Nullable BundlerMetadata metadata
+        ) throws IOException {
+            if (metadata == null) {
+                super.extractJar(downloaded, output, metadata);
+            } else {
+                try (final JarFile jf = new JarFile(downloaded.toFile())) {
+                    final JarEntry ent = jf.getJarEntry(metadata.server().path());
+                    if (ent == null) {
+                        throw new IOException("Could not locate server artifact in " + downloaded + " at " + metadata.server().path());
+                    }
+                    Files.copy(jf.getInputStream(ent), output, StandardCopyOption.REPLACE_EXISTING);
                 }
             }
         }
 
         @Override
         public Set<String> allowedPackages() {
+            // Filter this out if there is bundler metadata
             return this.packages;
         }
     };
@@ -96,11 +128,28 @@ public enum MinecraftSide {
         return this.mappingsArtifact;
     }
 
-    public abstract <E extends Exception> void applyLibraries(
-        final DependencyAccepter<E> dependencyAccepter,
-        final List<Library> knownLibraries,
-        final RuleContext rules
-    ) throws E;
+    public abstract Set<GroupArtifactVersion> dependencies(
+        final VersionDescriptor.Full descriptor,
+        final @Nullable BundlerMetadata bundleMetadata
+    );
+
+    /**
+     * Extract the real jar from any potential bundling.
+     *
+     * <p>The input file should not be modified</p>
+     *
+     * @param downloaded the downloaded file from the manifest
+     * @param output the output
+     * @param metadata bundler metadata to read
+     * @throws IOException if an error occurs
+     */
+    public void extractJar(final Path downloaded, final Path output, final @Nullable BundlerMetadata metadata) throws IOException {
+        try {
+            Files.createLink(output, downloaded);
+        } catch (final IOException ex) {
+            Files.copy(downloaded, output, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
 
     /**
      * Get packages that will remain unfiltered in the jar
@@ -113,8 +162,18 @@ public enum MinecraftSide {
         return Collections.emptySet();
     }
 
-    @FunctionalInterface
-    public interface DependencyAccepter<E extends Exception> {
-        void accept(final GroupArtifactVersion dependency) throws E;
+    private static Set<GroupArtifactVersion> manifestLibraries(
+        final VersionDescriptor.Full manifest,
+        final RuleContext rules,
+        final Predicate<Library> filter
+    ) {
+        final Set<GroupArtifactVersion> ret = new HashSet<>();
+        for (final Library library : manifest.libraries()) {
+            if (library.rules().test(rules) && filter.test(library)) {
+                ret.add(library.name());
+            }
+        }
+        return Collections.unmodifiableSet(ret);
     }
+
 }

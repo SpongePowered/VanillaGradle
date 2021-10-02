@@ -7,38 +7,38 @@
         </vanillagradle:mojangStatus>
     </info>
     <dependencies>
-        <dependency org="com.mojang" name="patchy" rev="1.1" transitive="false"/>
-        <dependency org="oshi-project" name="oshi-core" rev="1.1" transitive="false"/>
-        <dependency org="net.java.dev.jna" name="jna" rev="4.4.0" transitive="false"/>
-        <dependency org="net.java.dev.jna" name="platform" rev="3.4.0" transitive="false"/>
-        <dependency org="com.ibm.icu" name="icu4j" rev="66.1" transitive="false"/>
-        <dependency org="com.mojang" name="javabridge" rev="1.0.22" transitive="false"/>
-        <dependency org="net.sf.jopt-simple" name="jopt-simple" rev="5.0.3" transitive="false"/>
-        <dependency org="io.netty" name="netty-all" rev="4.1.25.Final" transitive="false"/>
+        <dependency org="org.lwjgl" name="lwjgl" rev="3.2.2" transitive="false"/>
         <dependency org="com.google.guava" name="guava" rev="21.0" transitive="false"/>
-        <dependency org="org.apache.commons" name="commons-lang3" rev="3.5" transitive="false"/>
-        <dependency org="commons-io" name="commons-io" rev="2.5" transitive="false"/>
-        <dependency org="commons-codec" name="commons-codec" rev="1.10" transitive="false"/>
+        <dependency org="org.apache.logging.log4j" name="log4j-core" rev="2.8.1" transitive="false"/>
+        <dependency org="net.java.dev.jna" name="platform" rev="3.4.0" transitive="false"/>
         <dependency org="net.java.jinput" name="jinput" rev="2.0.5" transitive="false"/>
-        <dependency org="net.java.jutils" name="jutils" rev="1.0.0" transitive="false"/>
-        <dependency org="com.mojang" name="brigadier" rev="1.0.17" transitive="false"/>
-        <dependency org="com.mojang" name="datafixerupper" rev="4.0.26" transitive="false"/>
-        <dependency org="com.google.code.gson" name="gson" rev="2.8.0" transitive="false"/>
-        <dependency org="com.mojang" name="authlib" rev="2.1.28" transitive="false"/>
+        <dependency org="com.mojang" name="text2speech" rev="1.11.3" transitive="false"/>
+        <dependency org="org.lwjgl" name="lwjgl-stb" rev="3.2.2" transitive="false"/>
+        <dependency org="com.ibm.icu" name="icu4j" rev="66.1" transitive="false"/>
         <dependency org="org.apache.commons" name="commons-compress" rev="1.8.1" transitive="false"/>
         <dependency org="org.apache.httpcomponents" name="httpclient" rev="4.3.3" transitive="false"/>
-        <dependency org="commons-logging" name="commons-logging" rev="1.1.3" transitive="false"/>
-        <dependency org="org.apache.httpcomponents" name="httpcore" rev="4.3.2" transitive="false"/>
-        <dependency org="it.unimi.dsi" name="fastutil" rev="8.2.1" transitive="false"/>
-        <dependency org="org.apache.logging.log4j" name="log4j-api" rev="2.8.1" transitive="false"/>
-        <dependency org="org.apache.logging.log4j" name="log4j-core" rev="2.8.1" transitive="false"/>
-        <dependency org="org.lwjgl" name="lwjgl" rev="3.2.2" transitive="false"/>
-        <dependency org="org.lwjgl" name="lwjgl-jemalloc" rev="3.2.2" transitive="false"/>
-        <dependency org="org.lwjgl" name="lwjgl-openal" rev="3.2.2" transitive="false"/>
-        <dependency org="org.lwjgl" name="lwjgl-opengl" rev="3.2.2" transitive="false"/>
         <dependency org="org.lwjgl" name="lwjgl-glfw" rev="3.2.2" transitive="false"/>
-        <dependency org="org.lwjgl" name="lwjgl-stb" rev="3.2.2" transitive="false"/>
+        <dependency org="com.mojang" name="patchy" rev="1.1" transitive="false"/>
+        <dependency org="com.mojang" name="brigadier" rev="1.0.17" transitive="false"/>
+        <dependency org="commons-logging" name="commons-logging" rev="1.1.3" transitive="false"/>
+        <dependency org="org.apache.logging.log4j" name="log4j-api" rev="2.8.1" transitive="false"/>
+        <dependency org="org.apache.httpcomponents" name="httpcore" rev="4.3.2" transitive="false"/>
+        <dependency org="com.mojang" name="authlib" rev="2.1.28" transitive="false"/>
+        <dependency org="org.lwjgl" name="lwjgl-jemalloc" rev="3.2.2" transitive="false"/>
+        <dependency org="com.mojang" name="datafixerupper" rev="4.0.26" transitive="false"/>
+        <dependency org="io.netty" name="netty-all" rev="4.1.25.Final" transitive="false"/>
         <dependency org="org.lwjgl" name="lwjgl-tinyfd" rev="3.2.2" transitive="false"/>
-        <dependency org="com.mojang" name="text2speech" rev="1.11.3" transitive="false"/>
+        <dependency org="org.lwjgl" name="lwjgl-openal" rev="3.2.2" transitive="false"/>
+        <dependency org="commons-io" name="commons-io" rev="2.5" transitive="false"/>
+        <dependency org="it.unimi.dsi" name="fastutil" rev="8.2.1" transitive="false"/>
+        <dependency org="net.java.jutils" name="jutils" rev="1.0.0" transitive="false"/>
+        <dependency org="commons-codec" name="commons-codec" rev="1.10" transitive="false"/>
+        <dependency org="org.lwjgl" name="lwjgl-opengl" rev="3.2.2" transitive="false"/>
+        <dependency org="oshi-project" name="oshi-core" rev="1.1" transitive="false"/>
+        <dependency org="com.google.code.gson" name="gson" rev="2.8.0" transitive="false"/>
+        <dependency org="net.java.dev.jna" name="jna" rev="4.4.0" transitive="false"/>
+        <dependency org="org.apache.commons" name="commons-lang3" rev="3.5" transitive="false"/>
+        <dependency org="com.mojang" name="javabridge" rev="1.0.22" transitive="false"/>
+        <dependency org="net.sf.jopt-simple" name="jopt-simple" rev="5.0.3" transitive="false"/>
     </dependencies>
 </ivy-module>

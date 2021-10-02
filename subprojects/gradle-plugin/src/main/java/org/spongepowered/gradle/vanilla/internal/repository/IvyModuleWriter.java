@@ -28,12 +28,9 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
 import org.spongepowered.gradle.vanilla.internal.model.JavaRuntimeVersion;
-import org.spongepowered.gradle.vanilla.internal.model.Library;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
-import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.internal.util.IndentingXmlStreamWriter;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
-import org.spongepowered.gradle.vanilla.repository.MinecraftSide;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -42,7 +39,6 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -73,7 +69,7 @@ public final class IvyModuleWriter implements AutoCloseable {
     private final boolean managedOutput;
     private final Writer output;
     private final XMLStreamWriter writer;
-    private final Set<GroupArtifactVersion> extraDependencies = new HashSet<>();
+    private final Set<GroupArtifactVersion> dependencies = new HashSet<>();
     private @Nullable String artifactId;
 
     public IvyModuleWriter(final Writer output) throws XMLStreamException {
@@ -93,17 +89,17 @@ public final class IvyModuleWriter implements AutoCloseable {
         return this;
     }
 
-    public IvyModuleWriter extraDependencies(final GroupArtifactVersion... dependencies) {
-        Collections.addAll(this.extraDependencies, dependencies);
+    public IvyModuleWriter dependencies(final GroupArtifactVersion... dependencies) {
+        Collections.addAll(this.dependencies, dependencies);
         return this;
     }
 
-    public IvyModuleWriter extraDependencies(final Collection<GroupArtifactVersion> dependencies) {
-        this.extraDependencies.addAll(dependencies);
+    public IvyModuleWriter dependencies(final Collection<GroupArtifactVersion> dependencies) {
+        this.dependencies.addAll(dependencies);
         return this;
     }
 
-    public void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform platform, final RuleContext rules) throws XMLStreamException {
+    public void write(final VersionDescriptor.Full descriptor, final MinecraftPlatform platform) throws XMLStreamException {
         this.writer.writeStartDocument("UTF-8", "1.0");
         this.writer.writeStartElement("ivy-module");
         this.writer.writeNamespace("xsi", IvyModuleWriter.XSI);
@@ -112,7 +108,7 @@ public final class IvyModuleWriter implements AutoCloseable {
         this.writer.writeAttribute("version", "2.0");
 
         this.writeInfo(descriptor, platform);
-        this.writeDependencies(descriptor.libraries(), platform, rules);
+        this.writeDependencies(this.dependencies);
         this.writeArtifacts(platform);
 
         this.writer.writeEndElement();
@@ -148,30 +144,11 @@ public final class IvyModuleWriter implements AutoCloseable {
         this.writer.writeEndElement();
     }
 
-    private void writeDependencies(
-        final List<Library> libraries,
-        final MinecraftPlatform platform,
-        final RuleContext rules
-    ) throws XMLStreamException {
+    private void writeDependencies(final Set<GroupArtifactVersion> dependencies) throws XMLStreamException {
         this.writer.writeStartElement("dependencies");
 
-        final Set<GroupArtifactVersion> seenDependencies = new HashSet<>();
-        for (final MinecraftSide side : platform.activeSides()) {
-            side.applyLibraries(
-                desc -> {
-                    if (seenDependencies.add(desc)) {
-                        this.writeDependency(desc);
-                    }
-                },
-                libraries,
-                rules
-            );
-        }
-
-        for (final GroupArtifactVersion extra : this.extraDependencies) {
-            if (seenDependencies.add(extra)) {
-                this.writeDependency(extra);
-            }
+        for (final GroupArtifactVersion extra : dependencies) {
+            this.writeDependency(extra);
         }
 
         this.writer.writeEndElement();
