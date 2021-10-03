@@ -33,12 +33,19 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.MappingsBuilderImpl;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.ProGuardMappingsReader;
+import org.spongepowered.gradle.vanilla.internal.repository.modifier.MappingsModifier;
+import org.spongepowered.gradle.vanilla.internal.repository.modifier.OfficialMappingsModifier;
+import org.spongepowered.gradle.vanilla.repository.MappingsBuilder;
+import org.spongepowered.gradle.vanilla.repository.MappingsReader;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftRepositoryPlugin;
@@ -51,10 +58,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
@@ -66,6 +73,8 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     private final Property<String> version;
     private final Property<MinecraftPlatform> platform;
     private final Property<Boolean> injectRepositories;
+    private final Property<Boolean> useOfficialMappings;
+    private final ListProperty<MappingsReader> mappingsReaders;
     private final DirectoryProperty sharedCache;
     private final DirectoryProperty projectCache;
     private final ConfigurableFileCollection accessWideners;
@@ -76,16 +85,24 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
 
     // Internals
     private final Project project;
+    private final MappingsBuilderImpl mappingsBuilder;
     private final RunConfigurationContainer runConfigurations;
-    private volatile Set<ArtifactModifier> lazyModifiers;
+    private volatile List<ArtifactModifier> lazyModifiers;
 
     @Inject
     public MinecraftExtensionImpl(final Gradle gradle, final ObjectFactory factory, final Project project, final Provider<MinecraftProviderService> providerService) {
         this.project = project;
         this.providerService = providerService;
+        this.mappingsBuilder = new MappingsBuilderImpl(project);
         this.version = factory.property(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.JOINED);
         this.injectRepositories = factory.property(Boolean.class).convention(project.provider(() -> !gradle.getPlugins().hasPlugin(MinecraftRepositoryPlugin.class))); // only inject if we aren't already in Settings
+        this.useOfficialMappings = factory.property(Boolean.class).convention(project.provider(mappingsBuilder::isEmpty));
+        this.mappingsReaders = factory.listProperty(MappingsReader.class).convention(project.provider(() -> {
+            List<MappingsReader> readers = new ArrayList<>();
+            readers.add(new ProGuardMappingsReader());
+            return readers;
+        }));
         this.accessWideners = factory.fileCollection();
 
         this.assetsDirectory = factory.directoryProperty();
@@ -227,14 +244,59 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
         return this.accessWideners;
     }
 
-    public synchronized Set<ArtifactModifier> modifiers() {
+    @Override
+    public Property<Boolean> useOfficialMappings() {
+        return useOfficialMappings;
+    }
+
+    @Override
+    public void useOfficialMappings(boolean useOfficialMappings) {
+        this.useOfficialMappings.set(useOfficialMappings);
+    }
+
+    @Override
+    public ListProperty<MappingsReader> mappingsReaders() {
+        return this.mappingsReaders;
+    }
+
+    @Override
+    public void mappingsReader(MappingsReader... readers) {
+        this.mappingsReaders.addAll(readers);
+    }
+
+    @Override
+    public MappingsBuilderImpl mappings() {
+        return mappingsBuilder;
+    }
+
+    @Override
+    public void mappings(Action<MappingsBuilder> configure) {
+        configure.execute(mappingsBuilder);
+    }
+
+    @Override
+    public void mappings(Closure<MappingsBuilder> configureClosure) {
+        configureClosure.setDelegate(mappingsBuilder);
+        configureClosure.call();
+    }
+
+    public synchronized List<ArtifactModifier> modifiers() {
         if (this.lazyModifiers == null) {
+            final List<ArtifactModifier> modifiers = new ArrayList<>();
+
+            if (useOfficialMappings.get()) {
+                modifiers.add(new OfficialMappingsModifier());
+            }
+
+            if (!mappingsBuilder.isEmpty()) {
+                modifiers.add(new MappingsModifier(mappingsBuilder, mappingsReaders));
+            }
+
             this.accessWideners.disallowChanges();
-            final Set<ArtifactModifier> modifiers = new HashSet<>();
             if (!this.accessWideners.isEmpty()) {
                 modifiers.add(new AccessWidenerModifier(this.accessWideners.getFiles()));
             }
-            return this.lazyModifiers = Collections.unmodifiableSet(modifiers);
+            return this.lazyModifiers = Collections.unmodifiableList(modifiers);
         }
         return this.lazyModifiers;
     }

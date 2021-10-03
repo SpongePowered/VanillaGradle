@@ -35,6 +35,8 @@ import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.net.URLClassLoader;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -50,14 +52,14 @@ public interface MinecraftResolver {
      * detected by existing input detection, or would make data unreadable by
      * older versions of the resolver, this version will be incremented.</p>
      */
-    int STORAGE_VERSION = 1;
+    int STORAGE_VERSION = 2;
     /**
      * A version for stored metadata.
      *
      * <p>Whenever the {@link #STORAGE_VERSION} is incremented, this version
      * will be reset to {@code 1}</p>
      */
-    int METADATA_VERSION = 2;
+    int METADATA_VERSION = 1;
 
     /**
      * Get the version manifest repository managed by this resolver.
@@ -73,7 +75,12 @@ public interface MinecraftResolver {
 
     CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version);
 
-    CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers);
+    CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version, final List<ArtifactModifier> modifiers);
+
+    @Deprecated // use the version with an ordered list of modifiers instead
+    default CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers) {
+        return provide(side, version, new ArrayList<>(modifiers));
+    }
 
     /**
      * Given a standard Minecraft artifact, produce a variant of that artifact.
@@ -96,7 +103,15 @@ public interface MinecraftResolver {
      *     environment and a target path
      * @return a future returning the result of resolving a jar path
      */
-    CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id, final Set<AssociatedResolutionFlags> flags, final BiConsumer<MinecraftEnvironment, Path> action);
+    CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final List<ArtifactModifier> modifiers, final String id, final Set<AssociatedResolutionFlags> flags, final BiConsumer<MinecraftEnvironment, Path> action);
+
+    /**
+     * @deprecated Use the version with an ordered list of modifiers instead.
+     */
+    @Deprecated
+    default CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifactSync(final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id, final Set<AssociatedResolutionFlags> flags, final BiConsumer<MinecraftEnvironment, Path> action) {
+        return produceAssociatedArtifactSync(side, version, new ArrayList<>(modifiers), id, flags, action);
+    }
 
     interface MinecraftEnvironment {
 

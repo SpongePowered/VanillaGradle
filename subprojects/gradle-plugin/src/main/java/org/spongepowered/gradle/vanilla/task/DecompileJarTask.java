@@ -59,6 +59,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -129,7 +130,7 @@ public abstract class DecompileJarTask extends DefaultTask {
         final CompletableFuture<ResolutionResult<Path>> resultFuture;
         try {
             final MinecraftProviderService minecraftProvider = this.getMinecraftProvider().get();
-            final Set<ArtifactModifier> modifiers =
+            final List<ArtifactModifier> modifiers =
                 ((MinecraftExtensionImpl) this.getProject().getExtensions().getByType(MinecraftExtension.class)).modifiers();
 
             minecraftProvider.primeResolver(this.getProject(), modifiers);

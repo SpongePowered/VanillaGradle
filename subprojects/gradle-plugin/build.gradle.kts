@@ -16,6 +16,9 @@ val jarMerge by sourceSets.creating {
 val jarDecompile by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
+val jarRemap by sourceSets.creating {
+    configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
+}
 val accessWiden by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
@@ -123,6 +126,7 @@ tasks {
     jar {
         from(jarMerge.output)
         from(jarDecompile.output)
+        from(jarRemap.output)
         from(accessWiden.output)
         from(shadow.output)
     }

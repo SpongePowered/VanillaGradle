@@ -28,7 +28,10 @@ import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.spongepowered.gradle.vanilla.repository.MappingsBuilder;
+import org.spongepowered.gradle.vanilla.repository.MappingsReader;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
@@ -112,6 +115,20 @@ public interface MinecraftExtension extends MinecraftRepositoryExtension {
      * @param file any file that can be passed to {@link Project#file(Object)}
      */
     void accessWideners(Object... file);
+
+    Property<Boolean> useOfficialMappings();
+
+    void useOfficialMappings(boolean useOfficialMappings);
+
+    ListProperty<MappingsReader> mappingsReaders();
+
+    void mappingsReader(MappingsReader... readers);
+
+    MappingsBuilder mappings();
+
+    void mappings(Action<MappingsBuilder> configure);
+
+    void mappings(Closure<MappingsBuilder> configureClosure);
 
     /**
      * Get run configurations configured for this project.
