@@ -26,26 +26,29 @@ package org.spongepowered.gradle.vanilla.internal;
 
 import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
+import org.gradle.api.NamedDomainObjectSet;
+import org.gradle.api.PolymorphicDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
-import org.spongepowered.gradle.vanilla.internal.repository.mappings.MappingsBuilderImpl;
-import org.spongepowered.gradle.vanilla.internal.repository.mappings.ProGuardMappingsReader;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.OfficialMappingsEntry;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.ProGuardMappingFormat;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.TinyMappingFormat;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.MappingsModifier;
-import org.spongepowered.gradle.vanilla.internal.repository.modifier.OfficialMappingsModifier;
-import org.spongepowered.gradle.vanilla.repository.MappingsBuilder;
-import org.spongepowered.gradle.vanilla.repository.MappingsReader;
+import org.spongepowered.gradle.vanilla.repository.mappings.MappingFormat;
+import org.spongepowered.gradle.vanilla.repository.mappings.MappingsContainer;
+import org.spongepowered.gradle.vanilla.repository.mappings.MappingsEntry;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftRepositoryPlugin;
@@ -73,8 +76,10 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     private final Property<String> version;
     private final Property<MinecraftPlatform> platform;
     private final Property<Boolean> injectRepositories;
-    private final Property<Boolean> useOfficialMappings;
-    private final ListProperty<MappingsReader> mappingsReaders;
+    private final PolymorphicDomainObjectContainer<MappingFormat<@NonNull ?>> mappingFormats;
+    private final MappingsContainer mappings;
+    private final Property<String> minecraftMappings;
+    private final Property<Boolean> noMinecraftMappings;
     private final DirectoryProperty sharedCache;
     private final DirectoryProperty projectCache;
     private final ConfigurableFileCollection accessWideners;
@@ -85,25 +90,27 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
 
     // Internals
     private final Project project;
-    private final MappingsBuilderImpl mappingsBuilder;
     private final RunConfigurationContainer runConfigurations;
     private volatile List<ArtifactModifier> lazyModifiers;
 
+    @SuppressWarnings("unchecked")
     @Inject
     public MinecraftExtensionImpl(final Gradle gradle, final ObjectFactory factory, final Project project, final Provider<MinecraftProviderService> providerService) {
         this.project = project;
         this.providerService = providerService;
-        this.mappingsBuilder = new MappingsBuilderImpl(project);
         this.version = factory.property(String.class);
         this.platform = factory.property(MinecraftPlatform.class).convention(MinecraftPlatform.JOINED);
         this.injectRepositories = factory.property(Boolean.class).convention(project.provider(() -> !gradle.getPlugins().hasPlugin(MinecraftRepositoryPlugin.class))); // only inject if we aren't already in Settings
-        this.useOfficialMappings = factory.property(Boolean.class).convention(project.provider(mappingsBuilder::isEmpty));
-        this.mappingsReaders = factory.listProperty(MappingsReader.class).convention(project.provider(() -> {
-            List<MappingsReader> readers = new ArrayList<>();
-            readers.add(new ProGuardMappingsReader());
-            return readers;
-        }));
+        this.mappingFormats = factory.polymorphicDomainObjectContainer((Class<MappingFormat<@NonNull ?>>) (Class<?>) MappingFormat.class);
+        this.mappings = new MappingsContainer(project, this);
+        this.minecraftMappings = factory.property(String.class).convention(OfficialMappingsEntry.NAME);
+        this.noMinecraftMappings = factory.property(Boolean.class).convention(false);
         this.accessWideners = factory.fileCollection();
+
+        this.mappingFormats.add(new ProGuardMappingFormat());
+        this.mappingFormats.add(new TinyMappingFormat());
+        this.mappings.add(new OfficialMappingsEntry(project, this));
+
 
         this.assetsDirectory = factory.directoryProperty();
         this.sharedCache = factory.directoryProperty().convention(providerService.flatMap(it -> it.getParameters().getSharedCache()));
@@ -245,51 +252,61 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     }
 
     @Override
-    public Property<Boolean> useOfficialMappings() {
-        return useOfficialMappings;
+    public PolymorphicDomainObjectContainer<MappingFormat<@NonNull ?>> getMappingFormats() {
+        return mappingFormats;
     }
 
     @Override
-    public void useOfficialMappings(boolean useOfficialMappings) {
-        this.useOfficialMappings.set(useOfficialMappings);
+    public void mappingFormats(Action<NamedDomainObjectSet<MappingFormat<@NonNull ?>>> configure) {
+        configure.execute(mappingFormats);
     }
 
     @Override
-    public ListProperty<MappingsReader> mappingsReaders() {
-        return this.mappingsReaders;
+    public void mappingFormats(@DelegatesTo(value = NamedDomainObjectSet.class, strategy = Closure.DELEGATE_FIRST) Closure<NamedDomainObjectSet<MappingFormat<@NonNull ?>>> configureClosure) {
+        ConfigureUtil.configure(configureClosure, mappingFormats);
     }
 
     @Override
-    public void mappingsReader(MappingsReader... readers) {
-        this.mappingsReaders.addAll(readers);
+    public MappingsContainer getMappings() {
+        return mappings;
     }
 
     @Override
-    public MappingsBuilderImpl mappings() {
-        return mappingsBuilder;
+    public void mappings(Action<MappingsContainer> configure) {
+        configure.execute(mappings);
     }
 
     @Override
-    public void mappings(Action<MappingsBuilder> configure) {
-        configure.execute(mappingsBuilder);
+    public void mappings(@DelegatesTo(value = MappingsContainer.class, strategy = Closure.DELEGATE_FIRST) Closure<MappingsContainer> configureClosure) {
+        ConfigureUtil.configure(configureClosure, mappings);
     }
 
     @Override
-    public void mappings(Closure<MappingsBuilder> configureClosure) {
-        configureClosure.setDelegate(mappingsBuilder);
-        configureClosure.call();
+    public Property<String> minecraftMappings() {
+        return minecraftMappings;
+    }
+
+    @Override
+    public void minecraftMappings(MappingsEntry mappings) {
+        minecraftMappings(mappings.getName());
+    }
+
+    @Override
+    public void minecraftMappings(String mappings) {
+        this.minecraftMappings.set(mappings);
+    }
+
+    @Override
+    public void noMinecraftMappings() {
+        this.noMinecraftMappings.set(true);
     }
 
     public synchronized List<ArtifactModifier> modifiers() {
         if (this.lazyModifiers == null) {
             final List<ArtifactModifier> modifiers = new ArrayList<>();
 
-            if (useOfficialMappings.get()) {
-                modifiers.add(new OfficialMappingsModifier());
-            }
-
-            if (!mappingsBuilder.isEmpty()) {
-                modifiers.add(new MappingsModifier(mappingsBuilder, mappingsReaders));
+            if (!noMinecraftMappings.get()) {
+                modifiers.add(new MappingsModifier(mappings.getByName(minecraftMappings.get())));
             }
 
             this.accessWideners.disallowChanges();

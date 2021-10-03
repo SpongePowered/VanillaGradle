@@ -26,14 +26,17 @@ package org.spongepowered.gradle.vanilla;
 
 import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.gradle.api.Action;
+import org.gradle.api.NamedDomainObjectSet;
+import org.gradle.api.PolymorphicDomainObjectContainer;
 import org.gradle.api.Project;
-import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
-import org.spongepowered.gradle.vanilla.repository.MappingsBuilder;
-import org.spongepowered.gradle.vanilla.repository.MappingsReader;
+import org.spongepowered.gradle.vanilla.repository.mappings.MappingFormat;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
+import org.spongepowered.gradle.vanilla.repository.mappings.MappingsContainer;
+import org.spongepowered.gradle.vanilla.repository.mappings.MappingsEntry;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 
 /**
@@ -116,19 +119,25 @@ public interface MinecraftExtension extends MinecraftRepositoryExtension {
      */
     void accessWideners(Object... file);
 
-    Property<Boolean> useOfficialMappings();
+    PolymorphicDomainObjectContainer<MappingFormat<@NonNull ?>> getMappingFormats();
 
-    void useOfficialMappings(boolean useOfficialMappings);
+    void mappingFormats(Action<NamedDomainObjectSet<MappingFormat<@NonNull ?>>> configure);
 
-    ListProperty<MappingsReader> mappingsReaders();
+    void mappingFormats(@DelegatesTo(value = NamedDomainObjectSet.class, strategy = Closure.DELEGATE_FIRST) Closure<NamedDomainObjectSet<MappingFormat<@NonNull ?>>> configureClosure);
 
-    void mappingsReader(MappingsReader... readers);
+    MappingsContainer getMappings();
 
-    MappingsBuilder mappings();
+    void mappings(Action<MappingsContainer> configure);
 
-    void mappings(Action<MappingsBuilder> configure);
+    void mappings(@DelegatesTo(value = MappingsContainer.class, strategy = Closure.DELEGATE_FIRST) Closure<MappingsContainer> configureClosure);
 
-    void mappings(Closure<MappingsBuilder> configureClosure);
+    Property<String> minecraftMappings();
+
+    void minecraftMappings(MappingsEntry mappings);
+
+    void minecraftMappings(String mappings);
+
+    void noMinecraftMappings();
 
     /**
      * Get run configurations configured for this project.

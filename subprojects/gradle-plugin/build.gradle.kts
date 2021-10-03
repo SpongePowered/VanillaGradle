@@ -6,6 +6,7 @@ plugins {
     id("com.gradle.plugin-publish")
     id("net.kyori.indra.publishing.gradle-plugin")
     id("org.jetbrains.gradle.plugin.idea-ext")
+    kotlin("jvm") version "1.5.31"
 }
 
 val commonDeps by configurations.creating {
@@ -14,9 +15,6 @@ val jarMerge by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
 val jarDecompile by sourceSets.creating {
-    configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
-}
-val jarRemap by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
 val accessWiden by sourceSets.creating {
@@ -53,6 +51,9 @@ dependencies {
     }
 
     implementation("org.cadixdev:lorenz-io-proguard:0.5.7")
+    compileOnly("net.fabricmc:lorenz-tiny:4.0.2") {
+        isTransitive = false
+    }
 
     compileOnlyApi("org.checkerframework:checker-qual:3.15.0")
     annotationProcessor("org.immutables:value:2.8.8")
@@ -126,7 +127,6 @@ tasks {
     jar {
         from(jarMerge.output)
         from(jarDecompile.output)
-        from(jarRemap.output)
         from(accessWiden.output)
         from(shadow.output)
     }
