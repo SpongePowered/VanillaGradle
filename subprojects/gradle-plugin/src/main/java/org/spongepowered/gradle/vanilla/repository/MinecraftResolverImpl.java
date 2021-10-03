@@ -25,11 +25,16 @@
 package org.spongepowered.gradle.vanilla.repository;
 
 import org.cadixdev.atlas.Atlas;
+import org.cadixdev.atlas.AtlasTransformerContext;
 import org.cadixdev.atlas.jar.JarFile;
+import org.cadixdev.bombe.analysis.InheritanceProvider;
+import org.cadixdev.bombe.asm.analysis.ClassProviderInheritanceProvider;
+import org.cadixdev.bombe.asm.jar.ClassProvider;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.bundler.BundlerMetadata;
 import org.spongepowered.gradle.vanilla.internal.model.Download;
 import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
@@ -50,6 +55,8 @@ import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -383,7 +390,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         try (final Atlas atlas = new Atlas(this.executor)) {
                             for (final CompletableFuture<ArtifactModifier.AtlasPopulator> populator : populators) {
                                 ArtifactModifier.AtlasPopulator pop = populator.get();
-                                atlas.install(ctx -> pop.provide(ctx, input.get(), side, (id, classifier, extension) -> this.sharedArtifactFileName(id, version, classifier, extension)));
+                                atlas.install(ctx -> pop.provide(withAsmApi(ctx, Constants.ASM_VERSION), input.get(), side, (id, classifier, extension) -> this.sharedArtifactFileName(id, version, classifier, extension)));
                             }
 
                             atlas.run(input.get().jar(), outputTmp);
@@ -408,6 +415,38 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                 }
             }
         ));
+    }
+
+    private static final Field CPIP_CLASS_PROVIDER_FIELD;
+    private static final Constructor<AtlasTransformerContext> ATC_CONSTRUCTOR;
+    static {
+        try {
+            CPIP_CLASS_PROVIDER_FIELD = ClassProviderInheritanceProvider.class.getDeclaredField("provider");
+            CPIP_CLASS_PROVIDER_FIELD.setAccessible(true);
+            ATC_CONSTRUCTOR = AtlasTransformerContext.class.getDeclaredConstructor(InheritanceProvider.class);
+            ATC_CONSTRUCTOR.setAccessible(true);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // Hack to set the ASM api version of the atlas inheritance provider.
+    // TODO: better solution, e.g. forking or using a different library?
+    private static ClassProvider getClassProvider(ClassProviderInheritanceProvider inheritanceProvider) {
+        try {
+            return (ClassProvider) CPIP_CLASS_PROVIDER_FIELD.get(inheritanceProvider);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static AtlasTransformerContext withAsmApi(AtlasTransformerContext context, int asmApi) {
+        InheritanceProvider inheritanceProvider = new ClassProviderInheritanceProvider(asmApi, getClassProvider((ClassProviderInheritanceProvider) context.inheritanceProvider()));
+        try {
+            return ATC_CONSTRUCTOR.newInstance(inheritanceProvider);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void cleanAssociatedArtifacts(final MinecraftPlatform platform, final String version) throws IOException {
