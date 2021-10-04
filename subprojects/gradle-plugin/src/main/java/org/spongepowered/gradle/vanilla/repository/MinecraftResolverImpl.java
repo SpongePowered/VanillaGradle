@@ -413,7 +413,8 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         }
                     }
                 }
-            }
+            },
+            executor
         ));
     }
 

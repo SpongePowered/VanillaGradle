@@ -6,7 +6,6 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.DependencyArtifact;
 import org.gradle.api.artifacts.FileCollectionDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.provider.Property;
@@ -172,8 +171,12 @@ public class MappingsEntry implements Named {
         if (dependencyObj != null) {
             digest.update((byte) 2);
             if (dependencyObj instanceof ModuleDependency) {
-                for (DependencyArtifact artifact : ((ModuleDependency) dependencyObj).getArtifacts()) {
-                    digest.update(artifact.getUrl().getBytes(StandardCharsets.UTF_8));
+                if (dependencyObj.getGroup() != null) {
+                    digest.update(dependencyObj.getGroup().getBytes(StandardCharsets.UTF_8));
+                }
+                digest.update((":" + dependencyObj.getName()).getBytes(StandardCharsets.UTF_8));
+                if (dependencyObj.getVersion() != null) {
+                    digest.update((":" + dependencyObj.getVersion()).getBytes(StandardCharsets.UTF_8));
                 }
             } else if (dependencyObj instanceof FileCollectionDependency) {
                 for (File file : ((FileCollectionDependency) dependencyObj).getFiles()) {

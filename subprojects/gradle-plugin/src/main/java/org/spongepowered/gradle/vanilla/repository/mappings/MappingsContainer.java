@@ -4,6 +4,7 @@ import groovy.lang.Closure;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.Action;
 import org.gradle.api.DomainObjectCollection;
+import org.gradle.api.ExtensiblePolymorphicDomainObjectContainer;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.NamedDomainObjectCollectionSchema;
 import org.gradle.api.NamedDomainObjectContainer;
@@ -35,7 +36,10 @@ public class MappingsContainer implements PolymorphicDomainObjectContainer<Mappi
     public MappingsContainer(Project project, MinecraftExtension extension) {
         this.project = project;
         this.extension = extension;
-        delegate = project.getObjects().polymorphicDomainObjectContainer(MappingsEntry.class);
+        ExtensiblePolymorphicDomainObjectContainer<MappingsEntry> delegate = project.getObjects().polymorphicDomainObjectContainer(MappingsEntry.class);
+        delegate.registerFactory(MappingsEntry.class, name -> new MappingsEntry(this.project, this.extension, name));
+        delegate.registerFactory(TinyMappingsEntry.class, name -> new TinyMappingsEntry(this.project, this.extension, name));
+        this.delegate = delegate;
     }
 
     // -- Delegating to actual implementation -- //
