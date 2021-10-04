@@ -59,10 +59,12 @@ public abstract class BundlerMetadata {
     /**
      * Attempt to read bundler metadata from a jar.
      *
-     * <p>If the jar is not a Minecraft bundler jar, an empty {@link Optional} will be returned.</p>
+     * <p>If the jar is not a Minecraft bundler jar, an empty {@link Optional} will
+     * be returned.</p>
      *
      * @param jar the jar to read
      * @return parsed metadata
+     * @throws IOException if an error occurs while trying to read from the jar
      */
     public static Optional<BundlerMetadata> read(final Path jar) throws IOException {
         try (final JarFile file = new JarFile(jar)) {

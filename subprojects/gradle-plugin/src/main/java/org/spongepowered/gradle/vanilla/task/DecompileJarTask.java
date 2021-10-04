@@ -43,15 +43,15 @@ import org.gradle.api.tasks.options.Option;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.workers.WorkerExecutor;
-import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
+import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
-import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
-import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.AssociatedResolutionFlags;
 import org.spongepowered.gradle.vanilla.internal.worker.JarDecompileWorker;
+import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
+import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
@@ -186,12 +186,9 @@ public abstract class DecompileJarTask extends DefaultTask {
                     this.getWorkerExecutor().await();
                 }
             );
-        } finally {
-            DecompileJarTask.DECOMPILE_LOCK.unlock();
-        }
 
         try {
-            final ResolutionResult<Path> result = resultFuture.get();
+            final ResolutionResult<Path> result = minecraftProvider.resolver().processSyncTasksUntilComplete(resultFuture);
             this.setDidWork(!result.upToDate());
         } catch (final ExecutionException ex) {
             throw new GradleException("Failed to decompile " + this.getMinecraftVersion().get(), ex.getCause());
@@ -199,6 +196,10 @@ public abstract class DecompileJarTask extends DefaultTask {
             Thread.currentThread().interrupt();
             throw new GradleException("Interrupted");
         }
+
+    } finally {
+        DecompileJarTask.DECOMPILE_LOCK.unlock();
+    }
     }
 
 }
