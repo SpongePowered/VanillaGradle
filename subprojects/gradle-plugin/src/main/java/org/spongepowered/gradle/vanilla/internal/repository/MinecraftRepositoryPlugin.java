@@ -42,8 +42,8 @@ import org.gradle.api.invocation.Gradle;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.Provider;
 import org.gradle.build.event.BuildEventsListenerRegistry;
-import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
+import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
@@ -184,7 +184,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                     // If we do have a version, try to resolve that fixed version
                     if (version != null) {
                         try {
-                            resolver.provide(platform.get(), version, providerService.peekModifiers()).get();
+                            resolver.processSyncTasksUntilComplete(resolver.provide(platform.get(), version, providerService.peekModifiers()));
                         } catch (final InterruptedException ex) {
                             Thread.currentThread().interrupt();
                         } catch (final ExecutionException ex) {

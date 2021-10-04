@@ -42,17 +42,17 @@ import org.spongepowered.gradle.vanilla.internal.model.Download;
 import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.model.VersionManifestRepository;
-import org.spongepowered.gradle.vanilla.internal.util.FunctionalUtils;
-import org.spongepowered.gradle.vanilla.resolver.Downloader;
-import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.internal.repository.IvyModuleWriter;
 import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.AssociatedResolutionFlags;
-import org.spongepowered.gradle.vanilla.internal.transformer.AtlasTransformers;
 import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;
 import org.spongepowered.gradle.vanilla.internal.resolver.FileUtils;
+import org.spongepowered.gradle.vanilla.internal.transformer.AtlasTransformers;
+import org.spongepowered.gradle.vanilla.internal.util.FunctionalUtils;
 import org.spongepowered.gradle.vanilla.internal.util.SelfPreferringClassLoader;
+import org.spongepowered.gradle.vanilla.resolver.Downloader;
+import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.io.IOException;
@@ -71,6 +71,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,6 +79,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SynchronousQueue;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -95,6 +97,8 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     private final ConcurrentMap<EnvironmentKey, CompletableFuture<ResolutionResult<MinecraftEnvironment>>> artifacts = new ConcurrentHashMap<>();
     private final ConcurrentMap<EnvironmentKey, CompletableFuture<ResolutionResult<Path>>> associatedArtifacts = new ConcurrentHashMap<>();
     private final boolean forceRefresh;
+    private final BlockingQueue<Runnable> syncTasks = new SynchronousQueue<>();
+    private final Executor syncExecutor = run -> this.syncTasks.add(run);
 
     public MinecraftResolverImpl(
         final VersionManifestRepository manifests,
@@ -125,6 +129,11 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     @Override
     public Executor executor() {
         return this.executor;
+    }
+
+    @Override
+    public Executor syncExecutor() {
+        return this.syncExecutor;
     }
 
     @Override
@@ -520,6 +529,32 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         return ourResult;
     }
 
+    @Override
+    public <T> T processSyncTasksUntilComplete(CompletableFuture<T> future) throws InterruptedException, ExecutionException {
+        future.handle((res, err) -> {
+            this.syncTasks.add(new CompleteEvaluation(future));
+            return res;
+        });
+
+        Runnable action;
+        for (;;) {
+            action = this.syncTasks.take();
+
+            // todo: rethrow exceptions with an ExecutionException
+            if (action instanceof CompleteEvaluation && ((CompleteEvaluation) action).completed == future) {
+                break;
+            }
+
+            try {
+                action.run();
+            } catch (final Exception ex) {
+                MinecraftResolverImpl.LOGGER.error("Failed to execute synchronous task {} while resolving {}", action, future, ex);
+            }
+        }
+
+        return future.get();
+    }
+
     private String sharedArtifactFileName(
         final String artifactId,
         final String version,
@@ -664,6 +699,21 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         @Override
         public VersionDescriptor.Full metadata() {
             return this.metadata;
+        }
+
+    }
+
+    static final class CompleteEvaluation implements Runnable {
+
+        final CompletableFuture<?> completed;
+
+        CompleteEvaluation(final CompletableFuture<?> completed) {
+            this.completed = completed;
+        }
+
+        @Override
+        public void run() {
+            // no-op
         }
 
     }
