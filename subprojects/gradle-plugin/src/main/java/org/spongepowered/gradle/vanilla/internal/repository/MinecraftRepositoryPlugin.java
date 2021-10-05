@@ -30,6 +30,8 @@ import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.ModuleVersionSelector;
 import org.gradle.api.artifacts.ResolutionStrategy;
 import org.gradle.api.artifacts.ResolvableDependencies;
@@ -122,7 +124,13 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         for (final ResolvableTool tool : ResolvableTool.values()) {
             project.getConfigurations().register(tool.id(), config -> {
                 config.defaultDependencies(deps -> {
-                    deps.add(project.getDependencies().create(tool.notation()));
+                    for (ResolvableTool.Dependency dependency : tool.dependencies()) {
+                        Dependency dep = project.getDependencies().create(dependency.notation());
+                        if (!dependency.isTransitive() && dep instanceof ModuleDependency) {
+                            ((ModuleDependency) dep).setTransitive(false);
+                        }
+                        deps.add(dep);
+                    }
                 });
                 ConfigurationUtils.markAsJavaRuntime(project.getObjects(), config);
             });

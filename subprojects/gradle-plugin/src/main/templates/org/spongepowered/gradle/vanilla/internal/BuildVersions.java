@@ -36,5 +36,7 @@ class BuildVersions {
     public static final String FORGEFLOWER = "${forgeFlowerVersion}";
     public static final String MERGE_TOOL = "${mergeToolVersion}";
     public static final String ACCESS_WIDENER = "${accessWidenerVersion}";
+    public static final String LORENZ_TINY_VERSION = "${lorenzTinyVersion}";
+    public static final String MAPPING_IO_VERSION = "${mappingIoVersion}";
 
 }

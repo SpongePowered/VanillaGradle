@@ -3,6 +3,7 @@ package org.spongepowered.gradle.vanilla.internal.repository.mappings;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.io.proguard.ProGuardReader;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.repository.mappings.MappingFormat;
 import org.spongepowered.gradle.vanilla.repository.mappings.MappingsEntry;
 
@@ -23,7 +24,8 @@ public class ProGuardMappingFormat extends MappingFormat<@NonNull MappingsEntry>
     }
 
     @Override
-    public @NonNull MappingSet read(final @NonNull Path file, final @NonNull MappingsEntry entry) throws IOException {
+    public @NonNull MappingSet read(final @NonNull Path file, final @NonNull MappingsEntry entry,
+                                    MinecraftResolver.Context context) throws IOException {
         final MappingSet scratchMappings = MappingSet.create();
         try (ProGuardReader proguard = new ProGuardReader(Files.newBufferedReader(file))) {
             proguard.read(scratchMappings);

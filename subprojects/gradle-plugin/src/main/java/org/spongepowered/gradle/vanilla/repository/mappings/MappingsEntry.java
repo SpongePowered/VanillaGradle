@@ -5,6 +5,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.FileCollectionDependency;
 import org.gradle.api.artifacts.ModuleDependency;
@@ -25,6 +26,7 @@ import java.security.MessageDigest;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public class MappingsEntry implements Named {
     protected final Project project;
@@ -149,12 +151,13 @@ public class MappingsEntry implements Named {
         if (!mappingFormat.entryType().isInstance(this)) {
             throw new IllegalStateException("Mappings entry \"" + getName() + "\" of type \"" + getClass().getName() + "\" is not compatible with mapping format \"" + format.get() + "\"");
         }
-        Set<File> resolvedFiles = project.getConfigurations().getByName(configurationName).resolve();
+        Configuration configuration = project.getConfigurations().getByName(configurationName);
+        Set<File> resolvedFiles = CompletableFuture.supplyAsync(configuration::resolve, context.syncExecutor()).join();
         if (resolvedFiles.size() != 1) {
             throw new IllegalStateException("Mappings entry \"" + getName() + "\" did not resolve to exactly 1 file");
         }
         Path resolvedFile = resolvedFiles.iterator().next().toPath();
-        return mappingFormat.read(resolvedFile, mappingFormat.entryType().cast(this));
+        return mappingFormat.read(resolvedFile, mappingFormat.entryType().cast(this), context);
     }
 
     public String computeStateKey() {

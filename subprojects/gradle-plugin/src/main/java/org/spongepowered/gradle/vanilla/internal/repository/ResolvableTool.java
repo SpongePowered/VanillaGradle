@@ -26,27 +26,52 @@ package org.spongepowered.gradle.vanilla.internal.repository;
 
 import org.spongepowered.gradle.vanilla.internal.Constants;
 
+import java.util.Arrays;
+
 /**
  * Tools used for specific operations in the Minecraft preparation pipeline.
  */
 public enum ResolvableTool {
     JAR_MERGE(Constants.Configurations.MERGETOOL, Constants.WorkerDependencies.MERGE_TOOL),
-    ACCESS_WIDENER(Constants.Configurations.ACCESS_WIDENER, Constants.WorkerDependencies.ACCESS_WIDENER)
+    ACCESS_WIDENER(Constants.Configurations.ACCESS_WIDENER, Constants.WorkerDependencies.ACCESS_WIDENER),
+    REMAP_TINY(Constants.Configurations.REMAP_TINY, new Dependency(Constants.WorkerDependencies.LORENZ_TINY, false), new Dependency(Constants.WorkerDependencies.MAPPING_IO, true)),
     ;
 
     private final String id;
-    private final String notation;
+    private final Dependency[] dependencies;
 
-    ResolvableTool(final String id, final String notation) {
+    ResolvableTool(final String id, final String... notations) {
+        this(id, Arrays.stream(notations).map(notation -> new Dependency(notation, true)).toArray(Dependency[]::new));
+    }
+
+    ResolvableTool(final String id, final Dependency... dependencies) {
         this.id = id;
-        this.notation = notation;
+        this.dependencies = dependencies;
     }
 
     public String id() {
         return this.id;
     }
 
-    public String notation() {
-        return this.notation;
+    public Dependency[] dependencies() {
+        return this.dependencies;
+    }
+
+    public static class Dependency {
+        private final String notation;
+        private final boolean isTransitive;
+
+        public Dependency(final String notation, final boolean isTransitive) {
+            this.notation = notation;
+            this.isTransitive = isTransitive;
+        }
+
+        public String notation() {
+            return notation;
+        }
+
+        public boolean isTransitive() {
+            return isTransitive;
+        }
     }
 }
