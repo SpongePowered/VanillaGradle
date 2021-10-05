@@ -23,6 +23,9 @@ val accessWiden by sourceSets.creating {
 val remapTiny by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
+val remapParchment by sourceSets.creating {
+    configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
+}
 val shadow by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
@@ -31,6 +34,7 @@ configurations {
     api { extendsFrom(commonDeps) }
 }
 
+val gsonVersion: String by project
 val accessWidenerVersion: String by project
 val asmVersion: String by project
 val forgeFlowerVersion: String by project
@@ -39,6 +43,14 @@ val mergeToolVersion: String by project
 val lorenzVersion: String by project
 val lorenzTinyVersion: String by project
 val mappingIoVersion: String by project
+val featherVersion: String by project
+
+repositories {
+    maven("https://maven.parchmentmc.org/") {
+        name = "ParchmentMC"
+    }
+}
+
 dependencies {
     // All source sets
     commonDeps(gradleApi())
@@ -50,7 +62,7 @@ dependencies {
     }
 
     // Just main
-    implementation("com.google.code.gson:gson:2.8.7")
+    implementation("com.google.code.gson:gson:$gsonVersion")
     implementation("org.cadixdev:lorenz:$lorenzVersion")
     implementation("org.cadixdev:lorenz-asm:$lorenzVersion") {
         exclude("org.ow2.asm") // Use our own ASM
@@ -91,6 +103,12 @@ dependencies {
     }
     implementation(remapTiny.output)
 
+    "remapParchmentCompileOnly"("org.cadixdev:lorenz:$lorenzVersion")
+    "remapParchmentCompileOnly"("com.google.code.gson:gson:$gsonVersion")
+    "remapParchmentCompileOnly"("org.parchmentmc:feather:$featherVersion")
+    "remapParchmentCompileOnly"("org.parchmentmc.feather:io-gson:$featherVersion")
+    implementation(remapParchment.output)
+
     "shadowCompileOnly"("com.github.jengelman.gradle.plugins:shadow:6.1.0")
     implementation(shadow.output)
 
@@ -112,7 +130,8 @@ tasks {
                 "mergeToolVersion" to mergeToolVersion,
                 "accessWidenerVersion" to accessWidenerVersion,
                 "lorenzTinyVersion" to lorenzTinyVersion,
-                "mappingIoVersion" to mappingIoVersion
+                "mappingIoVersion" to mappingIoVersion,
+                "featherVersion" to featherVersion
         )
         inputs.properties(properties)
 
@@ -140,6 +159,7 @@ tasks {
         from(jarDecompile.output)
         from(accessWiden.output)
         from(remapTiny.output)
+        from(remapParchment.output)
         from(shadow.output)
     }
 }

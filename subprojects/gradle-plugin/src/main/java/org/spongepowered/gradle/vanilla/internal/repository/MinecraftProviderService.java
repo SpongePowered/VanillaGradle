@@ -29,6 +29,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.services.BuildService;
@@ -45,14 +46,19 @@ import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactMod
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolverImpl;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public abstract class MinecraftProviderService implements
     BuildService<MinecraftProviderService.Parameters>,
@@ -99,6 +105,7 @@ public abstract class MinecraftProviderService implements
      */
     public void primeResolver(final Project project, final List<ArtifactModifier> modifiers) {
         final ResolverState state = this.activeState.get();
+        state.logger = project.getLogger();
         state.configurationSource = project.getConfigurations();
         state.modifiers = modifiers;
     }
@@ -169,7 +176,23 @@ public abstract class MinecraftProviderService implements
         if (configurations == null) {
             throw new IllegalArgumentException("Tried to perform a configuration resolution outside of a project-managed context!");
         }
-        return configurations.getByName(tool.id()).resolve().stream()
+        Set<File> resolvedFiles;
+        try {
+            resolvedFiles = configurations.getByName(tool.id()).resolve();
+        } catch (ResolveException e) {
+            String repoHelpStr = Arrays.stream(tool.dependencies())
+                    .map(ResolvableTool.Dependency::repo)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .map(ResolvableTool.Repository::url)
+                    .collect(Collectors.joining(", "));
+            if (!repoHelpStr.isEmpty()) {
+                String helpStr = String.format("Help: this tool requires the following repositories to be declared in the repositories {} block: %s", repoHelpStr);
+                throw new ResolvableTool.MissingToolException(helpStr, e);
+            }
+            throw new ResolvableTool.MissingToolException(e.toString(), e);
+        }
+        return resolvedFiles.stream()
             .map(file -> {
                 try {
                     return file.toURI().toURL();
@@ -221,6 +244,7 @@ public abstract class MinecraftProviderService implements
 
     static final class ResolverState {
 
+        org.gradle.api.logging.@MonotonicNonNull Logger logger;
         @MonotonicNonNull ConfigurationContainer configurationSource;
         @Nullable List<ArtifactModifier> modifiers;
 

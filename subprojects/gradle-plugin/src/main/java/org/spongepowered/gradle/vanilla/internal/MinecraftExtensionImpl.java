@@ -43,6 +43,7 @@ import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.repository.mappings.OfficialMappingsEntry;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.ParchmentMappingFormat;
 import org.spongepowered.gradle.vanilla.internal.repository.mappings.ProGuardMappingFormat;
 import org.spongepowered.gradle.vanilla.internal.repository.mappings.TinyMappingFormat;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.MappingsModifier;
@@ -109,6 +110,7 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
 
         this.mappingFormats.add(new ProGuardMappingFormat());
         this.mappingFormats.add(new TinyMappingFormat());
+        this.mappingFormats.add(new ParchmentMappingFormat());
         this.mappings.add(new OfficialMappingsEntry(project, this));
 
 

@@ -103,8 +103,10 @@ public final class Constants {
         public static final String MERGE_TOOL = "net.minecraftforge:mergetool:" + BuildVersions.MERGE_TOOL;
         public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:" + BuildVersions.ACCESS_WIDENER;
         public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:" + BuildVersions.FORGEFLOWER;
-        public static final String LORENZ_TINY = "net.fabricmc:lorenz-tiny:" + BuildVersions.LORENZ_TINY_VERSION;
-        public static final String MAPPING_IO = "net.fabricmc:mapping-io:" + BuildVersions.MAPPING_IO_VERSION;
+        public static final String LORENZ_TINY = "net.fabricmc:lorenz-tiny:" + BuildVersions.LORENZ_TINY;
+        public static final String MAPPING_IO = "net.fabricmc:mapping-io:" + BuildVersions.MAPPING_IO;
+        public static final String FEATHER = "org.parchmentmc:feather:" + BuildVersions.FEATHER;
+        public static final String FEATHER_IO_GSON = "org.parchmentmc.feather:io-gson:" + BuildVersions.FEATHER;
         public static final String FORCED_ASM = BuildVersions.ASM;
         public static final String ASM_UTIL = "org.ow2.asm:asm-util:" + WorkerDependencies.FORCED_ASM;
 
@@ -138,6 +140,7 @@ public final class Constants {
         public static final String MERGETOOL = "mergetool";
         public static final String ACCESS_WIDENER = "accessWidener";
         public static final String REMAP_TINY = "remapTiny";
+        public static final String REMAP_PARCHMENT = "remapParchment";
         public static final String FORGE_FLOWER = "forgeFlower";
         public static final String CLASS_DUMP = "classDump";
 
