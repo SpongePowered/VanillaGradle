@@ -42,10 +42,15 @@ import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.CSrgMappingFormat;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.ObfMappingsEntry;
 import org.spongepowered.gradle.vanilla.internal.repository.mappings.OfficialMappingsEntry;
 import org.spongepowered.gradle.vanilla.internal.repository.mappings.ParchmentMappingFormat;
 import org.spongepowered.gradle.vanilla.internal.repository.mappings.ProGuardMappingFormat;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.SrgMappingFormat;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.TSrgMappingFormat;
 import org.spongepowered.gradle.vanilla.internal.repository.mappings.TinyMappingFormat;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.XSrgMappingFormat;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.MappingsModifier;
 import org.spongepowered.gradle.vanilla.repository.mappings.MappingFormat;
 import org.spongepowered.gradle.vanilla.repository.mappings.MappingsContainer;
@@ -80,7 +85,6 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     private final PolymorphicDomainObjectContainer<MappingFormat<@NonNull ?>> mappingFormats;
     private final MappingsContainer mappings;
     private final Property<String> minecraftMappings;
-    private final Property<Boolean> noMinecraftMappings;
     private final DirectoryProperty sharedCache;
     private final DirectoryProperty projectCache;
     private final ConfigurableFileCollection accessWideners;
@@ -105,12 +109,16 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
         this.mappingFormats = factory.polymorphicDomainObjectContainer((Class<MappingFormat<@NonNull ?>>) (Class<?>) MappingFormat.class);
         this.mappings = new MappingsContainer(project, this);
         this.minecraftMappings = factory.property(String.class).convention(OfficialMappingsEntry.NAME);
-        this.noMinecraftMappings = factory.property(Boolean.class).convention(false);
         this.accessWideners = factory.fileCollection();
 
         this.mappingFormats.add(new ProGuardMappingFormat());
         this.mappingFormats.add(new TinyMappingFormat());
         this.mappingFormats.add(new ParchmentMappingFormat());
+        this.mappingFormats.add(new SrgMappingFormat());
+        this.mappingFormats.add(new TSrgMappingFormat());
+        this.mappingFormats.add(new CSrgMappingFormat());
+        this.mappingFormats.add(new XSrgMappingFormat());
+        this.mappings.add(new ObfMappingsEntry(project, this));
         this.mappings.add(new OfficialMappingsEntry(project, this));
 
 
@@ -298,16 +306,11 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
         this.minecraftMappings.set(mappings);
     }
 
-    @Override
-    public void noMinecraftMappings() {
-        this.noMinecraftMappings.set(true);
-    }
-
     public synchronized List<ArtifactModifier> modifiers() {
         if (this.lazyModifiers == null) {
             final List<ArtifactModifier> modifiers = new ArrayList<>();
 
-            if (!noMinecraftMappings.get()) {
+            if (!minecraftMappings.get().equals(ObfMappingsEntry.NAME)) {
                 modifiers.add(new MappingsModifier(mappings.getByName(minecraftMappings.get())));
             }
 

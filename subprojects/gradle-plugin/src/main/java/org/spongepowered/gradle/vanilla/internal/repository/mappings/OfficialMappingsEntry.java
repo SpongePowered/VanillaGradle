@@ -3,7 +3,6 @@ package org.spongepowered.gradle.vanilla.internal.repository.mappings;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.io.proguard.ProGuardReader;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.Project;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.model.Download;
@@ -21,38 +20,11 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-public class OfficialMappingsEntry extends MappingsEntry {
+public class OfficialMappingsEntry extends ImmutableMappingsEntry {
     public static final String NAME = "official";
-    private boolean hasInitialized = false;
 
     public OfficialMappingsEntry(Project project, MinecraftExtension extension) {
-        super(project, extension, NAME);
-        format(ProGuardMappingFormat.NAME);
-        hasInitialized = true;
-    }
-
-    @Override
-    public void format(@NonNull String format) {
-        if (hasInitialized) {
-            throw new IllegalStateException("Cannot modify the format of \"" + NAME + "\"");
-        } else {
-            super.format(format);
-        }
-    }
-
-    @Override
-    public void dependency(@Nullable Object dependencyNotation) {
-        throw new IllegalStateException("Cannot modify the dependency of \"" + NAME + "\"");
-    }
-
-    @Override
-    public void parent(@Nullable String parent) {
-        throw new IllegalStateException("Cannot modify the parent of \"" + NAME + "\"");
-    }
-
-    @Override
-    public void inverse(boolean isInverse) {
-        throw new IllegalStateException("Cannot invert \"" + NAME + "\"");
+        super(project, extension, NAME, ProGuardMappingFormat.NAME);
     }
 
     @Override

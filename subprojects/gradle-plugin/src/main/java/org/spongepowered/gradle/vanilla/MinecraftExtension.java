@@ -137,8 +137,6 @@ public interface MinecraftExtension extends MinecraftRepositoryExtension {
 
     void minecraftMappings(String mappings);
 
-    void noMinecraftMappings();
-
     /**
      * Get run configurations configured for this project.
      *
