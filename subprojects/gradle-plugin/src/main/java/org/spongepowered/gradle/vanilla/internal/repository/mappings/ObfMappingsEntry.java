@@ -19,6 +19,11 @@ public class ObfMappingsEntry extends ImmutableMappingsEntry {
     }
 
     @Override
+    public @NonNull String computeStateKey(boolean isFrom) {
+        return isFrom ? "" : super.computeStateKey(false);
+    }
+
+    @Override
     protected <T extends MappingsEntry> @NonNull MappingSet doResolve(
             MinecraftResolver.@NonNull Context context,
             MinecraftResolver.@NonNull MinecraftEnvironment environment,

@@ -64,7 +64,7 @@ public class OfficialMappingsEntry extends ImmutableMappingsEntry {
     }
 
     @Override
-    public @NonNull String computeStateKey() {
-        return "";
+    public @NonNull String computeStateKey(boolean isFrom) {
+        return isFrom ? super.computeStateKey(true) : "";
     }
 }

@@ -311,7 +311,7 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
             final List<ArtifactModifier> modifiers = new ArrayList<>();
 
             if (!minecraftMappings.get().equals(ObfMappingsEntry.NAME)) {
-                modifiers.add(new MappingsModifier(mappings.getByName(minecraftMappings.get())));
+                modifiers.add(new MappingsModifier(mappings, ObfMappingsEntry.NAME, minecraftMappings.get()));
             }
 
             this.accessWideners.disallowChanges();

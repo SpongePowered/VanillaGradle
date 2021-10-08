@@ -11,6 +11,7 @@ import org.gradle.api.artifacts.FileCollectionDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.provider.Property;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
+import org.spongepowered.gradle.vanilla.internal.repository.mappings.ObfMappingsEntry;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
@@ -20,31 +21,33 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.SoftReference;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MappingsEntry implements Named {
     protected final Project project;
     protected final MinecraftExtension extension;
     private final String name;
     private final Property<String> format;
-    private final String configurationName;
-    private @Nullable Object dependency;
-    private @Nullable Dependency dependencyObj;
+    private @Nullable Configuration configuration;
+    private @Nullable Dependency dependency;
     private final Property<String> parent;
     private final Property<Boolean> inverse;
+    private final Map<String, SoftReference<MappingSet>> convertFromCache = new ConcurrentHashMap<>();
 
     public MappingsEntry(Project project, MinecraftExtension extension, String name) {
         this.project = project;
         this.extension = extension;
         this.name = name;
         this.format = project.getObjects().property(String.class);
-        this.configurationName = name + "Mappings";
         this.parent = project.getObjects().property(String.class);
         this.inverse = project.getObjects().property(Boolean.class).convention(false);
     }
@@ -71,13 +74,8 @@ public class MappingsEntry implements Named {
         if (this.dependency != null) {
             throw new IllegalStateException("MappingsEntry.dependency(Object) called twice");
         }
-        project.getConfigurations().register(configurationName, config -> {
-            config.setVisible(false);
-            config.setCanBeConsumed(false);
-            config.setCanBeResolved(true);
-        });
-        this.dependencyObj = project.getDependencies().add(configurationName, dependencyNotation);
-        this.dependency = dependencyNotation;
+        this.dependency = project.getDependencies().create(dependencyNotation);
+        this.configuration = project.getConfigurations().detachedConfiguration(this.dependency);
     }
 
     public Property<@Nullable String> parent() {
@@ -100,15 +98,46 @@ public class MappingsEntry implements Named {
         inverse.set(isInverse);
     }
 
+    @Override
     public int hashCode() {
         return name.hashCode();
     }
 
+    @Override
     public boolean equals(Object other) {
         return other instanceof MappingsEntry && ((MappingsEntry) other).name.equals(this.name);
     }
 
-    public final MappingSet resolve(
+    public final MappingSet convertFrom(
+            String otherMappingsName,
+            MinecraftResolver.Context context,
+            MinecraftResolver.MinecraftEnvironment environment,
+            MinecraftPlatform platform,
+            ArtifactModifier.SharedArtifactSupplier sharedArtifactSupplier
+    ) throws IOException {
+        SoftReference<MappingSet> ref = convertFromCache.get(otherMappingsName);
+        if (ref != null) {
+            @Nullable MappingSet entry = ref.get();
+            if (entry != null) {
+                return entry;
+            }
+        }
+
+        MappingSet resolved;
+        if (otherMappingsName.equals(getName())) {
+            resolved = MappingSet.create();
+        } else if (otherMappingsName.equals(ObfMappingsEntry.NAME)) {
+            resolved = resolve(context, environment, platform, sharedArtifactSupplier);
+        } else {
+            MappingsEntry otherMappings = extension.getMappings().getByName(otherMappingsName);
+            resolved = otherMappings.resolve(context, environment, platform, sharedArtifactSupplier)
+                    .reverse().merge(resolve(context, environment, platform, sharedArtifactSupplier));
+        }
+        convertFromCache.put(otherMappingsName, new SoftReference<>(resolved));
+        return resolved;
+    }
+
+    private MappingSet resolve(
             MinecraftResolver.Context context,
             MinecraftResolver.MinecraftEnvironment environment,
             MinecraftPlatform platform,
@@ -143,16 +172,16 @@ public class MappingsEntry implements Named {
             MinecraftPlatform platform,
             ArtifactModifier.SharedArtifactSupplier sharedArtifactSupplier,
             Set<String> alreadySeen) throws IOException {
-        if (dependency == null) {
+        if (this.dependency == null) {
             throw new IllegalStateException("Mappings entry \"" + getName() + "\" of format \"" + format.get() + "\" must have a dependency");
         }
+        assert this.configuration != null;
         @SuppressWarnings("unchecked")
         MappingFormat<T> mappingFormat = (MappingFormat<T>) extension.getMappingFormats().getByName(format.get());
         if (!mappingFormat.entryType().isInstance(this)) {
             throw new IllegalStateException("Mappings entry \"" + getName() + "\" of type \"" + getClass().getName() + "\" is not compatible with mapping format \"" + format.get() + "\"");
         }
-        Configuration configuration = project.getConfigurations().getByName(configurationName);
-        Set<File> resolvedFiles = CompletableFuture.supplyAsync(configuration::resolve, context.syncExecutor()).join();
+        Set<File> resolvedFiles = CompletableFuture.supplyAsync(this.configuration::resolve, context.syncExecutor()).join();
         if (resolvedFiles.size() != 1) {
             throw new IllegalStateException("Mappings entry \"" + getName() + "\" did not resolve to exactly 1 file");
         }
@@ -160,7 +189,7 @@ public class MappingsEntry implements Named {
         return mappingFormat.read(resolvedFile, mappingFormat.entryType().cast(this), context);
     }
 
-    public String computeStateKey() {
+    public String computeStateKey(boolean isFrom) {
         final MessageDigest digest = HashAlgorithm.SHA1.digest();
         computeHash(digest);
         return HashAlgorithm.toHexString(digest.digest());
@@ -171,18 +200,18 @@ public class MappingsEntry implements Named {
         digest.update(getName().getBytes(StandardCharsets.UTF_8));
         digest.update((byte) 1);
         digest.update(format.get().getBytes(StandardCharsets.UTF_8));
-        if (dependencyObj != null) {
+        if (dependency != null) {
             digest.update((byte) 2);
-            if (dependencyObj instanceof ModuleDependency) {
-                if (dependencyObj.getGroup() != null) {
-                    digest.update(dependencyObj.getGroup().getBytes(StandardCharsets.UTF_8));
+            if (dependency instanceof ModuleDependency) {
+                if (dependency.getGroup() != null) {
+                    digest.update(dependency.getGroup().getBytes(StandardCharsets.UTF_8));
                 }
-                digest.update((":" + dependencyObj.getName()).getBytes(StandardCharsets.UTF_8));
-                if (dependencyObj.getVersion() != null) {
-                    digest.update((":" + dependencyObj.getVersion()).getBytes(StandardCharsets.UTF_8));
+                digest.update((":" + dependency.getName()).getBytes(StandardCharsets.UTF_8));
+                if (dependency.getVersion() != null) {
+                    digest.update((":" + dependency.getVersion()).getBytes(StandardCharsets.UTF_8));
                 }
-            } else if (dependencyObj instanceof FileCollectionDependency) {
-                for (File file : ((FileCollectionDependency) dependencyObj).getFiles()) {
+            } else if (dependency instanceof FileCollectionDependency) {
+                for (File file : ((FileCollectionDependency) dependency).getFiles()) {
                     try (final InputStream is = new FileInputStream(file)) {
                         final byte[] buf = new byte[4096];
                         int read;
