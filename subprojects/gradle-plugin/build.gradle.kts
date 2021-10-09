@@ -45,12 +45,6 @@ val lorenzTinyVersion: String by project
 val mappingIoVersion: String by project
 val featherVersion: String by project
 
-repositories {
-    maven("https://maven.parchmentmc.org/") {
-        name = "ParchmentMC"
-    }
-}
-
 dependencies {
     // All source sets
     commonDeps(gradleApi())

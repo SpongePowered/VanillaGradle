@@ -399,7 +399,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         try (final Atlas atlas = new Atlas(this.executor)) {
                             for (final CompletableFuture<ArtifactModifier.AtlasPopulator> populator : populators) {
                                 ArtifactModifier.AtlasPopulator pop = populator.get();
-                                atlas.install(ctx -> pop.provide(withAsmApi(ctx, Constants.ASM_VERSION), input.get(), side, (id, classifier, extension) -> this.sharedArtifactFileName(id, version, classifier, extension)));
+                                atlas.install(ctx -> pop.provide(withAsmApi(ctx, Constants.ASM_VERSION), input.get(), side, sharedArtifactSupplier(version)));
                             }
 
                             atlas.run(input.get().jar(), outputTmp);
@@ -425,6 +425,10 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
             },
             executor
         ));
+    }
+
+    public ArtifactModifier.SharedArtifactSupplier sharedArtifactSupplier(String version) {
+        return (id, classifier, extension) -> this.sharedArtifactFileName(id, version, classifier, extension);
     }
 
     private static final Field CPIP_CLASS_PROVIDER_FIELD;
