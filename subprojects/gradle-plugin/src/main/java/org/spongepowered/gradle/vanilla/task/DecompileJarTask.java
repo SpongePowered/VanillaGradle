@@ -186,19 +186,19 @@ public abstract class DecompileJarTask extends DefaultTask {
                 }
             );
 
-        try {
-            final ResolutionResult<Path> result = minecraftProvider.resolver().processSyncTasksUntilComplete(resultFuture);
-            this.setDidWork(!result.upToDate());
-        } catch (final ExecutionException ex) {
-            throw new GradleException("Failed to decompile " + this.getMinecraftVersion().get(), ex.getCause());
-        } catch (final InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new GradleException("Interrupted");
-        }
+            try {
+                final ResolutionResult<Path> result = minecraftProvider.resolver().processSyncTasksUntilComplete(resultFuture);
+                this.setDidWork(!result.upToDate());
+            } catch (final ExecutionException ex) {
+                throw new GradleException("Failed to decompile " + this.getMinecraftVersion().get(), ex.getCause());
+            } catch (final InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new GradleException("Interrupted");
+            }
 
-    } finally {
-        DecompileJarTask.DECOMPILE_LOCK.unlock();
-    }
+        } finally {
+            DecompileJarTask.DECOMPILE_LOCK.unlock();
+        }
     }
 
 }
