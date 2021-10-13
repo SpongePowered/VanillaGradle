@@ -503,7 +503,13 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         // there's nothing yet, it's our time to resolve
         final ResolutionResult<MinecraftEnvironment> envResult;
         try {
-            envResult = this.provide(side, version, modifiers).get();
+            envResult = this.processSyncTasksUntilComplete(
+                this.provide(
+                    side,
+                    version,
+                    modifiers
+                )
+            );
         } catch (final ExecutionException ex) {
             ourResult.completeExceptionally(ex.getCause());
             return ourResult;
@@ -545,18 +551,28 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
     @Override
     public <T> T processSyncTasksUntilComplete(CompletableFuture<T> future) throws InterruptedException, ExecutionException {
-        future.handle((res, err) -> {
-            this.syncTasks.add(new CompleteEvaluation(future));
-            return res;
-        });
+        future.handleAsync(
+            (
+                res,
+                err
+            ) -> {
+                this.syncTasks.add(new CompleteEvaluation(future));
+                return res;
+            },
+            this.executor
+        );
 
         Runnable action;
         for (;;) {
             action = this.syncTasks.take();
 
             // todo: rethrow exceptions with an ExecutionException
-            if (action instanceof CompleteEvaluation && ((CompleteEvaluation) action).completed == future) {
-                break;
+            if (action instanceof CompleteEvaluation) {
+                if (((CompleteEvaluation) action).completed == future) {
+                    break;
+                } else {
+                    this.syncTasks.add(action);
+                }
             }
 
             try {
