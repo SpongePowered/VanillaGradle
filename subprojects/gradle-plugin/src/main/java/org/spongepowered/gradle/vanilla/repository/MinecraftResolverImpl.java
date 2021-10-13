@@ -489,7 +489,13 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         // there's nothing yet, it's our time to resolve
         final ResolutionResult<MinecraftEnvironment> envResult;
         try {
-            envResult = this.provide(side, version, modifiers).get();
+            envResult = this.processSyncTasksUntilComplete(
+                this.provide(
+                    side,
+                    version,
+                    modifiers
+                )
+            );
         } catch (final ExecutionException ex) {
             ourResult.completeExceptionally(ex.getCause());
             return ourResult;
