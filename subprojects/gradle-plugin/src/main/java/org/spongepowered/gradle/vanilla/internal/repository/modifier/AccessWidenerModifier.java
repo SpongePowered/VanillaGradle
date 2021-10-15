@@ -28,6 +28,7 @@ import org.cadixdev.atlas.AtlasTransformerContext;
 import org.cadixdev.bombe.jar.JarEntryTransformer;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
@@ -102,7 +103,7 @@ public final class AccessWidenerModifier implements ArtifactModifier {
                 .newInstance();
 
             @Override
-            public JarEntryTransformer provide(final AtlasTransformerContext context) {
+            public JarEntryTransformer provide(final AtlasTransformerContext context, final MinecraftResolver.MinecraftEnvironment result, MinecraftPlatform side, SharedArtifactSupplier sharedArtifactProvider) {
                 if (this.accessWidenerLoader == null) {
                     throw new IllegalStateException("Already closed!");
                 }

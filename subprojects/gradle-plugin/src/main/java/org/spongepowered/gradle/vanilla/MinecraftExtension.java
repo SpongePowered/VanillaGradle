@@ -26,11 +26,17 @@ package org.spongepowered.gradle.vanilla;
 
 import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.gradle.api.Action;
+import org.gradle.api.NamedDomainObjectSet;
+import org.gradle.api.PolymorphicDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
+import org.spongepowered.gradle.vanilla.repository.mappings.MappingFormat;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
+import org.spongepowered.gradle.vanilla.repository.mappings.MappingsContainer;
+import org.spongepowered.gradle.vanilla.repository.mappings.MappingsEntry;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 
 /**
@@ -112,6 +118,24 @@ public interface MinecraftExtension extends MinecraftRepositoryExtension {
      * @param file any file that can be passed to {@link Project#file(Object)}
      */
     void accessWideners(Object... file);
+
+    PolymorphicDomainObjectContainer<MappingFormat<@NonNull ?>> getMappingFormats();
+
+    void mappingFormats(Action<NamedDomainObjectSet<MappingFormat<@NonNull ?>>> configure);
+
+    void mappingFormats(@DelegatesTo(value = NamedDomainObjectSet.class, strategy = Closure.DELEGATE_FIRST) Closure<NamedDomainObjectSet<MappingFormat<@NonNull ?>>> configureClosure);
+
+    MappingsContainer getMappings();
+
+    void mappings(Action<MappingsContainer> configure);
+
+    void mappings(@DelegatesTo(value = MappingsContainer.class, strategy = Closure.DELEGATE_FIRST) Closure<MappingsContainer> configureClosure);
+
+    Property<String> minecraftMappings();
+
+    void minecraftMappings(MappingsEntry mappings);
+
+    void minecraftMappings(String mappings);
 
     /**
      * Get run configurations configured for this project.

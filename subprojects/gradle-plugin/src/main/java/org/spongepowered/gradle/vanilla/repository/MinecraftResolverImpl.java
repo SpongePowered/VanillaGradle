@@ -25,14 +25,12 @@
 package org.spongepowered.gradle.vanilla.repository;
 
 import org.cadixdev.atlas.Atlas;
+import org.cadixdev.atlas.AtlasTransformerContext;
 import org.cadixdev.atlas.jar.JarFile;
-import org.cadixdev.atlas.util.CascadingClassProvider;
+import org.cadixdev.bombe.analysis.InheritanceProvider;
 import org.cadixdev.bombe.asm.analysis.ClassProviderInheritanceProvider;
 import org.cadixdev.bombe.asm.jar.ClassProvider;
-import org.cadixdev.lorenz.MappingSet;
-import org.cadixdev.lorenz.io.proguard.ProGuardReader;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.gradle.api.GradleException;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,35 +40,37 @@ import org.spongepowered.gradle.vanilla.internal.model.Download;
 import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.model.VersionManifestRepository;
-import org.spongepowered.gradle.vanilla.internal.util.FunctionalUtils;
-import org.spongepowered.gradle.vanilla.resolver.Downloader;
-import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.internal.repository.IvyModuleWriter;
 import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.AssociatedResolutionFlags;
-import org.spongepowered.gradle.vanilla.internal.transformer.AtlasTransformers;
 import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;
 import org.spongepowered.gradle.vanilla.internal.resolver.FileUtils;
+import org.spongepowered.gradle.vanilla.internal.transformer.AtlasTransformers;
+import org.spongepowered.gradle.vanilla.internal.util.FunctionalUtils;
 import org.spongepowered.gradle.vanilla.internal.util.SelfPreferringClassLoader;
+import org.spongepowered.gradle.vanilla.resolver.Downloader;
+import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,6 +78,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SynchronousQueue;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -95,6 +96,8 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     private final ConcurrentMap<EnvironmentKey, CompletableFuture<ResolutionResult<MinecraftEnvironment>>> artifacts = new ConcurrentHashMap<>();
     private final ConcurrentMap<EnvironmentKey, CompletableFuture<ResolutionResult<Path>>> associatedArtifacts = new ConcurrentHashMap<>();
     private final boolean forceRefresh;
+    private final BlockingQueue<Runnable> syncTasks = new SynchronousQueue<>();
+    private final Executor syncExecutor = run -> this.syncTasks.add(run);
 
     public MinecraftResolverImpl(
         final VersionManifestRepository manifests,
@@ -128,6 +131,11 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     }
 
     @Override
+    public Executor syncExecutor() {
+        return this.syncExecutor;
+    }
+
+    @Override
     public Supplier<URLClassLoader> classLoaderWithTool(final ResolvableTool tool) {
         final @Nullable Function<ResolvableTool, URL[]> toolResolver = this.toolResolver;
         if (toolResolver == null) {
@@ -154,12 +162,15 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                 }
                 final VersionDescriptor.Full descriptor = potentialDescriptor.get();
                 final Download jarDownload = descriptor.requireDownload(side.executableArtifact());
-                final Download mappingsDownload = descriptor.requireDownload(side.mappingsArtifact());
 
                 // download to temp path
                 final String tempJarPath = this.sharedArtifactFileName(platform.artifactId() + "_m-obf_b-bundled", version, null, "jar");
                 final String jarPath = this.sharedArtifactFileName(platform.artifactId() + "_m-obf", version, null, "jar");
-                final String mappingsPath = this.sharedArtifactFileName(platform.artifactId() + "_m-obf", version, "mappings", "txt");
+                try {
+                    FileUtils.createDirectoriesSymlinkSafe(this.downloader.baseDir().resolve(jarPath).getParent());
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
 
                 final CompletableFuture<ResolutionResult<Path>> jarFuture = this.downloader.downloadAndValidate(
                     jarDownload.url(),
@@ -167,14 +178,8 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                     HashAlgorithm.SHA1,
                     jarDownload.sha1()
                 );
-                final CompletableFuture<ResolutionResult<Path>> mappingsFuture = this.downloader.downloadAndValidate(
-                    mappingsDownload.url(),
-                    mappingsPath,
-                    HashAlgorithm.SHA1,
-                    mappingsDownload.sha1()
-                );
 
-                return jarFuture.thenCombineAsync(mappingsFuture, (jar, mappingsFile) -> {
+                return jarFuture.thenApplyAsync(jar -> {
                     try {
                         final boolean outputExists = Files.exists(outputJar);
                         final @Nullable BundlerMetadata bundlerMeta = BundlerMetadata.read(jar.get()).orElse(null);
@@ -184,7 +189,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                             MinecraftResolverImpl.LOGGER.info("No bundler metadata found in jar {}", jar.get());
                         }
                         final Supplier<Set<GroupArtifactVersion>> dependencies = () -> side.dependencies(descriptor, bundlerMeta);
-                        if (!this.forceRefresh && jar.upToDate() && mappingsFile.upToDate() && outputExists) {
+                        if (!this.forceRefresh && jar.upToDate() && outputExists) {
                             // Our inputs are up-to-date, and the output exists, so we can assume (for now) that the output is up-to-date
                             // Check meta here too, before returning
                             this.writeMetaIfNecessary(platform, potentialDescriptor, dependencies, outputJar.getParent());
@@ -193,9 +198,6 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         } else if (!jar.isPresent()) {
                             throw new IllegalArgumentException("No jar was available for Minecraft " + descriptor.id() + "side " + side.name()
                                 + "! Are you sure the data file is correct?");
-                        } else if (!mappingsFile.isPresent()) {
-                            throw new IllegalArgumentException("No mappings were available for Minecraft " + descriptor.id() + "side " + side.name()
-                                + "! Official mappings are only available for releases 1.14.4 and newer.");
                         }
                         MinecraftResolverImpl.LOGGER.warn("Preparing Minecraft: Java Edition {} version {}", side, version);
                         this.cleanAssociatedArtifacts(platform, version);
@@ -207,16 +209,6 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         final Path extracted = this.downloader.baseDir().resolve(jarPath);
                         side.extractJar(jar.get(), extracted, bundlerMeta);
 
-                        final MappingSet scratchMappings = MappingSet.create();
-                        try (
-                            final ProGuardReader proguard = new ProGuardReader(Files.newBufferedReader(mappingsFile.get(), StandardCharsets.UTF_8))
-                        ) {
-                            proguard.read(scratchMappings);
-                        } catch (final IOException ex) {
-                            throw new GradleException("Failed to read mappings from " + mappingsFile, ex);
-                        }
-                        final MappingSet mappings = scratchMappings.reverse();
-
                         try (
                             final Atlas atlas = new Atlas(this.executor);
                             final JarFile source = new JarFile(extracted)
@@ -225,13 +217,6 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                                 atlas.install(ctx -> AtlasTransformers.filterEntries(side.allowedPackages()));
                             }
                             atlas.install(ctx -> AtlasTransformers.stripSignatures());
-                            final List<ClassProvider> providers = new ArrayList<>();
-                            providers.add(source);
-                            atlas.install(ctx -> AtlasTransformers.remap(
-                                mappings,
-                                // duplicated from Atlas.run, to pass our own ASM API version
-                                new ClassProviderInheritanceProvider(Constants.ASM_VERSION, new CascadingClassProvider(providers))
-                            ));
 
                             atlas.run(source, outputTmp);
                         }
@@ -368,7 +353,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
     @Override
     public CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(
-        final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers
+        final MinecraftPlatform side, final String version, final List<ArtifactModifier> modifiers
     ) {
         final CompletableFuture<ResolutionResult<MinecraftEnvironment>> unmodified = this.provide0(side, version);
         if (modifiers.isEmpty()) { // no modifiers provided, follow the normal path
@@ -413,7 +398,8 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
                         try (final Atlas atlas = new Atlas(this.executor)) {
                             for (final CompletableFuture<ArtifactModifier.AtlasPopulator> populator : populators) {
-                                atlas.install(populator.get()::provide);
+                                ArtifactModifier.AtlasPopulator pop = populator.get();
+                                atlas.install(ctx -> pop.provide(withAsmApi(ctx, Constants.ASM_VERSION), input.get(), side, (id, classifier, extension) -> this.sharedArtifactFileName(id, version, classifier, extension)));
                             }
 
                             atlas.run(input.get().jar(), outputTmp);
@@ -436,8 +422,41 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         }
                     }
                 }
-            }
+            },
+            executor
         ));
+    }
+
+    private static final Field CPIP_CLASS_PROVIDER_FIELD;
+    private static final Constructor<AtlasTransformerContext> ATC_CONSTRUCTOR;
+    static {
+        try {
+            CPIP_CLASS_PROVIDER_FIELD = ClassProviderInheritanceProvider.class.getDeclaredField("provider");
+            CPIP_CLASS_PROVIDER_FIELD.setAccessible(true);
+            ATC_CONSTRUCTOR = AtlasTransformerContext.class.getDeclaredConstructor(InheritanceProvider.class);
+            ATC_CONSTRUCTOR.setAccessible(true);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // Hack to set the ASM api version of the atlas inheritance provider.
+    // TODO: better solution, e.g. forking or using a different library?
+    private static ClassProvider getClassProvider(ClassProviderInheritanceProvider inheritanceProvider) {
+        try {
+            return (ClassProvider) CPIP_CLASS_PROVIDER_FIELD.get(inheritanceProvider);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static AtlasTransformerContext withAsmApi(AtlasTransformerContext context, int asmApi) {
+        InheritanceProvider inheritanceProvider = new ClassProviderInheritanceProvider(asmApi, getClassProvider((ClassProviderInheritanceProvider) context.inheritanceProvider()));
+        try {
+            return ATC_CONSTRUCTOR.newInstance(inheritanceProvider);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void cleanAssociatedArtifacts(final MinecraftPlatform platform, final String version) throws IOException {
@@ -464,7 +483,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     public CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifactSync(
         final MinecraftPlatform side,
         final String version,
-        final Set<ArtifactModifier> modifiers,
+        final List<ArtifactModifier> modifiers,
         final String id,
         final Set<AssociatedResolutionFlags> flags,
         final BiConsumer<MinecraftEnvironment, Path> action
@@ -480,7 +499,13 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         // there's nothing yet, it's our time to resolve
         final ResolutionResult<MinecraftEnvironment> envResult;
         try {
-            envResult = this.provide(side, version, modifiers).get();
+            envResult = this.processSyncTasksUntilComplete(
+                this.provide(
+                    side,
+                    version,
+                    modifiers
+                )
+            );
         } catch (final ExecutionException ex) {
             ourResult.completeExceptionally(ex.getCause());
             return ourResult;
@@ -518,6 +543,42 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
             ourResult.completeExceptionally(ex);
         }
         return ourResult;
+    }
+
+    @Override
+    public <T> T processSyncTasksUntilComplete(CompletableFuture<T> future) throws InterruptedException, ExecutionException {
+        future.handleAsync(
+            (
+                res,
+                err
+            ) -> {
+                this.syncTasks.add(new CompleteEvaluation(future));
+                return res;
+            },
+            this.executor
+        );
+
+        Runnable action;
+        for (;;) {
+            action = this.syncTasks.take();
+
+            // todo: rethrow exceptions with an ExecutionException
+            if (action instanceof CompleteEvaluation) {
+                if (((CompleteEvaluation) action).completed == future) {
+                    break;
+                } else {
+                    this.syncTasks.add(action);
+                }
+            }
+
+            try {
+                action.run();
+            } catch (final Exception ex) {
+                MinecraftResolverImpl.LOGGER.error("Failed to execute synchronous task {} while resolving {}", action, future, ex);
+            }
+        }
+
+        return future.get();
     }
 
     private String sharedArtifactFileName(
@@ -664,6 +725,21 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         @Override
         public VersionDescriptor.Full metadata() {
             return this.metadata;
+        }
+
+    }
+
+    static final class CompleteEvaluation implements Runnable {
+
+        final CompletableFuture<?> completed;
+
+        CompleteEvaluation(final CompletableFuture<?> completed) {
+            this.completed = completed;
+        }
+
+        @Override
+        public void run() {
+            // no-op
         }
 
     }

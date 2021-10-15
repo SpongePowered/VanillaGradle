@@ -27,10 +27,12 @@ package org.spongepowered.gradle.vanilla.internal.repository.modifier;
 import org.cadixdev.atlas.Atlas;
 import org.cadixdev.atlas.AtlasTransformerContext;
 import org.cadixdev.bombe.jar.JarEntryTransformer;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 
 import java.io.IOException;
-import java.util.Set;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -42,7 +44,7 @@ public interface ArtifactModifier {
 
     char KEY_VALUE_SEPARATOR = '-';
 
-    static String decorateArtifactId(final String originalId, final Set<ArtifactModifier> modifiers) {
+    static String decorateArtifactId(final String originalId, final List<ArtifactModifier> modifiers) {
         if (modifiers.isEmpty()) {
             return originalId;
         }
@@ -102,11 +104,16 @@ public interface ArtifactModifier {
      */
     @FunctionalInterface
     interface AtlasPopulator extends AutoCloseable {
-        JarEntryTransformer provide(final AtlasTransformerContext context);
+        JarEntryTransformer provide(final AtlasTransformerContext context, final MinecraftResolver.MinecraftEnvironment result, final MinecraftPlatform side, SharedArtifactSupplier sharedArtifactProvider);
 
         @Override
         default void close() throws IOException {
         }
+    }
+
+    @FunctionalInterface
+    interface SharedArtifactSupplier {
+        String supply(String id, @Nullable String classifier, String extension);
     }
 
 }

@@ -25,7 +25,6 @@
 package org.spongepowered.gradle.vanilla.task;
 
 import org.gradle.api.DefaultTask;
-import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
@@ -37,7 +36,6 @@ import org.gradle.api.tasks.TaskAction;
 import org.spongepowered.gradle.vanilla.internal.runs.EclipseRunConfigurationWriter;
 import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

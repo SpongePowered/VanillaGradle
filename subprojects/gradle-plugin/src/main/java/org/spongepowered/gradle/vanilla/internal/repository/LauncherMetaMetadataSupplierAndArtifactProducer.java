@@ -38,6 +38,7 @@ import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
@@ -74,8 +75,10 @@ public class LauncherMetaMetadataSupplierAndArtifactProducer implements Componen
             final MinecraftResolver resolver = providerService.resolver();
             // Request the appropriate jar, block until it's provided
             // TODO: maybe validate that the state keys of the provided modifiers actually match the artifact ID?
-            final ResolutionResult<MinecraftResolver.MinecraftEnvironment>
-                resolution = resolver.provide(platform.get(), version, providerService.peekModifiers()).get();
+            final CompletableFuture<ResolutionResult<MinecraftResolver.MinecraftEnvironment>> resolutionFuture = resolver
+                .provide(platform.get(), version, providerService.peekModifiers());
+
+            final ResolutionResult<MinecraftResolver.MinecraftEnvironment> resolution = resolver.processSyncTasksUntilComplete(resolutionFuture);
             if (!resolution.isPresent()) {
                 return;
             }

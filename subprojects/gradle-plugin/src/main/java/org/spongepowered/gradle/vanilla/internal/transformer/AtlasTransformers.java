@@ -28,7 +28,6 @@ import org.cadixdev.bombe.analysis.InheritanceProvider;
 import org.cadixdev.bombe.asm.jar.JarEntryRemappingTransformer;
 import org.cadixdev.bombe.jar.JarEntryTransformer;
 import org.cadixdev.lorenz.MappingSet;
-import org.cadixdev.lorenz.asm.LorenzRemapper;
 import org.spongepowered.gradle.vanilla.internal.asm.EnhancedClassRemapper;
 import org.spongepowered.gradle.vanilla.internal.asm.EnhancedRemapper;
 import org.spongepowered.gradle.vanilla.internal.asm.LocalVariableNamingClassVisitor;

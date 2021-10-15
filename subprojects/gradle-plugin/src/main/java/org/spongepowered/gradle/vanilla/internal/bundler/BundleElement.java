@@ -25,7 +25,6 @@
 package org.spongepowered.gradle.vanilla.internal.bundler;
 
 import org.immutables.value.Value;
-import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
 
 /**
  * A single entry in a bundle.
