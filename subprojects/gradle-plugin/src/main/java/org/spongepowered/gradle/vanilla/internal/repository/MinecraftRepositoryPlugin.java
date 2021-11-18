@@ -41,9 +41,10 @@ import org.gradle.api.initialization.Settings;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.ProviderFactory;
 import org.gradle.build.event.BuildEventsListenerRegistry;
-import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
+import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
@@ -55,7 +56,6 @@ import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
@@ -66,6 +66,12 @@ import javax.inject.Inject;
  * The minimum plugin to add the minecraft repository to projects or globally.
  */
 public class MinecraftRepositoryPlugin implements Plugin<Object> {
+
+    private static final String GRADLE_PROPERTY_PREFIX = "org.spongepowered.gradle.vanilla.";
+
+    private static final String GRADLE_PROPERTY_SHARED_CACHE = MinecraftRepositoryPlugin.GRADLE_PROPERTY_PREFIX + "sharedCacheRoot";
+
+    private static final String GRADLE_PROPERTY_ROOT_PROJECT_CACHE = MinecraftRepositoryPlugin.GRADLE_PROPERTY_PREFIX + "projectCacheRoot";
 
     /**
      * A variant of {@link IvyArtifactRepository#MAVEN_IVY_PATTERN} that takes
@@ -107,8 +113,19 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
 
     private void applyToProject(final Project project) {
         // Setup
-        final Path sharedCacheDirectory = MinecraftRepositoryPlugin.resolveCache(project.getGradle().getGradleUserHomeDir().toPath());
-        final Path rootProjectCache = MinecraftRepositoryPlugin.resolveCache(project.getRootDir().toPath().resolve(".gradle"));
+        final ProviderFactory providers = project.getProviders();
+        final Provider<File> sharedCacheDirectory = MinecraftRepositoryPlugin.resolveCache(
+            project.getRootDir(),
+            providers,
+            MinecraftRepositoryPlugin.GRADLE_PROPERTY_SHARED_CACHE,
+            project.getGradle().getGradleUserHomeDir()
+        );
+        final Provider<File> rootProjectCache = MinecraftRepositoryPlugin.resolveCache(
+            project.getRootDir(),
+            providers,
+            MinecraftRepositoryPlugin.GRADLE_PROPERTY_ROOT_PROJECT_CACHE,
+            new File(project.getRootDir(), ".gradle")
+        );
         final Provider<MinecraftProviderService> service = this.registerService(project.getGradle(), sharedCacheDirectory, rootProjectCache);
 
         // Apply vanillagradle caches
@@ -184,7 +201,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                     // If we do have a version, try to resolve that fixed version
                     if (version != null) {
                         try {
-                            resolver.provide(platform.get(), version, providerService.peekModifiers()).get();
+                            resolver.processSyncTasksUntilComplete(resolver.provide(platform.get(), version, providerService.peekModifiers()));
                         } catch (final InterruptedException ex) {
                             Thread.currentThread().interrupt();
                         } catch (final ExecutionException ex) {
@@ -227,8 +244,19 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
 
     private void applyToSettings(final Settings settings) {
         // Setup
-        final Path sharedCacheDirectory = MinecraftRepositoryPlugin.resolveCache(settings.getGradle().getGradleUserHomeDir().toPath());
-        final Path rootProjectCache = MinecraftRepositoryPlugin.resolveCache(settings.getRootDir().toPath().resolve(".gradle"));
+        final ProviderFactory providers = settings.getProviders();
+        final Provider<File> sharedCacheDirectory = MinecraftRepositoryPlugin.resolveCache(
+            settings.getRootDir(),
+            providers,
+            MinecraftRepositoryPlugin.GRADLE_PROPERTY_SHARED_CACHE,
+            settings.getGradle().getGradleUserHomeDir()
+        );
+        final Provider<File> rootProjectCache = MinecraftRepositoryPlugin.resolveCache(
+            settings.getRootDir(),
+            providers,
+            MinecraftRepositoryPlugin.GRADLE_PROPERTY_ROOT_PROJECT_CACHE,
+            new File(settings.getRootDir(), ".gradle")
+        );
         final Provider<MinecraftProviderService> service = this.registerService(settings.getGradle(), sharedCacheDirectory, rootProjectCache);
 
         // Apply VanillaGradle caches
@@ -268,29 +296,54 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         return extension;
     }
 
-    private static Path resolveCache(final Path root) {
-        return root.resolve(Constants.Directories.CACHES).resolve(Constants.NAME).resolve("v" + MinecraftResolver.STORAGE_VERSION);
+    private static Provider<File> resolveCache(
+        final File relativeTo,
+        final ProviderFactory providers,
+        final String propertyName,
+        final File root
+    ) {
+        return providers.gradleProperty(propertyName)
+            .forUseAtConfigurationTime()
+            .map(dirName -> {
+                final File dir = new File(dirName);
+                if (dir.isAbsolute()) {
+                    return dir;
+                } else {
+                    return new File(relativeTo, dirName);
+                }
+            })
+            .orElse(new File(new File(root, Constants.Directories.CACHES), Constants.NAME))
+            .map(loc -> new File(loc, "v" + MinecraftResolver.STORAGE_VERSION));
     }
 
-    private void createRepositories(final RepositoryHandler repositories, final Provider<MinecraftProviderService> service, final Path sharedCache, final Path rootProjectCache) {
+    private void createRepositories(
+        final RepositoryHandler repositories,
+        final Provider<MinecraftProviderService> service,
+        final Provider<File> sharedCache,
+        final Provider<File> rootProjectCache
+    ) {
         // Global cache (for standard artifacts)
         repositories.ivy(MinecraftRepositoryPlugin.repositoryConfiguration(
             "VanillaGradle Global Cache",
-            sharedCache.resolve(Constants.Directories.JARS),
+            sharedCache.map(f -> new File(f, Constants.Directories.JARS)),
             service
         ));
         // Root-project cache (for project-specific transformations, such as access wideners, potentially other things
         repositories.ivy(MinecraftRepositoryPlugin.repositoryConfiguration(
             "VanillaGradle Project Cache",
-            rootProjectCache.resolve(Constants.Directories.JARS),
+            rootProjectCache.map(f -> new File(f, Constants.Directories.JARS)),
             service
         ));
     }
 
-    private static Action<IvyArtifactRepository> repositoryConfiguration(final String name, final Path root, final Provider<MinecraftProviderService> service) {
+    private static Action<IvyArtifactRepository> repositoryConfiguration(
+        final String name,
+        final Provider<File> root,
+        final Provider<MinecraftProviderService> service
+    ) {
        return ivy -> {
            ivy.setName(name);
-           ivy.setUrl(root.toUri());
+           ivy.setUrl(root.get().toURI());
            ivy.patternLayout(layout -> {
                layout.artifact(IvyArtifactRepository.MAVEN_ARTIFACT_PATTERN);
                layout.ivy(MinecraftRepositoryPlugin.IVY_METADATA_PATTERN);
@@ -320,11 +373,13 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         }
     }
 
-    private Provider<MinecraftProviderService> registerService(final Gradle gradle, final Path sharedCacheDir, final Path rootProjectCacheDir) {
+    private Provider<MinecraftProviderService> registerService(
+        final Gradle gradle, final Provider<File> sharedCacheDir, final Provider<File> rootProjectCacheDir
+    ) {
         final Provider<MinecraftProviderService> service = this.service = gradle.getSharedServices().registerIfAbsent("vanillaGradleMinecraft", MinecraftProviderService.class, params -> {
             final MinecraftProviderService.Parameters options = params.getParameters();
-            options.getSharedCache().set(sharedCacheDir.toFile());
-            options.getRootProjectCache().set(rootProjectCacheDir.toFile());
+            options.getSharedCache().fileProvider(sharedCacheDir);
+            options.getRootProjectCache().fileProvider(rootProjectCacheDir);
             options.getOfflineMode().set(gradle.getStartParameter().isOffline());
             options.getRefreshDependencies().set(gradle.getStartParameter().isRefreshDependencies());
         });

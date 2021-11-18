@@ -50,19 +50,17 @@ public abstract class BundlerMetadata {
 
     private static final JarPath MANIFEST = new JarPath("META-INF/MANIFEST.MF");
 
-    private static final JarPath LIBRARIES_LIST = new JarPath("META-INF/libraries.list");
-
-    private static final JarPath VERSIONS_LIST = new JarPath("META-INF/versions.list");
-
     private static final JarPath MAIN_CLASS = new JarPath("META-INF/main-class");
 
     /**
      * Attempt to read bundler metadata from a jar.
      *
-     * <p>If the jar is not a Minecraft bundler jar, an empty {@link Optional} will be returned.</p>
+     * <p>If the jar is not a Minecraft bundler jar, an empty {@link Optional} will
+     * be returned.</p>
      *
      * @param jar the jar to read
      * @return parsed metadata
+     * @throws IOException if an error occurs while trying to read from the jar
      */
     public static Optional<BundlerMetadata> read(final Path jar) throws IOException {
         try (final JarFile file = new JarFile(jar)) {
