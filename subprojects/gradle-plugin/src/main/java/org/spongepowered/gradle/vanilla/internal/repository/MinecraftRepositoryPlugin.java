@@ -343,7 +343,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
     ) {
        return ivy -> {
            ivy.setName(name);
-            ivy.setUrl(root.get().toURI());
+           ivy.setUrl(root.get().toURI());
            ivy.patternLayout(layout -> {
                layout.artifact(IvyArtifactRepository.MAVEN_ARTIFACT_PATTERN);
                layout.ivy(MinecraftRepositoryPlugin.IVY_METADATA_PATTERN);
@@ -378,7 +378,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
     ) {
         final Provider<MinecraftProviderService> service = this.service = gradle.getSharedServices().registerIfAbsent("vanillaGradleMinecraft", MinecraftProviderService.class, params -> {
             final MinecraftProviderService.Parameters options = params.getParameters();
-                options.getSharedCache().fileProvider(sharedCacheDir);
+            options.getSharedCache().fileProvider(sharedCacheDir);
             options.getRootProjectCache().fileProvider(rootProjectCacheDir);
             options.getOfflineMode().set(gradle.getStartParameter().isOffline());
             options.getRefreshDependencies().set(gradle.getStartParameter().isRefreshDependencies());

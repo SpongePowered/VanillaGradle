@@ -50,10 +50,6 @@ public abstract class BundlerMetadata {
 
     private static final JarPath MANIFEST = new JarPath("META-INF/MANIFEST.MF");
 
-    private static final JarPath LIBRARIES_LIST = new JarPath("META-INF/libraries.list");
-
-    private static final JarPath VERSIONS_LIST = new JarPath("META-INF/versions.list");
-
     private static final JarPath MAIN_CLASS = new JarPath("META-INF/main-class");
 
     /**
