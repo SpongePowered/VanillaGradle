@@ -39,7 +39,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 public interface MinecraftResolver {
@@ -97,15 +97,19 @@ public interface MinecraftResolver {
      *     environment and a target path
      * @return a future returning the result of resolving a jar path
      */
-    CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifactSync(
-        final MinecraftPlatform side, final String version, final Set<ArtifactModifier> modifiers, final String id,
-        final Set<AssociatedResolutionFlags> flags, final BiConsumer<MinecraftEnvironment, Path> action
+    CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifact(
+        final MinecraftPlatform side,
+        final String version,
+        final Set<ArtifactModifier> modifiers,
+        final String id,
+        final Set<AssociatedResolutionFlags> flags,
+        final BiFunction<MinecraftEnvironment, Path, CompletableFuture<?>> action
     );
 
     /**
      * Block on the completion of a provided future, processing "sync" tasks while
      * that occurs.
-     * 
+     *
      * @param <T> the return value type
      * @param future the future to await
      * @return the result of the future
@@ -179,7 +183,7 @@ public interface MinecraftResolver {
         /**
          * An executor for performing main-thread synchronous operations, like some
          * dependency resolution.
-         * 
+         *
          * @return the synchronous executor
          */
         Executor syncExecutor();
@@ -191,7 +195,7 @@ public interface MinecraftResolver {
          * <p>This is a very fragile arrangement but it allows some dependencies to be
          * overridden at runtime. Classes from Gradle, VanillaGradle's dependencies, and
          * the JDK can be safely shared, but VanillaGradle classes CAN NOT.</p>
-         * 
+         *
          * <p>This must be run on the {@link #syncExecutor()}.</p>
          *
          * @param tool the tool to resolve

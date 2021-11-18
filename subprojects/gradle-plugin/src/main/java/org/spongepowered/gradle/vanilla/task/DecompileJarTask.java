@@ -51,6 +51,7 @@ import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactMod
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.AssociatedResolutionFlags;
 import org.spongepowered.gradle.vanilla.internal.worker.JarDecompileWorker;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
+import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.io.File;
@@ -137,52 +138,54 @@ public abstract class DecompileJarTask extends DefaultTask {
             if (this.getForced().getOrElse(false)) {
                 flags.add(AssociatedResolutionFlags.FORCE_REGENERATE);
             }
-            resultFuture = minecraftProvider.resolver().produceAssociatedArtifactSync(
+            resultFuture = minecraftProvider.resolver().produceAssociatedArtifact(
                 this.getMinecraftPlatform().get(),
                 this.getMinecraftVersion().get(),
                 modifiers,
                 "sources",
                 flags,
                 (env, output) -> {
-                    // Determine which parts of the configuration are MC, and which are its dependencies
-                    final Set<File> dependencies = new HashSet<>();
-                    for (final ResolvedArtifactResult artifact : this.getInputArtifacts().get()) {
-                        if (artifact.getId() instanceof ModuleComponentArtifactIdentifier) {
-                            final ModuleComponentArtifactIdentifier id = (ModuleComponentArtifactIdentifier) artifact.getId();
-                            if (id.getComponentIdentifier().getGroup().equals(MinecraftPlatform.GROUP)) {
-                                if (env.decoratedArtifactId().equals(id.getComponentIdentifier().getModule())) {
-                                    continue;
-                                }
-                            }
-                        }
-                        dependencies.add(artifact.getFile());
-                    }
-
-                    if (dependencies.isEmpty()) {
-                        throw new InvalidUserDataException("No dependencies were found as part of the classpath");
-                    }
-
-                    // Execute in an isolated JVM that can access our customized classpath
-                    // This actually performs the decompile
                     final long totalSystemMemoryBytes =
                         ((OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getTotalPhysicalMemorySize() / (1024L * 1024L);
-                    this.getWorkerExecutor().processIsolation(spec -> {
-                        spec.forkOptions(options -> {
-                            options.setMaxHeapSize(Math.max(totalSystemMemoryBytes / 4, 4096) + "M");
-                            // Enable toolchain support
-                            if (this.getJavaLauncher().isPresent()) {
-                                final JavaLauncher launcher = this.getJavaLauncher().get();
-                                options.setExecutable(launcher.getExecutablePath());
+                    return CompletableFuture.runAsync(() -> {
+                        // Determine which parts of the configuration are MC, and which are its dependencies
+                        final Set<File> dependencies = new HashSet<>();
+                        for (final ResolvedArtifactResult artifact : this.getInputArtifacts().get()) {
+                            if (artifact.getId() instanceof ModuleComponentArtifactIdentifier) {
+                                final ModuleComponentArtifactIdentifier id = (ModuleComponentArtifactIdentifier) artifact.getId();
+                                if (id.getComponentIdentifier().getGroup().equals(MinecraftPlatform.GROUP)) {
+                                    if (env.decoratedArtifactId().equals(id.getComponentIdentifier().getModule())) {
+                                        continue;
+                                    }
+                                }
                             }
+                            dependencies.add(artifact.getFile());
+                        }
+
+                        if (dependencies.isEmpty()) {
+                            throw new InvalidUserDataException("No dependencies were found as part of the classpath");
+                        }
+
+                        // Execute in an isolated JVM that can access our customized classpath
+                        // This actually performs the decompile
+                        this.getWorkerExecutor().processIsolation(spec -> {
+                            spec.forkOptions(options -> {
+                                options.setMaxHeapSize(Math.max(totalSystemMemoryBytes / 4, 4096) + "M");
+                                // Enable toolchain support
+                                if (this.getJavaLauncher().isPresent()) {
+                                    final JavaLauncher launcher = this.getJavaLauncher().get();
+                                    options.setExecutable(launcher.getExecutablePath());
+                                }
+                            });
+                            spec.getClasspath().from(this.getWorkerClasspath());
+                        }).submit(JarDecompileWorker.class, parameters -> {
+                            parameters.getDecompileClasspath().from(dependencies);
+                            parameters.getExtraArgs().set(this.getExtraFernFlowerArgs().orElse(Collections.emptyMap()));
+                            parameters.getInputJar().set(env.jar().toFile()); // Use the temporary jar
+                            parameters.getOutputJar().set(output.toFile());
                         });
-                        spec.getClasspath().from(this.getWorkerClasspath());
-                    }).submit(JarDecompileWorker.class, parameters -> {
-                        parameters.getDecompileClasspath().from(dependencies);
-                        parameters.getExtraArgs().set(this.getExtraFernFlowerArgs().orElse(Collections.emptyMap()));
-                        parameters.getInputJar().set(env.jar().toFile()); // Use the temporary jar
-                        parameters.getOutputJar().set(output.toFile());
-                    });
-                    this.getWorkerExecutor().await();
+                        this.getWorkerExecutor().await();
+                    }, ((MinecraftResolver.Context) minecraftProvider.resolver()).syncExecutor());
                 }
             );
 
@@ -195,7 +198,6 @@ public abstract class DecompileJarTask extends DefaultTask {
                 Thread.currentThread().interrupt();
                 throw new GradleException("Interrupted");
             }
-
         } finally {
             DecompileJarTask.DECOMPILE_LOCK.unlock();
         }

@@ -80,7 +80,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
-import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -470,73 +470,76 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     }
 
     @Override
-    public CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifactSync(
+    public CompletableFuture<ResolutionResult<Path>> produceAssociatedArtifact(
         final MinecraftPlatform side,
         final String version,
         final Set<ArtifactModifier> modifiers,
         final String id,
         final Set<AssociatedResolutionFlags> flags,
-        final BiConsumer<MinecraftEnvironment, Path> action
+        final BiFunction<MinecraftEnvironment, Path, CompletableFuture<?>> action
     ) {
         // We need to compute our own key to be able to query the map
         final String decoratedArtifact = ArtifactModifier.decorateArtifactId(side.artifactId(), modifiers) + '-' + id;
-        final CompletableFuture<ResolutionResult<Path>> ourResult = new CompletableFuture<>();
-        final @Nullable CompletableFuture<ResolutionResult<Path>> existing = this.associatedArtifacts.putIfAbsent(EnvironmentKey.of(side, version, decoratedArtifact), ourResult);
-        if (existing != null) { // don't resolve twice
-            return existing;
-        }
 
         // there's nothing yet, it's our time to resolve
-        final ResolutionResult<MinecraftEnvironment> envResult;
-        try {
-            envResult = this.processSyncTasksUntilComplete(
-                this.provide(
-                    side,
-                    version,
-                    modifiers
-                )
-            );
-        } catch (final ExecutionException ex) {
-            ourResult.completeExceptionally(ex.getCause());
-            return ourResult;
-        } catch (final InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            ourResult.completeExceptionally(ex);
-            return ourResult;
-        }
+        return this.associatedArtifacts.computeIfAbsent(
+            EnvironmentKey.of(side, version, decoratedArtifact),
+            key -> this.provide(side, version, modifiers).thenComposeAsync(
+                envResult -> {
+                    if (!envResult.isPresent()) {
+                        throw new IllegalStateException("No environment could be found for '" + side + "' version " + version);
+                    }
+                    final MinecraftEnvironment env = envResult.get();
+                    final Path output = env.jar().resolveSibling(env.decoratedArtifactId() + "-" + env.metadata().id() + "-" + id + ".jar");
+                    if (this.forceRefresh || !envResult.upToDate() || flags.contains(AssociatedResolutionFlags.FORCE_REGENERATE) || !Files.exists(output)) {
+                        final Path tempOutDir;
+                        try {
+                            tempOutDir = Files.createTempDirectory("vanillagradle-" + env.decoratedArtifactId() + "-" + id);
+                        } catch (final IOException ex) {
+                            throw new CompletionException(ex);
+                        }
+                        final Path tempOut = tempOutDir.resolve(id + ".jar");
 
-        if (!envResult.isPresent()) {
-            throw new IllegalStateException("No environment could be found for '" + side + "' version " + version);
-        }
-        final MinecraftEnvironment env = envResult.get();
-        final Path output = env.jar().resolveSibling(env.decoratedArtifactId() + "-" + env.metadata().id() + "-" + id + ".jar");
-        try {
-            if (this.forceRefresh || !envResult.upToDate() || flags.contains(AssociatedResolutionFlags.FORCE_REGENERATE) || !Files.exists(output)) {
-                final Path tempOutDir = Files.createTempDirectory("vanillagradle-" + env.decoratedArtifactId() + "-" + id);
-                final Path tempOut = tempOutDir.resolve(id + ".jar");
-
-                if (flags.contains(AssociatedResolutionFlags.MODIFIES_ORIGINAL)) {
-                    // To safely modify the input, we copy it to a temporary location, then copy back when the action successfully completes
-                    final Path tempInput = tempOutDir.resolve("original-to-modify.jar");
-                    Files.copy(env.jar(), tempInput);
-                    action.accept(new MinecraftEnvironmentImpl(env.decoratedArtifactId(), tempInput, env::dependencies, env.metadata()), tempOut);
-                    FileUtils.atomicMove(tempInput, env.jar());
-                } else {
-                    action.accept(env, tempOut);
-                }
-                FileUtils.atomicMove(tempOut, output);
-                ourResult.complete(ResolutionResult.result(output, false));
-            } else {
-                ourResult.complete(ResolutionResult.result(output, true)); // todo: find some better way of checking validity? for ex. when decompiler version changes
-            }
-        } catch (final Exception ex) {
-            ourResult.completeExceptionally(ex);
-        }
-        return ourResult;
+                        final CompletableFuture<?> actionResult;
+                        if (flags.contains(AssociatedResolutionFlags.MODIFIES_ORIGINAL)) {
+                            // To safely modify the input, we copy it to a temporary location, then copy back when the action successfully completes
+                            final Path tempInput = tempOutDir.resolve("original-to-modify.jar");
+                            try {
+                                Files.copy(env.jar(), tempInput);
+                            } catch (final IOException ex) {
+                                throw new CompletionException(ex);
+                            }
+                            actionResult = action.apply(new MinecraftEnvironmentImpl(env.decoratedArtifactId(), tempInput, env::dependencies, env.metadata()), tempOut)
+                                .thenApply(in -> {
+                                    try {
+                                        FileUtils.atomicMove(tempInput, env.jar());
+                                    } catch (final IOException ex) {
+                                        throw new CompletionException(ex);
+                                    }
+                                    return in;
+                                });
+                        } else {
+                            actionResult = action.apply(env, tempOut);
+                        }
+                        return actionResult.thenApply(in -> {
+                            try {
+                                FileUtils.atomicMove(tempOut, output);
+                            } catch (final IOException ex) {
+                                throw new CompletionException(ex);
+                            }
+                            return ResolutionResult.result(output, false);
+                        });
+                    } else {
+                        return CompletableFuture.completedFuture(ResolutionResult.result(output, true)); // todo: find some better way of checking validity? for ex. when decompiler version changes
+                    }
+                },
+                this.executor()
+            )
+        );
     }
 
     @Override
-    public <T> T processSyncTasksUntilComplete(CompletableFuture<T> future) throws InterruptedException, ExecutionException {
+    public <T> T processSyncTasksUntilComplete(final CompletableFuture<T> future) throws InterruptedException, ExecutionException {
         future.handleAsync(
             (
                 res,
