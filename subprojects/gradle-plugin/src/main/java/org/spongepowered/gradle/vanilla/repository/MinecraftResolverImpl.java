@@ -24,19 +24,16 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
-import org.cadixdev.atlas.Atlas;
-import org.cadixdev.atlas.jar.JarFile;
-import org.cadixdev.atlas.util.CascadingClassProvider;
-import org.cadixdev.bombe.asm.analysis.ClassProviderInheritanceProvider;
-import org.cadixdev.bombe.asm.jar.ClassProvider;
-import org.cadixdev.lorenz.MappingSet;
-import org.cadixdev.lorenz.io.proguard.ProGuardReader;
+import net.minecraftforge.fart.api.RecordFixFlag;
+import net.minecraftforge.fart.api.Renamer;
+import net.minecraftforge.fart.api.SourceFixerConfig;
+import net.minecraftforge.fart.api.Transformer;
+import net.minecraftforge.srgutils.IMappingFile;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.GradleException;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.bundler.BundlerMetadata;
 import org.spongepowered.gradle.vanilla.internal.model.Download;
 import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
@@ -48,7 +45,7 @@ import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactMod
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.AssociatedResolutionFlags;
 import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;
 import org.spongepowered.gradle.vanilla.internal.resolver.FileUtils;
-import org.spongepowered.gradle.vanilla.internal.transformer.AtlasTransformers;
+import org.spongepowered.gradle.vanilla.internal.transformer.Transformers;
 import org.spongepowered.gradle.vanilla.internal.util.FunctionalUtils;
 import org.spongepowered.gradle.vanilla.internal.util.SelfPreferringClassLoader;
 import org.spongepowered.gradle.vanilla.resolver.Downloader;
@@ -56,20 +53,18 @@ import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -216,34 +211,35 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         final Path extracted = this.downloader.baseDir().resolve(jarPath);
                         side.extractJar(jar.get(), extracted, bundlerMeta);
 
-                        final MappingSet scratchMappings = MappingSet.create();
+                        final IMappingFile scratchMappings;
                         try (
-                            final ProGuardReader proguard = new ProGuardReader(Files.newBufferedReader(mappingsFile.get(), StandardCharsets.UTF_8))
+                            final InputStream reader = Files.newInputStream(mappingsFile.get())
                         ) {
-                            proguard.read(scratchMappings);
+                            scratchMappings = IMappingFile.load(reader);
                         } catch (final IOException ex) {
                             throw new GradleException("Failed to read mappings from " + mappingsFile, ex);
                         }
-                        final MappingSet mappings = scratchMappings.reverse();
+                        final IMappingFile mappings = scratchMappings.reverse();
 
-                        try (
-                            final Atlas atlas = new Atlas(this.executor);
-                            final JarFile source = new JarFile(extracted)
-                        ) {
-                            if (bundlerMeta == null && !side.allowedPackages().isEmpty()) {
-                                atlas.install(ctx -> AtlasTransformers.filterEntries(side.allowedPackages()));
-                            }
-                            atlas.install(ctx -> AtlasTransformers.stripSignatures());
-                            final List<ClassProvider> providers = new ArrayList<>();
-                            providers.add(source);
-                            atlas.install(ctx -> AtlasTransformers.remap(
-                                mappings,
-                                // duplicated from Atlas.run, to pass our own ASM API version
-                                new ClassProviderInheritanceProvider(Constants.ASM_VERSION, new CascadingClassProvider(providers))
-                            ));
+                        final Renamer.Builder renamerBuilder = Renamer.builder();
 
-                            atlas.run(source, outputTmp);
+                        if (bundlerMeta == null && !side.allowedPackages().isEmpty()) {
+                            renamerBuilder.add(ctx -> Transformers.filterEntries(side.allowedPackages()));
                         }
+                        renamerBuilder.add(Transformer.parameterAnnotationFixerFactory())
+                            .add(Transformers.fixLvNames())
+                            .add(Transformer.renamerFactory(mappings))
+                            .add(Transformer.sourceFixerFactory(SourceFixerConfig.JAVA))
+                            .add(Transformer.recordFixerFactory(RecordFixFlag.all()));
+
+                        renamerBuilder.input(extracted.toFile())
+                        .output(outputTmp.toFile())
+                        .logger(MinecraftResolverImpl.LOGGER::info)
+                        // todo: threads
+                        // todo: dependencies
+                        .build()
+                        .run();
+
                         this.writeMetaIfNecessary(platform, potentialDescriptor, dependencies, outputJar.getParent());
                         FileUtils.atomicMove(outputTmp, outputJar);
                         // not up-to-date, we had to generate the jar
@@ -388,7 +384,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         boolean requiresLocalStorage = false;
         // Synchronously compute the modifier populator providers
         @SuppressWarnings({"unchecked", "rawtypes"})
-        final CompletableFuture<ArtifactModifier.AtlasPopulator>[] populators = new CompletableFuture[modifiers.size()];
+        final CompletableFuture<ArtifactModifier.TransformerProvider>[] populators = new CompletableFuture[modifiers.size()];
 
         int idx = 0;
         for (final ArtifactModifier modifier : modifiers) {
@@ -420,13 +416,16 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         final Path outputTmp = Files.createTempDirectory("vanillagradle").resolve("output" + decoratedArtifact + ".jar");
                         FileUtils.createDirectoriesSymlinkSafe(output.getParent());
 
-                        try (final Atlas atlas = new Atlas(this.executor)) {
-                            for (final CompletableFuture<ArtifactModifier.AtlasPopulator> populator : populators) {
-                                atlas.install(populator.get()::provide);
-                            }
+                        final Renamer.Builder builder = Renamer.builder()
+                            .input(input.get().jar().toFile())
+                            .output(outputTmp.toFile());
 
-                            atlas.run(input.get().jar(), outputTmp);
+                        for (final CompletableFuture<ArtifactModifier.TransformerProvider> populator : populators) {
+                            builder.add(populator.get().provide());
                         }
+
+                        builder.build()
+                            .run();
 
                         FileUtils.atomicMove(outputTmp, output);
                         this.writeMetaIfNecessary(side, decoratedArtifact, input.mapIfPresent((upToDate, env) -> env.metadata()), input.get()::dependencies, output.getParent());
@@ -435,7 +434,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                 } catch (final Exception ex) {
                     throw new CompletionException(ex);
                 } finally {
-                    for (final CompletableFuture<ArtifactModifier.AtlasPopulator> populator : populators) {
+                    for (final CompletableFuture<ArtifactModifier.TransformerProvider> populator : populators) {
                         if (!populator.isCompletedExceptionally()) {
                             try {
                                 populator.join().close();

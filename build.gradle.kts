@@ -18,6 +18,11 @@ subprojects {
     apply(plugin="signing")
 
     repositories {
+        mavenLocal {
+          content {
+            includeGroup("net.minecraftforge")
+          }
+        }
         maven("https://repo.spongepowered.org/repository/maven-public/") {
             name = "sponge"
         }

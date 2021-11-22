@@ -24,16 +24,11 @@
  */
 package org.spongepowered.gradle.vanilla.internal.transformer;
 
-import org.cadixdev.bombe.jar.JarClassEntry;
-import org.cadixdev.bombe.jar.JarEntryTransformer;
-import org.cadixdev.bombe.jar.JarServiceProviderConfigurationEntry;
-import org.cadixdev.bombe.jar.ServiceProviderConfiguration;
+import net.minecraftforge.fart.api.Transformer;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
-final class FilterClassesTransformer implements JarEntryTransformer {
+final class FilterClassesTransformer implements Transformer {
 
     private final String[] allowedPrefixes;
 
@@ -42,7 +37,7 @@ final class FilterClassesTransformer implements JarEntryTransformer {
     }
 
     @Override
-    public JarClassEntry transform(final JarClassEntry entry) {
+    public ClassEntry process(final ClassEntry entry) {
         if (this.matches(entry.getName())) {
             return entry;
         } else {
@@ -65,8 +60,9 @@ final class FilterClassesTransformer implements JarEntryTransformer {
     }
 
     @Override
-    public JarServiceProviderConfigurationEntry transform(final JarServiceProviderConfigurationEntry entry) {
-        if (!this.matches(entry.getConfig().getService().replace('.', '/'))) {
+    public ResourceEntry process(final ResourceEntry entry) {
+        return entry;
+        /*if (!this.matches(entry.getConfig().getService().replace('.', '/'))) {
             return null;
         }
 
@@ -80,6 +76,6 @@ final class FilterClassesTransformer implements JarEntryTransformer {
             return null;
         }
 
-        return new JarServiceProviderConfigurationEntry(entry.getTime(), new ServiceProviderConfiguration(entry.getConfig().getService(), providers));
+        return new JarServiceProviderConfigurationEntry(entry.getTime(), new ServiceProviderConfiguration(entry.getConfig().getService(), providers));*/
     }
 }

@@ -24,9 +24,8 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository.modifier;
 
-import org.cadixdev.atlas.Atlas;
-import org.cadixdev.atlas.AtlasTransformerContext;
-import org.cadixdev.bombe.jar.JarEntryTransformer;
+import net.minecraftforge.fart.api.Renamer;
+import net.minecraftforge.fart.api.Transformer;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 
 import java.io.IOException;
@@ -34,7 +33,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Some sort of operation that can be performed on a jar, via {@link Atlas}.
+ * Some sort of operation that can be performed on a jar, via a {@link Renamer}.
  */
 public interface ArtifactModifier {
 
@@ -77,17 +76,17 @@ public interface ArtifactModifier {
     String stateKey();
 
     /**
-     * Create a new populator for performing transformations. 
-     * 
-     * <p>This will always be called from the thread where resolution is initiated.</p> 
-     * 
+     * Create a new populator for performing transformations.
+     *
+     * <p>This will always be called from the thread where resolution is initiated.</p>
+     *
      * <p>The populator returned must remain valid until it is closed.</p>
      *
      * @param context the context available when preparing a populator, safe to use
      *     asynchronously
      * @return a future providing the populator
      */
-    CompletableFuture<AtlasPopulator> providePopulator(final MinecraftResolver.Context context);
+    CompletableFuture<TransformerProvider> providePopulator(final MinecraftResolver.Context context);
 
     /**
      * Indicates that the result of this modification should be stored in the
@@ -98,11 +97,11 @@ public interface ArtifactModifier {
     boolean requiresLocalStorage();
 
     /**
-     * A function that can populate an {@link Atlas} instance.
+     * A function that can provide a {@link Transformer} for use with a renamer, optionally having a post-rename operation to clean up resources.
      */
     @FunctionalInterface
-    interface AtlasPopulator extends AutoCloseable {
-        JarEntryTransformer provide(final AtlasTransformerContext context);
+    interface TransformerProvider extends AutoCloseable {
+        Transformer provide();
 
         @Override
         default void close() throws IOException {

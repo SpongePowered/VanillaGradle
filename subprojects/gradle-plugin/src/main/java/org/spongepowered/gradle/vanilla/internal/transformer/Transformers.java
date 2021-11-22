@@ -24,33 +24,21 @@
  */
 package org.spongepowered.gradle.vanilla.internal.transformer;
 
-import org.cadixdev.bombe.analysis.InheritanceProvider;
-import org.cadixdev.bombe.asm.jar.JarEntryRemappingTransformer;
-import org.cadixdev.bombe.jar.JarEntryTransformer;
-import org.cadixdev.lorenz.MappingSet;
-import org.spongepowered.gradle.vanilla.internal.asm.EnhancedClassRemapper;
-import org.spongepowered.gradle.vanilla.internal.asm.EnhancedRemapper;
-import org.spongepowered.gradle.vanilla.internal.asm.LocalVariableNamingClassVisitor;
-import org.spongepowered.gradle.vanilla.internal.asm.SyntheticParameterAnnotationsFix;
+import net.minecraftforge.fart.api.Transformer;
 
 import java.util.Set;
 
-public final class AtlasTransformers {
+public final class Transformers {
 
-    private AtlasTransformers() {
+    private Transformers() {
     }
 
-    public static JarEntryTransformer filterEntries(final Set<String> allowedPackages) {
+    public static Transformer filterEntries(final Set<String> allowedPackages) {
         return new FilterClassesTransformer(allowedPackages);
     }
-
-    public static JarEntryTransformer stripSignatures() {
-        return SignatureStripperTransformer.INSTANCE;
-    }
-
-    public static JarEntryTransformer remap(final MappingSet mappings, final InheritanceProvider inheritanceProvider) {
-        return new JarEntryRemappingTransformer(new EnhancedRemapper(mappings, inheritanceProvider), (parent, mapper) ->
-            new EnhancedClassRemapper(new SyntheticParameterAnnotationsFix(new LocalVariableNamingClassVisitor(parent)), mapper));
+    
+    public static Transformer fixLvNames() {
+        return new LocalVariableNameFixer();
     }
 
 }
