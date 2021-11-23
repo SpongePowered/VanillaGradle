@@ -654,6 +654,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
             try (final IvyModuleWriter writer = new IvyModuleWriter(metaFileTmp)) {
                 writer.overrideArtifactId(artifactIdOverride)
                     .dependencies(dependencies.get())
+                    .dependencies(Constants.INJECTED_DEPENDENCIES)
                     .write(version.get(), platform);
             }
             FileUtils.atomicMove(metaFileTmp, metaFile);
