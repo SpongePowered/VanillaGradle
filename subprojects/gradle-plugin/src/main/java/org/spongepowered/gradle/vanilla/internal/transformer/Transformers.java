@@ -41,4 +41,8 @@ public final class Transformers {
         return new LocalVariableNameFixer();
     }
 
+    public static Transformer.Factory recordSignatureFixer() {
+        return ctx -> new RecordSignatureFixer(ctx.getDebug(), ctx.getInheritance());
+    }
+
 }

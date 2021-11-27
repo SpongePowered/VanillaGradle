@@ -24,7 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
-import net.minecraftforge.fart.api.RecordFixFlag;
 import net.minecraftforge.fart.api.Renamer;
 import net.minecraftforge.fart.api.SourceFixerConfig;
 import net.minecraftforge.fart.api.Transformer;
@@ -34,6 +33,7 @@ import org.gradle.api.GradleException;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.bundler.BundlerMetadata;
 import org.spongepowered.gradle.vanilla.internal.model.Download;
 import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
@@ -230,7 +230,8 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                             .add(Transformers.fixLvNames())
                             .add(Transformer.renamerFactory(mappings))
                             .add(Transformer.sourceFixerFactory(SourceFixerConfig.JAVA))
-                            .add(Transformer.recordFixerFactory(RecordFixFlag.all()));
+                            .add(Transformer.recordFixerFactory())
+                            .add(Transformers.recordSignatureFixer()); // for versions where old PG produced invalid record signatures
 
                         renamerBuilder.input(extracted.toFile())
                         .output(outputTmp.toFile())
