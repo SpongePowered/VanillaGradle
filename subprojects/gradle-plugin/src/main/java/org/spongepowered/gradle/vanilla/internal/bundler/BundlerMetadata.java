@@ -58,45 +58,59 @@ public abstract class BundlerMetadata {
      */
     public static Optional<BundlerMetadata> read(final Path jar) throws IOException {
         try (final JarFile file = new JarFile(jar.toFile())) {
-            final Manifest manifest = file.getManifest();
-            final @Nullable String formatVersion = manifest.getMainAttributes().getValue(FormatVersion.MANIFEST_ATTRIBUTE);
-            if (formatVersion == null) {
-                return Optional.empty();
-            }
-
-            final FormatVersion parsed = FormatVersion.parse(formatVersion);
-
-            // load information:
-            // server jar
-            final BundleElement serverJar;
-            try (final Stream<BundleElement> stream = BundlerMetadata.readIndex(file, "versions")) {
-                serverJar = stream.findFirst()
-                    .orElse(null);
-            }
-
-            if (serverJar == null) {
-                throw new IllegalArgumentException("Missing server jar from versions list");
-            }
-
-            // libraries list
-            final Set<BundleElement> libraries;
-            try (final Stream<BundleElement> elements = BundlerMetadata.readIndex(file, "libraries")) {
-                libraries = Collections.unmodifiableSet(elements.collect(Collectors.toSet()));
-            }
-
-            // main class
-            final JarEntry mainClassEntry = file.getJarEntry(BundlerMetadata.MAIN_CLASS);
-            if (mainClassEntry == null) {
-                throw new IllegalArgumentException("Missing main class entry in bundle");
-            }
-
-            final String mainClass;
-            try (final BufferedReader read = new BufferedReader(new InputStreamReader(file.getInputStream(mainClassEntry), StandardCharsets.UTF_8))) {
-                mainClass = read.readLine();
-            }
-
-            return Optional.of(BundlerMetadata.of(parsed, libraries, serverJar, mainClass));
+            return BundlerMetadata.read(file);
         }
+    }
+
+    /**
+     * Attempt to read bundler metadata from a jar.
+     *
+     * <p>If the jar is not a Minecraft bundler jar, an empty {@link Optional} will
+     * be returned.</p>
+     *
+     * @param file the jar to read
+     * @return parsed metadata
+     * @throws IOException if an error occurs while trying to read from the jar
+     */
+    public static Optional<BundlerMetadata> read(final JarFile file) throws IOException {
+        final Manifest manifest = file.getManifest();
+        final @Nullable String formatVersion = manifest.getMainAttributes().getValue(FormatVersion.MANIFEST_ATTRIBUTE);
+        if (formatVersion == null) {
+            return Optional.empty();
+        }
+
+        final FormatVersion parsed = FormatVersion.parse(formatVersion);
+
+        // load information:
+        // server jar
+        final BundleElement serverJar;
+        try (final Stream<BundleElement> stream = BundlerMetadata.readIndex(file, "versions")) {
+            serverJar = stream.findFirst()
+                .orElse(null);
+        }
+
+        if (serverJar == null) {
+            throw new IllegalArgumentException("Missing server jar from versions list");
+        }
+
+        // libraries list
+        final Set<BundleElement> libraries;
+        try (final Stream<BundleElement> elements = BundlerMetadata.readIndex(file, "libraries")) {
+            libraries = Collections.unmodifiableSet(elements.collect(Collectors.toSet()));
+        }
+
+        // main class
+        final JarEntry mainClassEntry = file.getJarEntry(BundlerMetadata.MAIN_CLASS);
+        if (mainClassEntry == null) {
+            throw new IllegalArgumentException("Missing main class entry in bundle");
+        }
+
+        final String mainClass;
+        try (final BufferedReader read = new BufferedReader(new InputStreamReader(file.getInputStream(mainClassEntry), StandardCharsets.UTF_8))) {
+            mainClass = read.readLine();
+        }
+
+        return Optional.of(BundlerMetadata.of(parsed, libraries, serverJar, mainClass));
     }
 
     public static BundlerMetadata of(final FormatVersion version, final Set<BundleElement> libraries, final BundleElement server, final @Nullable String mainClass) {
