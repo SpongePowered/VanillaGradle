@@ -30,6 +30,7 @@ configurations {
 val accessWidenerVersion: String by project
 val asmVersion: String by project
 val forgeFlowerVersion: String by project
+val forgeAutoRenamingToolVersion: String by project
 val junitVersion: String by project
 val mergeToolVersion: String by project
 dependencies {
@@ -38,18 +39,13 @@ dependencies {
     commonDeps("org.ow2.asm:asm:$asmVersion")
     commonDeps("org.ow2.asm:asm-commons:$asmVersion")
     commonDeps("org.ow2.asm:asm-util:$asmVersion")
-    commonDeps("org.cadixdev:atlas:0.2.2") {
+    commonDeps("net.minecraftforge:ForgeAutoRenamingTool:$forgeAutoRenamingToolVersion") {
         exclude("org.ow2.asm") // Use our own ASM
+        exclude("net.sf.jopt-simple")
     }
 
     // Just main
     implementation("com.google.code.gson:gson:2.8.7")
-    implementation("org.cadixdev:lorenz:0.5.7")
-    implementation("org.cadixdev:lorenz-asm:0.5.7") {
-        exclude("org.ow2.asm") // Use our own ASM
-    }
-
-    implementation("org.cadixdev:lorenz-io-proguard:0.5.7")
 
     compileOnlyApi("org.checkerframework:checker-qual:3.15.0")
     annotationProcessor("org.immutables:value:2.8.8")

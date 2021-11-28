@@ -26,7 +26,7 @@ package org.spongepowered.gradle.vanilla.internal.worker;
 
 import net.fabricmc.accesswidener.AccessWidener;
 import net.fabricmc.accesswidener.AccessWidenerReader;
-import org.cadixdev.bombe.jar.JarEntryTransformer;
+import net.minecraftforge.fart.api.Transformer;
 import org.gradle.api.GradleException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,12 +39,12 @@ import java.nio.file.Path;
 import java.util.Set;
 import java.util.function.Function;
 
-public final class AccessWidenerTransformerProvider implements Function<Set<Path>, JarEntryTransformer> {
+public final class AccessWidenerTransformerProvider implements Function<Set<Path>, Transformer> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AccessWidenerTransformerProvider.class);
 
     @Override
-    public JarEntryTransformer apply(final Set<Path> paths) {
+    public Transformer apply(final Set<Path> paths) {
         final AccessWidener widener = new AccessWidener();
         final AccessWidenerReader reader = new AccessWidenerReader(widener);
 

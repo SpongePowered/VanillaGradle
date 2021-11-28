@@ -22,36 +22,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.internal.worker;
+package org.spongepowered.gradle.vanilla.internal.transformer;
 
-import net.fabricmc.accesswidener.AccessWidener;
-import net.fabricmc.accesswidener.AccessWidenerVisitor;
 import net.minecraftforge.fart.api.Transformer;
 import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
+import org.spongepowered.gradle.vanilla.internal.asm.LocalVariableNamingClassVisitor;
 
-final class AccessWidenerEntryTransformer implements Transformer {
-    private final AccessWidener widener;
-
-    public AccessWidenerEntryTransformer(final AccessWidener widener) {
-        this.widener = widener;
-    }
+final class LocalVariableNameFixer implements Transformer {
 
     @Override
     public ClassEntry process(final ClassEntry entry) {
-        // Because InnerClass attributes can be present in any class AW'd classes
-        // are referenced from, we have to target every class to get a correct output.
         final ClassReader reader = new ClassReader(entry.getData());
         final ClassWriter writer = new ClassWriter(reader, 0);
-        // TODO: Expose the ASM version constant somewhere visible to this worker
-        final ClassVisitor visitor = AccessWidenerVisitor.createClassVisitor(Opcodes.ASM9, writer, this.widener);
+        final LocalVariableNamingClassVisitor visitor = new LocalVariableNamingClassVisitor(writer);
         reader.accept(visitor, 0);
-        if (entry.isMultiRelease()) {
-            return ClassEntry.create(entry.getName(), entry.getTime(), writer.toByteArray(), entry.getVersion());
-        } else {
-            return ClassEntry.create(entry.getName(), entry.getTime(), writer.toByteArray());
-        }
+        return ClassEntry.create(entry.getName(), entry.getTime(), writer.toByteArray());
     }
+
 }

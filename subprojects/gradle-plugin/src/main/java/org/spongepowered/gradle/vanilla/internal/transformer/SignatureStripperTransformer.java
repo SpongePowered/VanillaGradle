@@ -24,15 +24,17 @@
  */
 package org.spongepowered.gradle.vanilla.internal.transformer;
 
-import org.cadixdev.bombe.jar.JarEntryTransformer;
-import org.cadixdev.bombe.jar.JarManifestEntry;
-import org.cadixdev.bombe.jar.JarResourceEntry;
+import net.minecraftforge.fart.api.Transformer;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
-final class SignatureStripperTransformer implements JarEntryTransformer {
+final class SignatureStripperTransformer implements Transformer {
     public static final SignatureStripperTransformer INSTANCE = new SignatureStripperTransformer();
 
     private SignatureStripperTransformer() {
@@ -40,24 +42,37 @@ final class SignatureStripperTransformer implements JarEntryTransformer {
 
     private static final Attributes.Name SHA_256_DIGEST = new Attributes.Name("SHA-256-Digest");
     @Override
-    public JarManifestEntry transform(final JarManifestEntry entry) {
+    public ManifestEntry process(final ManifestEntry entry) {
         // Remove all signature entries
-        for (final Iterator<Map.Entry<String, Attributes>> it = entry.getManifest().getEntries().entrySet().iterator(); it.hasNext();) {
-            final Map.Entry<String, Attributes> section = it.next();
-            if (section.getValue().remove(SignatureStripperTransformer.SHA_256_DIGEST) != null) {
-                if (section.getValue().isEmpty()) {
-                    it.remove();
+        try {
+            final Manifest manifest = new Manifest(new ByteArrayInputStream(entry.getData()));
+            boolean found = false;
+            for (final Iterator<Map.Entry<String, Attributes>> it = manifest.getEntries().entrySet().iterator(); it.hasNext();) {
+                final Map.Entry<String, Attributes> section = it.next();
+                if (section.getValue().remove(SignatureStripperTransformer.SHA_256_DIGEST) != null) {
+                    if (section.getValue().isEmpty()) {
+                        it.remove();
+                    }
+                    found = true;
                 }
             }
+            if (found) {
+                try (final ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+                    manifest.write(os);
+                    return ManifestEntry.create(entry.getTime(), os.toByteArray());
+                }
+            }
+        } catch (final IOException ex) {
+            // no-op, todo log?
         }
         return entry;
     }
 
     @Override
-    public JarResourceEntry transform(final JarResourceEntry entry) {
-        if (entry.getName().startsWith("META-INF")) {
-            if (entry.getExtension().equals("RSA")
-            || entry.getExtension().equals("SF")) {
+    public ResourceEntry process(final ResourceEntry entry) {
+        if (entry.getName().startsWith("META-INF/")) {
+            if (entry.getName().endsWith(".RSA")
+            || entry.getName().endsWith(".SF")) {
                 return null;
             }
         }

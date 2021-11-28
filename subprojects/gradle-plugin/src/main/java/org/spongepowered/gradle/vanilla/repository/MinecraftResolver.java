@@ -51,14 +51,14 @@ public interface MinecraftResolver {
      * detected by existing input detection, or would make data unreadable by
      * older versions of the resolver, this version will be incremented.</p>
      */
-    int STORAGE_VERSION = 1;
+    int STORAGE_VERSION = 2;
     /**
      * A version for stored metadata.
      *
      * <p>Whenever the {@link #STORAGE_VERSION} is incremented, this version
      * will be reset to {@code 1}</p>
      */
-    int METADATA_VERSION = 3;
+    int METADATA_VERSION = 1;
 
     /**
      * Get the version manifest repository managed by this resolver.
