@@ -43,7 +43,6 @@ dependencies {
         exclude("org.ow2.asm") // Use our own ASM
         exclude("net.sf.jopt-simple")
     }
-    commonDeps("net.minecraftforge:srgutils:0.4.3")
 
     // Just main
     implementation("com.google.code.gson:gson:2.8.7")
