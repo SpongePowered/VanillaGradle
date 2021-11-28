@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla.repository;
 
 import net.minecraftforge.fart.api.Renamer;
+import net.minecraftforge.fart.api.SignatureStripperConfig;
 import net.minecraftforge.fart.api.SourceFixerConfig;
 import net.minecraftforge.fart.api.Transformer;
 import net.minecraftforge.srgutils.IMappingFile;
@@ -231,6 +232,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                             .add(Transformer.renamerFactory(mappings))
                             .add(Transformer.sourceFixerFactory(SourceFixerConfig.JAVA))
                             .add(Transformer.recordFixerFactory())
+                            .add(Transformer.signatureStripperFactory(SignatureStripperConfig.ALL))
                             .add(Transformers.recordSignatureFixer()); // for versions where old PG produced invalid record signatures
 
                         renamerBuilder.input(extracted.toFile())
