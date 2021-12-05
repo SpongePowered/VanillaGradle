@@ -542,6 +542,10 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
     @Override
     public <T> T processSyncTasksUntilComplete(final CompletableFuture<T> future) throws InterruptedException, ExecutionException {
+        if (future.isDone()) {
+            return future.get();
+        }
+
         future.handleAsync(
             (res, err) -> {
                 this.syncTasks.add(new CompleteEvaluation(future));
