@@ -421,7 +421,8 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
                         final Renamer.Builder builder = Renamer.builder()
                             .input(input.get().jar().toFile())
-                            .output(outputTmp.toFile());
+                            .output(outputTmp.toFile())
+                            .logger(MinecraftResolverImpl.LOGGER::info);
 
                         for (final CompletableFuture<ArtifactModifier.TransformerProvider> populator : populators) {
                             builder.add(populator.get().provide());
