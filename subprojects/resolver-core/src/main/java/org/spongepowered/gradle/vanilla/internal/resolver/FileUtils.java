@@ -53,6 +53,7 @@ public final class FileUtils {
                 try {
                     Thread.sleep(10 * tries);
                     FileUtils.atomicMoveIfPossible(source, destination);
+                    return;
                 } catch (final AccessDeniedException ex2) {
                     if (tries == FileUtils.MAX_TRIES - 1) {
                         throw ex;
