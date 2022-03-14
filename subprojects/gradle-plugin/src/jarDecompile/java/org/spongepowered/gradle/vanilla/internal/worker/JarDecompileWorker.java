@@ -61,7 +61,7 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.MAX_PROCESSING_METHOD, FALSE);
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.IGNORE_INVALID_BYTECODE, TRUE);
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING, TRUE);
-        JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.THREADS, Runtime.getRuntime().availableProcessors() - 1);
+        JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.THREADS, Integer.toString(Runtime.getRuntime().availableProcessors() - 1));
         JarDecompileWorker.OPTIONS.put(IFernflowerPreferences.INDENT_STRING, "    " /* Constants.INDENT */);
     }
 
