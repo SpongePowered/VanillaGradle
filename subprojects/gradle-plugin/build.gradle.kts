@@ -29,6 +29,7 @@ configurations {
 
 val accessWidenerVersion: String by project
 val asmVersion: String by project
+val checkerVersion: String by project
 val forgeFlowerVersion: String by project
 val forgeAutoRenamingToolVersion: String by project
 val junitVersion: String by project
@@ -47,7 +48,7 @@ dependencies {
     // Just main
     implementation("com.google.code.gson:gson:2.8.7")
 
-    compileOnlyApi("org.checkerframework:checker-qual:3.15.0")
+    compileOnlyApi("org.checkerframework:checker-qual:$checkerVersion")
     annotationProcessor("org.immutables:value:2.8.8")
     compileOnlyApi("org.immutables:value:2.8.8:annotations")
     api("org.immutables:gson:2.8.8")
