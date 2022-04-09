@@ -49,9 +49,9 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.7")
 
     compileOnlyApi("org.checkerframework:checker-qual:$checkerVersion")
-    annotationProcessor("org.immutables:value:2.8.8")
+    annotationProcessor("org.immutables:value:2.9.0")
     compileOnlyApi("org.immutables:value:2.8.8:annotations")
-    api("org.immutables:gson:2.8.8")
+    api("org.immutables:gson:2.9.0")
 
     implementation(project(":vanillagradle-resolver-core"))
     implementation(project(":vanillagradle-downloader-apache-http"))
