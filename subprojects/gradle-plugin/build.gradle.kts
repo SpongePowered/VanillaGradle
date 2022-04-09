@@ -50,7 +50,7 @@ dependencies {
 
     compileOnlyApi("org.checkerframework:checker-qual:$checkerVersion")
     annotationProcessor("org.immutables:value:2.9.0")
-    compileOnlyApi("org.immutables:value:2.8.8:annotations")
+    compileOnlyApi("org.immutables:value:2.9.0:annotations")
     api("org.immutables:gson:2.9.0")
 
     implementation(project(":vanillagradle-resolver-core"))
