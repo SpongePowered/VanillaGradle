@@ -46,7 +46,7 @@ dependencies {
     }
 
     // Just main
-    implementation("com.google.code.gson:gson:2.8.7")
+    implementation("com.google.code.gson:gson:2.9.0")
 
     compileOnlyApi("org.checkerframework:checker-qual:$checkerVersion")
     annotationProcessor("org.immutables:value:2.8.8")
