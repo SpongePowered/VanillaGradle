@@ -158,8 +158,8 @@ public final class Constants {
      * Extra dependencies that are injected into the project.
      */
     public static final Set<GroupArtifactVersion> INJECTED_DEPENDENCIES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-        GroupArtifactVersion.of("com.google.code.findbugs", "jsr305", "3.0.2"),
-        GroupArtifactVersion.of("org.jetbrains", "annotations", "23.0.0") // 1.18+ only technically
+        GroupArtifactVersion.of("com.google.code.findbugs", "jsr305", "3.0.2", null),
+        GroupArtifactVersion.of("org.jetbrains", "annotations", "23.0.0", null) // 1.18+ only technically
     )));
 
     private Constants() {

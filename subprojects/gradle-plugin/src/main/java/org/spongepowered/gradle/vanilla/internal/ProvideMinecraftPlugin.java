@@ -254,7 +254,12 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
         minecraft.getRuns().configureEach(run -> {
             run.getParameterTokens().put(ClientRunParameterTokens.ASSETS_ROOT, assetsDir);
-            run.getParameterTokens().put(ClientRunParameterTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
+
+            // Since 1.19-pre1, we no longer need the native folder for the run configuration.
+            // All natives are now on the classpath.
+            if(!minecraft.targetVersion().get().nativesOnClasspath()) {
+                run.getParameterTokens().put(ClientRunParameterTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
+            }
         });
 
         return downloadAssets;

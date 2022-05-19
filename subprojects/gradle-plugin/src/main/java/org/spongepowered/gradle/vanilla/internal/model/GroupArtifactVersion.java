@@ -30,8 +30,13 @@ import org.immutables.value.Value;
 @Value.Immutable(builder = false)
 public abstract class GroupArtifactVersion {
 
-    public static GroupArtifactVersion of(final String group, final String artifact, final @Nullable String version) {
-        return new GroupArtifactVersionImpl(group, artifact, version);
+    public static GroupArtifactVersion of(
+            final String group,
+            final String artifact,
+            final @Nullable String version,
+            final @Nullable String classifier
+    ) {
+        return new GroupArtifactVersionImpl(group, artifact, version, classifier);
     }
 
     public static GroupArtifactVersion parse(final String notation) {
@@ -39,7 +44,12 @@ public abstract class GroupArtifactVersion {
         if (split.length > 4 || split.length < 2) {
             throw new IllegalArgumentException("Unsupported notation '" + notation + "', must be in the format of group:artifact[:version[:classifier]]");
         }
-        return GroupArtifactVersion.of(split[0], split[1], split.length > 2 ? split[2] : null);
+        return GroupArtifactVersion.of(
+                split[0],
+                split[1],
+                split.length > 2 ? split[2] : null,
+                split.length > 3 ? split[3] : null
+        );
     }
 
     GroupArtifactVersion() {
@@ -54,8 +64,19 @@ public abstract class GroupArtifactVersion {
     @Value.Parameter
     public abstract @Nullable String version();
 
+    @Value.Parameter
+    public abstract @Nullable String classifier();
+
     @Override
     public final String toString() {
-        return this.group() + ':' + this.artifact() + (this.version() == null ? "" : ':' + this.version());
+        return this.group() + ':'
+                + this.artifact()
+                + (this.version() == null ?
+                "" :
+                ':' + this.version() + (this.classifier() == null ?
+                        "" :
+                        ':' + this.classifier()
+                )
+        );
     }
 }

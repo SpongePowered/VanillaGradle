@@ -76,7 +76,7 @@ public final class GsonSerializers {
             if (split.length < 2) {
                 throw new IOException("Invalid group:artifact:version string " + gav);
             }
-            return GroupArtifactVersion.of(split[0], split[1], split.length > 2 ? split[2] : null);
+            return GroupArtifactVersion.of(split[0], split[1], split.length > 2 ? split[2] : null, split.length > 3 ? split[3] : null);
         }
     }.nullSafe();
 
