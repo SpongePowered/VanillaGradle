@@ -47,6 +47,7 @@ import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.internal.ProvideMinecraftPlugin;
+import org.spongepowered.gradle.vanilla.internal.ResolveMinecraftLibNames;
 import org.spongepowered.gradle.vanilla.internal.ShadowConfigurationApplier;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftRepositoryPlugin;
@@ -60,6 +61,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
@@ -106,7 +108,8 @@ public final class VanillaGradle implements Plugin<Object> {
         });
 
         project.getPlugins().withId("com.github.johnrengelman.shadow", plugin -> {
-            VanillaGradle.applyShadowConfiguration(project.getTasks(), minecraftConfig.get(), plugin);
+            final Provider<Set<String>> provider = project.provider(new ResolveMinecraftLibNames(minecraftConfig));
+            VanillaGradle.applyShadowConfiguration(project.getTasks(), provider, plugin);
         });
 
         this.createDumpClass(project, minecraftConfig);
@@ -178,7 +181,7 @@ public final class VanillaGradle implements Plugin<Object> {
         });
     }
 
-    private static void applyShadowConfiguration(final TaskContainer tasks, final Configuration versionSource, final Plugin<?> shadowPlugin) {
+    private static void applyShadowConfiguration(final TaskContainer tasks, final Provider<Set<String>> minecraftNames, final Plugin<?> shadowPlugin) {
         // Gradle seems to have some sort of classloader isolation................
         // When VanillaGradle is on the root project classpath and also used in
         // subprojects, but the shadow plugin is only applied in subprojects,
@@ -187,7 +190,7 @@ public final class VanillaGradle implements Plugin<Object> {
 
         try {
             Class.forName(VanillaGradle.SHADOW_JAR_TASK_CLASS_NAME);
-            ShadowConfigurationApplier.actuallyApplyShadowConfiguration(tasks, versionSource);
+            ShadowConfigurationApplier.actuallyApplyShadowConfiguration(tasks, minecraftNames);
         } catch (final ClassNotFoundException ex) {
             // Isolation
             try (final URLClassLoader classLoader = new SelfPreferringClassLoader(
@@ -195,8 +198,8 @@ public final class VanillaGradle implements Plugin<Object> {
                 shadowPlugin.getClass().getClassLoader()
             )) {
                 Class.forName(ShadowConfigurationApplier.class.getName(), true, classLoader)
-                    .getDeclaredMethod("actuallyApplyShadowConfiguration", TaskContainer.class, Configuration.class)
-                    .invoke(null, tasks, versionSource);
+                    .getDeclaredMethod("actuallyApplyShadowConfiguration", TaskContainer.class, Provider.class)
+                    .invoke(null, tasks, minecraftNames);
             } catch (final IOException | ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ex2) {
                 throw new GradleException("Failed to configure shadow plugin integration", ex2);
             }

@@ -26,15 +26,11 @@ package org.spongepowered.gradle.vanilla.internal;
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar;
 import org.gradle.api.Action;
-import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskContainer;
 
-import java.util.ArrayDeque;
-import java.util.HashSet;
-import java.util.Queue;
 import java.util.Set;
 
 public final class ShadowConfigurationApplier {
@@ -42,7 +38,7 @@ public final class ShadowConfigurationApplier {
     private ShadowConfigurationApplier() {
     }
 
-    public static void actuallyApplyShadowConfiguration(final TaskContainer tasks, final Configuration versionSource) {
+    public static void actuallyApplyShadowConfiguration(final TaskContainer tasks, final Provider<Set<String>> minecraftNames) {
         // Exclude anything in MC or its dependencies from being shadowed
 
         // because the configureEach action is only executed later but we close
@@ -53,39 +49,22 @@ public final class ShadowConfigurationApplier {
         tasks.withType(ShadowJar.class).configureEach(new Action<ShadowJar>() {
             @Override
             public void execute(final ShadowJar task) {
-                task.dependencies(filter -> filter.exclude(new MinecraftExclusionFilter(versionSource)));
+                task.getInputs().property("minecraftNames", minecraftNames);
+                task.dependencies(filter -> filter.exclude(new MinecraftExclusionFilter(minecraftNames)));
             }
         });
     }
 
     static class MinecraftExclusionFilter implements Spec<ResolvedDependency> {
-        private final Set<String> minecraftNames = new HashSet<>();
-        private Configuration versionSource;
+        private final Provider<Set<String>> minecraftNames;
 
-        public MinecraftExclusionFilter(Configuration versionSource) {
-            this.versionSource = versionSource;
+        public MinecraftExclusionFilter(Provider<Set<String>> minecraftNames) {
+            this.minecraftNames = minecraftNames;
         }
 
         @Override
         public boolean isSatisfiedBy(final ResolvedDependency dep) {
-            if (versionSource != null) {
-                resolveVersions();
-                // Don't repeat this later.
-                versionSource = null;
-            }
-            return this.minecraftNames.contains(dep.getName());
-        }
-
-        private void resolveVersions() {
-            final ResolvedConfiguration conf = versionSource.getResolvedConfiguration();
-            conf.rethrowFailure();
-            final Queue<ResolvedDependency> deps = new ArrayDeque<>(conf.getFirstLevelModuleDependencies());
-            ResolvedDependency pointer;
-            while ((pointer = deps.poll()) != null) {
-                if (this.minecraftNames.add(pointer.getName())) {
-                    deps.addAll(pointer.getChildren());
-                }
-            }
+            return this.minecraftNames.get().contains(dep.getName());
         }
     }
 
