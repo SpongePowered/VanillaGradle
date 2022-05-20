@@ -106,7 +106,7 @@ public final class VanillaGradle implements Plugin<Object> {
         });
 
         project.getPlugins().withId("com.github.johnrengelman.shadow", plugin -> {
-            VanillaGradle.applyShadowConfiguration(project.getTasks(), plugin);
+            VanillaGradle.applyShadowConfiguration(project.getTasks(), minecraftConfig.get(), plugin);
         });
 
         this.createDumpClass(project, minecraftConfig);
@@ -178,7 +178,7 @@ public final class VanillaGradle implements Plugin<Object> {
         });
     }
 
-    private static void applyShadowConfiguration(final TaskContainer tasks, final Plugin<?> shadowPlugin) {
+    private static void applyShadowConfiguration(final TaskContainer tasks, final Configuration versionSource, final Plugin<?> shadowPlugin) {
         // Gradle seems to have some sort of classloader isolation................
         // When VanillaGradle is on the root project classpath and also used in
         // subprojects, but the shadow plugin is only applied in subprojects,
@@ -187,7 +187,7 @@ public final class VanillaGradle implements Plugin<Object> {
 
         try {
             Class.forName(VanillaGradle.SHADOW_JAR_TASK_CLASS_NAME);
-            ShadowConfigurationApplier.actuallyApplyShadowConfiguration(tasks);
+            ShadowConfigurationApplier.actuallyApplyShadowConfiguration(tasks, versionSource);
         } catch (final ClassNotFoundException ex) {
             // Isolation
             try (final URLClassLoader classLoader = new SelfPreferringClassLoader(
@@ -195,8 +195,8 @@ public final class VanillaGradle implements Plugin<Object> {
                 shadowPlugin.getClass().getClassLoader()
             )) {
                 Class.forName(ShadowConfigurationApplier.class.getName(), true, classLoader)
-                    .getDeclaredMethod("actuallyApplyShadowConfiguration", TaskContainer.class)
-                    .invoke(null, tasks);
+                    .getDeclaredMethod("actuallyApplyShadowConfiguration", TaskContainer.class, Configuration.class)
+                    .invoke(null, tasks, versionSource);
             } catch (final IOException | ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ex2) {
                 throw new GradleException("Failed to configure shadow plugin integration", ex2);
             }
