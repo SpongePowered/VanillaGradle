@@ -27,12 +27,10 @@ package org.spongepowered.gradle.vanilla.internal;
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar;
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.ResolvedDependency;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskContainer;
 
-import java.util.ArrayDeque;
-import java.util.HashSet;
-import java.util.Queue;
 import java.util.Set;
 
 public final class ShadowConfigurationApplier {
@@ -40,7 +38,7 @@ public final class ShadowConfigurationApplier {
     private ShadowConfigurationApplier() {
     }
 
-    public static void actuallyApplyShadowConfiguration(final TaskContainer tasks) {
+    public static void actuallyApplyShadowConfiguration(final TaskContainer tasks, final Provider<Set<String>> minecraftNames) {
         // Exclude anything in MC or its dependencies from being shadowed
 
         // because the configureEach action is only executed later but we close
@@ -51,33 +49,22 @@ public final class ShadowConfigurationApplier {
         tasks.withType(ShadowJar.class).configureEach(new Action<ShadowJar>() {
             @Override
             public void execute(final ShadowJar task) {
-                task.dependencies(filter -> filter.exclude(new MinecraftExclusionFilter()));
+                task.getInputs().property("minecraftNames", minecraftNames);
+                task.dependencies(filter -> filter.exclude(new MinecraftExclusionFilter(minecraftNames)));
             }
         });
     }
 
     static class MinecraftExclusionFilter implements Spec<ResolvedDependency> {
-        private final Set<String> minecraftNames = new HashSet<>();
+        private final Provider<Set<String>> minecraftNames;
+
+        public MinecraftExclusionFilter(Provider<Set<String>> minecraftNames) {
+            this.minecraftNames = minecraftNames;
+        }
 
         @Override
         public boolean isSatisfiedBy(final ResolvedDependency dep) {
-            if (this.minecraftNames.contains(dep.getName())) {
-                return true;
-            } else if (dep.getModuleGroup().equals("net.minecraft")) {
-                // Populate the set of excluded dependencies
-                final Queue<ResolvedDependency> deps = new ArrayDeque<>();
-                deps.add(dep);
-                ResolvedDependency pointer;
-                while ((pointer = deps.poll()) != null) {
-                    if (this.minecraftNames.add(pointer.getName())) {
-                        deps.addAll(pointer.getChildren());
-                    }
-                }
-                return true;
-            }
-
-            // Anything else: probably fine
-            return false;
+            return this.minecraftNames.get().contains(dep.getName());
         }
     }
 
