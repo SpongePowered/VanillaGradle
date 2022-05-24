@@ -33,6 +33,14 @@ public abstract class GroupArtifactVersion {
     public static GroupArtifactVersion of(
             final String group,
             final String artifact,
+            final @Nullable String version
+    ) {
+        return new GroupArtifactVersionImpl(group, artifact, version, null);
+    }
+
+    public static GroupArtifactVersion of(
+            final String group,
+            final String artifact,
             final @Nullable String version,
             final @Nullable String classifier
     ) {

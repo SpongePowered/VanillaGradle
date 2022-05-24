@@ -171,7 +171,7 @@ public final class IvyModuleWriter implements AutoCloseable {
         if (hasClassifier) {
             this.writer.writeEmptyElement("artifact");
             this.writer.writeAttribute("name", dep.artifact());
-            this.writer.writeAttribute(IvyModuleWriter.VANILLAGRADLE + ":classifier", dep.classifier());
+            this.writer.writeAttribute("classifier", dep.classifier());
             this.writer.writeAttribute("ext", "jar");
             this.writer.writeEndElement();
         }
