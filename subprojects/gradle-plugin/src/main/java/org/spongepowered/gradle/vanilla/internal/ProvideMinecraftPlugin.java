@@ -160,7 +160,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         final Configuration forgeFlower = this.project.getConfigurations().maybeCreate(Constants.Configurations.FORGE_FLOWER);
         forgeFlower.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.FORGE_FLOWER)));
         final FileCollection forgeFlowerClasspath = forgeFlower.getIncoming().getFiles();
-        final Provider<ArtifactCollection> minecraftActifacts = minecraftConfiguration.map(mc -> mc.getIncoming().getArtifacts());
+        final Provider<ArtifactCollection> minecraftArtifacts = minecraftConfiguration.map(mc -> mc.getIncoming().getArtifacts());
         final Provider<MinecraftPlatform> platform = minecraftConfiguration.zip(extension.platform(), (mc, declared) -> {
             final @Nullable Dependency dep = this.extractMinecraftDependency(mc.getAllDependencies());
             if (dep == null) {
@@ -181,7 +181,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         return this.project.getTasks().register(Constants.Tasks.DECOMPILE, DecompileJarTask.class, task -> {
             task.getMinecraftPlatform().set(platform);
             task.getMinecraftVersion().set(version);
-            task.getInputArtifacts().set(minecraftActifacts);
+            task.getInputArtifacts().set(minecraftArtifacts);
             task.getMinecraftProvider().set(minecraftProvider);
             task.setWorkerClasspath(forgeFlowerClasspath);
         });

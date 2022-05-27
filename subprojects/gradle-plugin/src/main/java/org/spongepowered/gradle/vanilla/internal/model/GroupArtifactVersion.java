@@ -77,14 +77,21 @@ public abstract class GroupArtifactVersion {
 
     @Override
     public final String toString() {
-        return this.group() + ':'
-                + this.artifact()
-                + (this.version() == null ?
-                "" :
-                ':' + this.version() + (this.classifier() == null ?
-                        "" :
-                        ':' + this.classifier()
-                )
-        );
+        final StringBuilder builder = new StringBuilder();
+
+        builder.append(this.group()).append(':').append(this.artifact());
+
+        @Nullable final String version = this.version();
+        if (version != null) {
+            builder.append(':').append(version);
+
+            @Nullable final String classifier = this.classifier();
+
+            if (classifier != null) {
+                builder.append(':').append(classifier);
+            }
+        }
+
+        return builder.toString();
     }
 }
