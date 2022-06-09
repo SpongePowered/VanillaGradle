@@ -81,11 +81,11 @@ public abstract class GroupArtifactVersion {
 
         builder.append(this.group()).append(':').append(this.artifact());
 
-        @Nullable final String version = this.version();
+        final @Nullable String version = this.version();
         if (version != null) {
             builder.append(':').append(version);
 
-            @Nullable final String classifier = this.classifier();
+            final @Nullable String classifier = this.classifier();
 
             if (classifier != null) {
                 builder.append(':').append(classifier);
