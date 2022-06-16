@@ -73,7 +73,7 @@ public final class Constants {
     }
 
     public static final class Manifests {
-        public static final String API_V2_ENDPOINT = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
+        public static final String API_V2_ENDPOINT = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 
         private Manifests() {
         }
