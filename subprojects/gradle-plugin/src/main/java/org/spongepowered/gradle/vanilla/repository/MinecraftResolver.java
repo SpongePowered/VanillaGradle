@@ -114,6 +114,7 @@ public interface MinecraftResolver {
      * @param future the future to await
      * @return the result of the future
      * @throws ExecutionException if the task execution fails
+     * @throws InterruptedException if the thread executing the future is interrupted
      */
     <T> T processSyncTasksUntilComplete(CompletableFuture<T> future) throws ExecutionException, InterruptedException;
 

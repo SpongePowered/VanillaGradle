@@ -42,14 +42,14 @@ public class ResolveMinecraftLibNames implements Callable<Set<String>> {
     private final NamedDomainObjectProvider<Configuration> minecraftConfig;
     private Set<String> result;
 
-    public ResolveMinecraftLibNames(NamedDomainObjectProvider<Configuration> minecraftConfig) {
+    public ResolveMinecraftLibNames(final NamedDomainObjectProvider<Configuration> minecraftConfig) {
         this.minecraftConfig = minecraftConfig;
     }
 
     @Override
     public Set<String> call() {
         if (this.result == null) {
-            final ResolvedConfiguration conf = minecraftConfig.get().getResolvedConfiguration();
+            final ResolvedConfiguration conf = this.minecraftConfig.get().getResolvedConfiguration();
             conf.rethrowFailure();
             this.result = new HashSet<>();
             final Queue<ResolvedDependency> deps = new ArrayDeque<>(conf.getFirstLevelModuleDependencies());
@@ -60,6 +60,6 @@ public class ResolveMinecraftLibNames implements Callable<Set<String>> {
                 }
             }
         }
-        return result;
+        return this.result;
     }
 }

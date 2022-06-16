@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.resolver.apache;
 
-import org.apache.hc.client5.http.async.methods.SimpleHttpRequests;
+import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
 import org.apache.hc.client5.http.async.methods.SimpleRequestProducer;
 import org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
@@ -278,7 +278,7 @@ public final class ApacheHttpDownloader implements AutoCloseable, Downloader {
         final FutureToCompletable<Message<HttpResponse, T>> result = new FutureToCompletable<>();
         try {
             this.client().execute(
-                SimpleRequestProducer.create(SimpleHttpRequests.get(source.toURI())),
+                SimpleRequestProducer.create(SimpleRequestBuilder.get(source.toURI()).build()),
                 new BasicResponseConsumer<>(responseConsumer.apply(destination)),
                 result
             );
@@ -333,7 +333,7 @@ public final class ApacheHttpDownloader implements AutoCloseable, Downloader {
         final FutureToCompletable<Message<HttpResponse, T>> result = new FutureToCompletable<>();
         try {
             this.client().execute(
-                SimpleRequestProducer.create(SimpleHttpRequests.get(source.toURI())),
+                SimpleRequestProducer.create(SimpleRequestBuilder.get(source.toURI()).build()),
                 new BasicResponseConsumer<>(new ValidatingDigestingEntityConsumer<>(responseConsumer.apply(path), algorithm, expectedHash)),
                 result
             );
