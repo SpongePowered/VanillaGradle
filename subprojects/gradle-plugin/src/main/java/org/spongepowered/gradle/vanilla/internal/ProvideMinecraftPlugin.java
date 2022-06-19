@@ -43,11 +43,11 @@ import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.Sync;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.jvm.toolchain.JavaToolchainService;
@@ -60,17 +60,17 @@ import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.model.Library;
 import org.spongepowered.gradle.vanilla.internal.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
-import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
-import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftRepositoryPlugin;
+import org.spongepowered.gradle.vanilla.internal.util.IdeConfigurer;
+import org.spongepowered.gradle.vanilla.internal.util.StringUtils;
+import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
+import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
 import org.spongepowered.gradle.vanilla.repository.MinecraftSide;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
 import org.spongepowered.gradle.vanilla.task.GenEclipseRuns;
-import org.spongepowered.gradle.vanilla.internal.util.IdeConfigurer;
-import org.spongepowered.gradle.vanilla.internal.util.StringUtils;
 
 import java.io.File;
 import java.util.Iterator;
@@ -235,7 +235,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             }
             return extracted;
         }));
-        final TaskProvider<Copy> gatherNatives = tasks.register(Constants.Tasks.COLLECT_NATIVES, Copy.class, task -> {
+        final TaskProvider<Sync> gatherNatives = tasks.register(Constants.Tasks.COLLECT_NATIVES, Sync.class, task -> {
             task.setGroup(Constants.TASK_GROUP);
             task.from(extractedNatives);
             task.into(nativesDir);
@@ -254,12 +254,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
         minecraft.getRuns().configureEach(run -> {
             run.getParameterTokens().put(ClientRunParameterTokens.ASSETS_ROOT, assetsDir);
-
-            // Since 1.19-pre1, we no longer need the native folder for the run configuration.
-            // All natives are now on the classpath.
-            if(!minecraft.targetVersion().get().nativesOnClasspath()) {
-                run.getParameterTokens().put(ClientRunParameterTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
-            }
+            // May be empty, but still provided
+            run.getParameterTokens().put(ClientRunParameterTokens.NATIVES_DIRECTORY, gatherNatives.map(x -> x.getDestinationDir().getAbsolutePath()));
         });
 
         return downloadAssets;

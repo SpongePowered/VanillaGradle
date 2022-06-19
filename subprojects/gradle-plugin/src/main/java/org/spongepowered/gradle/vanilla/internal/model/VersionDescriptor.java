@@ -106,17 +106,6 @@ public interface VersionDescriptor {
 
         List<Library> libraries();
 
-        /**
-         * Checks if the natives should be on the classpath.
-         * <p></p>
-         * <b>Note: </b> Since <b>1.19-pre1</b>, the natives are on the classpath.
-         *
-         * @return {@code true} if hte natives should be on the classpath, {@code false} otherwise.
-         */
-        default boolean nativesOnClasspath() {
-            return this.libraries().stream().allMatch(library -> library.natives().isEmpty());
-        }
-
         Optional<JsonObject> logging();
 
         String mainClass();
