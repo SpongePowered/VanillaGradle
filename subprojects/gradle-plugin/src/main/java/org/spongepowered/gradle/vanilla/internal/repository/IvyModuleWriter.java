@@ -155,11 +155,26 @@ public final class IvyModuleWriter implements AutoCloseable {
     }
 
     private void writeDependency(final GroupArtifactVersion dep) throws XMLStreamException {
-        this.writer.writeEmptyElement("dependency");
+        boolean hasClassifier = dep.classifier() != null;
+
+        if (hasClassifier) {
+            this.writer.writeStartElement("dependency");
+        } else {
+            this.writer.writeEmptyElement("dependency");
+        }
+
         this.writer.writeAttribute("org", dep.group());
         this.writer.writeAttribute("name", dep.artifact());
         this.writer.writeAttribute("rev", dep.version());
         this.writer.writeAttribute("transitive", "false");
+
+        if (hasClassifier) {
+            this.writer.writeEmptyElement("artifact");
+            this.writer.writeAttribute("name", dep.artifact());
+            this.writer.writeAttribute("classifier", dep.classifier());
+            this.writer.writeAttribute("ext", "jar");
+            this.writer.writeEndElement();
+        }
     }
 
     private void writeArtifacts(final MinecraftPlatform platform) throws XMLStreamException {

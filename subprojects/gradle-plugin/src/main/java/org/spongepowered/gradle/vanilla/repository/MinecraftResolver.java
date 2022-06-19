@@ -58,7 +58,7 @@ public interface MinecraftResolver {
      * <p>Whenever the {@link #STORAGE_VERSION} is incremented, this version
      * will be reset to {@code 1}</p>
      */
-    int METADATA_VERSION = 1;
+    int METADATA_VERSION = 2;
 
     /**
      * Get the version manifest repository managed by this resolver.
