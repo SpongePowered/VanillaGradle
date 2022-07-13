@@ -57,7 +57,7 @@ dependencies {
     implementation(project(":vanillagradle-downloader-apache-http"))
 
     // IDE support
-    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.4")
+    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.5")
 
     // Jar merge worker (match with Constants)
     "jarMergeCompileOnly"("net.minecraftforge:mergetool:$mergeToolVersion") {
