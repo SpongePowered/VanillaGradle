@@ -7,26 +7,6 @@ on:
     - cron: 12 10 * * 4
 
 jobs:
-  analyze:
-    name: Analyze
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-    - name: Setup JDK 11
-      uses: actions/setup-java@v3
-      with:
-        distribution: temurin
-        java-version: 11
-
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: java
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v2
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+  call-codeql:
+    uses: SpongePowered/.github/.github/workflows/shared-codeql-analysis.yaml@master
+    secrets: inherit
