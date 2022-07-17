@@ -123,6 +123,10 @@ tasks {
         from(accessWiden.output)
         from(shadow.output)
     }
+    
+    publishPlugins {
+        onlyIf { net.kyori.indra.util.Versioning.isRelease(project) }
+    }
 }
 
 indraPluginPublishing {
