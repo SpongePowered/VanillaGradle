@@ -46,7 +46,7 @@ dependencies {
     }
 
     // Just main
-    implementation("com.google.code.gson:gson:2.9.0")
+    implementation("com.google.code.gson:gson:2.9.1")
 
     compileOnlyApi("org.checkerframework:checker-qual:$checkerVersion")
     annotationProcessor("org.immutables:value:2.9.0")
@@ -57,7 +57,7 @@ dependencies {
     implementation(project(":vanillagradle-downloader-apache-http"))
 
     // IDE support
-    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.5")
+    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.6")
 
     // Jar merge worker (match with Constants)
     "jarMergeCompileOnly"("net.minecraftforge:mergetool:$mergeToolVersion") {
