@@ -8,7 +8,7 @@ pluginManagement {
     plugins {
         id("com.gradle.plugin-publish") version "0.21.0"
         id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.6"
-        id("com.diffplug.eclipse.apt") version "3.37.1"
+        id("com.diffplug.eclipse.apt") version "3.37.2"
         val indraVersion = "2.1.1"
         id("net.kyori.indra") version indraVersion
         id("net.kyori.indra.git") version indraVersion
