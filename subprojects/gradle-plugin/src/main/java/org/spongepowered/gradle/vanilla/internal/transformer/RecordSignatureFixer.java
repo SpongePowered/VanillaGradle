@@ -116,7 +116,7 @@ public class RecordSignatureFixer implements Transformer {
 
         @Override
         public MethodVisitor visitMethod(final int access, final String name, final String descriptor, final String signature, final String[] exceptions) {
-            if (this.isRecord && signature != null && this.patchSignature) { // signature implies non-primitive type
+            if ((access & Opcodes.ACC_STATIC) == 0 && this.isRecord && signature != null && this.patchSignature) { // signature implies non-primitive type
                 if (this.paramCollector == null)
                     this.paramCollector = new TypeParameterCollector();
                 this.paramCollector.baseType = Type.getType(descriptor);
@@ -214,8 +214,8 @@ public class RecordSignatureFixer implements Transformer {
 
         @Override
         public void visitTypeVariable(final String name) {
-            if (!this.typeParameters.containsKey(name) || this.typeParameters.get(name).equals(TypeParameterCollector.UNKNOWN)) {
-                if (this.level == 0 && this.baseType != null && (this.declaredParams == null || !this.declaredParams.contains(name))) {
+            if ((!this.typeParameters.containsKey(name) || this.typeParameters.get(name).equals(TypeParameterCollector.UNKNOWN)) && (this.declaredParams == null || !this.declaredParams.contains(name))) {
+                if (this.level == 0 && this.baseType != null) {
                     final String typeName;
                     switch (this.param) {
                         case TypeParameterCollector.FIELD: // field
