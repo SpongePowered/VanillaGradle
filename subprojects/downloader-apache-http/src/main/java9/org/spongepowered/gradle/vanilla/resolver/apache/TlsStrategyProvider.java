@@ -30,7 +30,7 @@ import org.apache.hc.core5.reactor.ssl.TlsDetails;
 
 // See main source set
 final class TlsStrategyProvider {
-    
+
     private TlsStrategyProvider() {
     }
 

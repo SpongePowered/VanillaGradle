@@ -82,7 +82,6 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 }
 
-
 tasks {
     // Generate source templates
     val templateSource = project.file("src/main/templates")
@@ -91,10 +90,10 @@ tasks {
         group = "sponge"
         description = "Generate classes from templates for VanillaGradle"
         val properties = mutableMapOf(
-                "asmVersion" to asmVersion,
-                "forgeFlowerVersion" to forgeFlowerVersion,
-                "mergeToolVersion" to mergeToolVersion,
-                "accessWidenerVersion" to accessWidenerVersion
+            "asmVersion" to asmVersion,
+            "forgeFlowerVersion" to forgeFlowerVersion,
+            "mergeToolVersion" to mergeToolVersion,
+            "accessWidenerVersion" to accessWidenerVersion
         )
         inputs.properties(properties)
 
@@ -123,7 +122,7 @@ tasks {
         from(accessWiden.output)
         from(shadow.output)
     }
-    
+
     publishPlugins {
         onlyIf { net.kyori.indra.util.Versioning.isRelease(project) }
     }

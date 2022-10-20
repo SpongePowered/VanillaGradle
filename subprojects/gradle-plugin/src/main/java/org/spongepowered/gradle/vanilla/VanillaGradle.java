@@ -52,9 +52,9 @@ import org.spongepowered.gradle.vanilla.internal.ShadowConfigurationApplier;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftRepositoryPlugin;
 import org.spongepowered.gradle.vanilla.internal.util.ConfigurationUtils;
-import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.internal.util.IdeConfigurer;
 import org.spongepowered.gradle.vanilla.internal.util.SelfPreferringClassLoader;
+import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.task.DumpClassTask;
 
 import java.io.IOException;

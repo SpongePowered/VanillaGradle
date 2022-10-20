@@ -1,27 +1,40 @@
+import com.diffplug.gradle.spotless.FormatExtension
+
 plugins {
     eclipse
     id("org.jetbrains.gradle.plugin.idea-ext")
     id("net.kyori.indra") apply false
     id("net.kyori.indra.git") apply false
-    id("net.kyori.indra.license-header") apply false
+    id("com.diffplug.spotless")
+    id("net.kyori.indra.licenser.spotless") apply false
     id("com.diffplug.eclipse.apt") apply false
 }
 
 group = "org.spongepowered"
 version = "0.2.1-SNAPSHOT"
 
+
+spotless {
+    format("configs") {
+        target("**/*.yaml", "**/*.yml", "**/*.xml", "**/*.json")
+
+        val excludedTargets = mutableListOf(".idea/**", "build/**", ".gradle/**")
+        project.subprojects {
+            excludedTargets.add(projectDir.toRelativeString(rootDir) + "/**")
+        }
+        targetExclude(excludedTargets)
+
+        endWithNewline()
+        trimTrailingWhitespace()
+    }
+}
+
 subprojects {
     apply(plugin="net.kyori.indra")
-    apply(plugin="net.kyori.indra.license-header")
+    apply(plugin="net.kyori.indra.licenser.spotless")
     apply(plugin="net.kyori.indra.git")
     apply(plugin="com.diffplug.eclipse.apt")
     apply(plugin="signing")
-
-    repositories {
-        maven("https://repo.spongepowered.org/repository/maven-public/") {
-            name = "sponge"
-        }
-    }
 
     extensions.configure(net.kyori.indra.IndraExtension::class) {
         github("SpongePowered", "VanillaGradle") {
@@ -30,7 +43,7 @@ subprojects {
         mitLicense()
 
         javaVersions {
-            testWith(8, 11, 16)
+            testWith(8, 11, 17)
         }
 
         configurePublications {
@@ -51,16 +64,36 @@ subprojects {
         }
     }
 
-    extensions.configure(org.cadixdev.gradle.licenser.LicenseExtension::class) {
+    extensions.configure(net.kyori.indra.licenser.spotless.IndraSpotlessLicenserExtension::class) {
         val organization: String by project
         val projectUrl: String by project
 
-        properties {
-            this["name"] = "VanillaGradle"
-            this["organization"] = organization
-            this["url"] = projectUrl
+        properties().apply {
+            put("name", "VanillaGradle")
+            put("organization", organization)
+            put("url", projectUrl)
         }
-        header(rootProject.file("HEADER.txt"))
+        licenseHeaderFile(rootProject.file("HEADER.txt"))
+    }
+
+    spotless {
+        fun FormatExtension.applyCommonSettings() {
+            endWithNewline()
+            indentWithSpaces(4)
+            trimTrailingWhitespace()
+            toggleOffOn("@formatter:off", "@formatter:on")
+        }
+
+        java {
+            applyCommonSettings()
+            importOrderFile(rootProject.file(".spotless/sponge.importorder"))
+        }
+
+        kotlinGradle {
+            applyCommonSettings()
+            // ktlint()
+            //    .editorConfigOverride(mapOf("ij_kotlin_imports_layout" to "$*,|,*,|,java.**,|,javax.**"))
+        }
     }
 
     afterEvaluate {

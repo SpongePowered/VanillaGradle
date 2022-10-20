@@ -34,12 +34,12 @@ import org.gradle.api.tasks.TaskAction;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.model.AssetIndex;
 import org.spongepowered.gradle.vanilla.internal.model.AssetIndexReference;
-import org.spongepowered.gradle.vanilla.resolver.Downloader;
-import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
-import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 import org.spongepowered.gradle.vanilla.internal.util.GsonUtils;
 import org.spongepowered.gradle.vanilla.internal.util.Pair;
+import org.spongepowered.gradle.vanilla.resolver.Downloader;
+import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
+import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.net.MalformedURLException;
 import java.net.URL;

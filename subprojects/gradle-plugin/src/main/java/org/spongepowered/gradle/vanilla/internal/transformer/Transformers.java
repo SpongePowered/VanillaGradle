@@ -36,7 +36,7 @@ public final class Transformers {
     public static Transformer filterEntries(final Set<String> allowedPackages) {
         return new FilterClassesTransformer(allowedPackages);
     }
-    
+
     public static Transformer fixLvNames() {
         return new LocalVariableNameFixer();
     }

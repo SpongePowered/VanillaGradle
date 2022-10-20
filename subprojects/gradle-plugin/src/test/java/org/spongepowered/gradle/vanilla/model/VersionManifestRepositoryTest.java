@@ -32,9 +32,9 @@ import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.model.VersionManifestRepository;
 import org.spongepowered.gradle.vanilla.internal.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
-import org.spongepowered.gradle.vanilla.resolver.apache.ApacheHttpDownloader;
 import org.spongepowered.gradle.vanilla.resolver.Downloader;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
+import org.spongepowered.gradle.vanilla.resolver.apache.ApacheHttpDownloader;
 
 import java.io.IOException;
 import java.nio.file.Paths;
