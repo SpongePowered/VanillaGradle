@@ -61,7 +61,7 @@ public class LineMappingVisitor extends ClassVisitor {
         public void visitLineNumber(final int line, final Label start) {
             Integer mapped = this.lineMapping.get(line);
             if (mapped == null) {
-                final Map.Entry<Integer, Integer> entry = this.lineMapping.higherEntry(line);
+                final Map.Entry<Integer, Integer> entry = this.lineMapping.ceilingEntry(line);
                 if (entry != null) {
                     mapped = entry.getValue();
                 }

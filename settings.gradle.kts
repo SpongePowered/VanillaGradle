@@ -20,7 +20,15 @@ findProject(":gradle-plugin")?.apply {
     projectDir = file("subprojects/gradle-plugin")
 }
 
-sequenceOf("resolver-core", "downloader-apache-http", "downloader-jdk-http").forEach {
+sequenceOf(
+        "resolver-core",
+        "downloader-apache-http",
+        "downloader-jdk-http",
+        "forgeautorenamingtool-spi",
+        "forgeautorenamingtool-transformers",
+        "forgeautorenamingtool-transformer-accesswidener",
+        "plugin-remapper"
+).forEach {
     include(it)
     findProject(":$it")?.apply {
         name = "vanillagradle-$it"
