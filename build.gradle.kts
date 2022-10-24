@@ -2,12 +2,13 @@ import com.diffplug.gradle.spotless.FormatExtension
 
 plugins {
     eclipse
-    id("org.jetbrains.gradle.plugin.idea-ext")
-    id("net.kyori.indra") apply false
-    id("net.kyori.indra.git") apply false
-    id("com.diffplug.spotless")
-    id("net.kyori.indra.licenser.spotless") apply false
-    id("com.diffplug.eclipse.apt") apply false
+    alias(libs.plugins.ideaExt)
+    alias(libs.plugins.indra) apply false
+    alias(libs.plugins.indra.publishing) apply false
+    alias(libs.plugins.indra.git) apply false
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.indra.licenserSpotless) apply false
+    alias(libs.plugins.eclipseApt) apply false
 }
 
 group = "org.spongepowered"

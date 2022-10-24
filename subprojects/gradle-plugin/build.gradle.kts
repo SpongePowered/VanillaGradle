@@ -3,9 +3,9 @@ import org.jetbrains.gradle.ext.TaskTriggersConfig
 
 plugins {
     `java-gradle-plugin`
-    id("com.gradle.plugin-publish")
-    id("net.kyori.indra.publishing.gradle-plugin")
-    id("org.jetbrains.gradle.plugin.idea-ext")
+    alias(libs.plugins.gradlePluginPublish)
+    alias(libs.plugins.indra.publishing.gradlePlugin)
+    alias(libs.plugins.ideaExt)
 }
 
 val commonDeps by configurations.creating {
@@ -37,49 +37,49 @@ val mergeToolVersion: String by project
 dependencies {
     // All source sets
     commonDeps(gradleApi())
-    commonDeps("org.ow2.asm:asm:$asmVersion")
-    commonDeps("org.ow2.asm:asm-commons:$asmVersion")
-    commonDeps("org.ow2.asm:asm-util:$asmVersion")
-    commonDeps("net.minecraftforge:ForgeAutoRenamingTool:$forgeAutoRenamingToolVersion") {
+    commonDeps(libs.asm)
+    commonDeps(libs.asm.commons)
+    commonDeps(libs.asm.util)
+    commonDeps(libs.forgeAutoRenamingTool) {
         exclude("org.ow2.asm") // Use our own ASM
         exclude("net.sf.jopt-simple")
     }
 
     // Just main
-    implementation("com.google.code.gson:gson:2.9.1")
+    implementation(libs.gson)
 
-    compileOnlyApi("org.checkerframework:checker-qual:$checkerVersion")
-    annotationProcessor("org.immutables:value:2.9.2")
-    compileOnlyApi("org.immutables:value:2.9.0:annotations")
-    api("org.immutables:gson:2.9.2")
+    compileOnlyApi(libs.checkerQual)
+    annotationProcessor(libs.immutables.value)
+    compileOnlyApi(variantOf(libs.immutables.value) { classifier("annotations") })
+    api(libs.immutables.gson)
 
     implementation(project(":vanillagradle-resolver-core"))
     implementation(project(":vanillagradle-downloader-apache-http"))
 
     // IDE support
-    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.6")
+    implementation(libs.ideaExt)
 
     // Jar merge worker (match with Constants)
-    "jarMergeCompileOnly"("net.minecraftforge:mergetool:$mergeToolVersion") {
+    "jarMergeCompileOnly"(libs.mergeTool) {
         exclude("org.ow2.asm")
     }
     implementation(jarMerge.output)
 
     // Jar decompile worker (match with Constants)
-    "jarDecompileCompileOnly"("net.minecraftforge:forgeflower:$forgeFlowerVersion")
+    "jarDecompileCompileOnly"(libs.forgeFlower)
     implementation(jarDecompile.output)
 
     // Access widener worker (match with Constants)
-    "accessWidenCompileOnly"("net.fabricmc:access-widener:$accessWidenerVersion") {
+    "accessWidenCompileOnly"(libs.accessWidener) {
         exclude("org.ow2.asm")
     }
     implementation(accessWiden.output)
 
-    "shadowCompileOnly"("com.github.jengelman.gradle.plugins:shadow:6.1.0")
+    "shadowCompileOnly"(libs.shadowPlugin)
     implementation(shadow.output)
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+    testImplementation(libs.junit.api)
+    testRuntimeOnly(libs.junit.engine)
 }
 
 tasks {
@@ -90,10 +90,10 @@ tasks {
         group = "sponge"
         description = "Generate classes from templates for VanillaGradle"
         val properties = mutableMapOf(
-            "asmVersion" to asmVersion,
-            "forgeFlowerVersion" to forgeFlowerVersion,
-            "mergeToolVersion" to mergeToolVersion,
-            "accessWidenerVersion" to accessWidenerVersion
+            "asmVersion" to libs.versions.asm.get(),
+            "forgeFlowerVersion" to libs.versions.forgeFlower.get(),
+            "mergeToolVersion" to libs.versions.mergeTool.get(),
+            "accessWidenerVersion" to libs.versions.accessWidener.get()
         )
         inputs.properties(properties)
 
@@ -115,7 +115,6 @@ tasks {
         synchronizationTasks(generateTemplates)
     }
 
-    val archiveOperations = project.serviceOf<ArchiveOperations>()
     jar {
         from(jarMerge.output)
         from(jarDecompile.output)
