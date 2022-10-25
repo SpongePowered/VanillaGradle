@@ -28,11 +28,13 @@ import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import joptsimple.OptionSpecBuilder;
 import net.fabricmc.accesswidener.AccessWidener;
+import net.fabricmc.accesswidener.AccessWidenerClassVisitor;
 import net.fabricmc.accesswidener.AccessWidenerReader;
-import net.fabricmc.accesswidener.AccessWidenerVisitor;
+import net.fabricmc.accesswidener.TransitiveOnlyFilter;
 import net.minecraftforge.fart.api.Transformer;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.immutables.metainf.Metainf;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -55,6 +57,9 @@ public final class AccessWidenerEntryTransformer implements TransformerProvider 
 
     private @MonotonicNonNull OptionSpec<File> triggerOption;
 
+    private @MonotonicNonNull OptionSpec<Void> transitiveOnlyO;
+    private @MonotonicNonNull OptionSpec<String> namespaceO;
+
     @Override
     public @NonNull String id() {
         return AccessWidenerEntryTransformer.ID;
@@ -66,14 +71,27 @@ public final class AccessWidenerEntryTransformer implements TransformerProvider 
     }
 
     @Override
+    public void init(final @NonNull OptionConsumer parser) {
+        this.transitiveOnlyO = parser.accepts("transitive-only", "Only apply entries marked as transitive");
+        this.namespaceO = parser.accepts("ns", "The expected source namespace for access wideners").withRequiredArg();
+    }
+
+    @Override
     public Transformer.Factory create(final @NonNull OptionSet options) throws TransformerProvisionException {
         final List<File> accessWideners = options.valuesOf(this.triggerOption);
         final AccessWidener widener = new AccessWidener();
-        final AccessWidenerReader reader = new AccessWidenerReader(widener);
+        final AccessWidenerReader reader;
+        if (options.has(this.transitiveOnlyO)) {
+            reader = new AccessWidenerReader(new TransitiveOnlyFilter(widener));
+        } else {
+            reader = new AccessWidenerReader(widener);
+        }
+
+        final @Nullable String expectedNS = options.valueOf(this.namespaceO);
 
         for (final File widenerFile : accessWideners) {
             try (final BufferedReader fileReader = Files.newBufferedReader(widenerFile.toPath(), StandardCharsets.UTF_8)) {
-                reader.read(fileReader);
+                reader.read(fileReader, expectedNS);
             } catch (final IOException ex) {
                 throw new TransformerProvisionException("Failed to read access widener from file " + widenerFile, ex);
             }
@@ -97,7 +115,7 @@ public final class AccessWidenerEntryTransformer implements TransformerProvider 
             final ClassReader reader = new ClassReader(entry.getData());
             final ClassWriter writer = new ClassWriter(reader, 0);
             // TODO: Expose the ASM version constant somewhere visible to this worker
-            final ClassVisitor visitor = AccessWidenerVisitor.createClassVisitor(Opcodes.ASM9, writer, this.widener);
+            final ClassVisitor visitor = AccessWidenerClassVisitor.createClassVisitor(Opcodes.ASM9, writer, this.widener);
             reader.accept(visitor, 0);
             if (entry.isMultiRelease()) {
                 return ClassEntry.create(entry.getName(), entry.getTime(), writer.toByteArray(), entry.getVersion());

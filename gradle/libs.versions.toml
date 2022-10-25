@@ -2,7 +2,7 @@
 version = "1.0"
 
 [versions]
-accessWidener = "1.1.0"
+accessWidener = "2.1.0"
 asm = "9.4"
 checker = "3.26.0"
 forgeAutoRenamingTool = "0.1.24"
