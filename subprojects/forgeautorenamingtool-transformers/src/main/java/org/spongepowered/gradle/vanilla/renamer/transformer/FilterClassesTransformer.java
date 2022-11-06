@@ -31,12 +31,14 @@ import net.minecraftforge.fart.api.Transformer;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.common.value.qual.MatchesRegex;
+import org.immutables.metainf.Metainf;
 import org.spongepowered.gradle.vanilla.renamer.spi.TransformerProvider;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Metainf.Service
 public final class FilterClassesTransformer implements TransformerProvider {
 
     private static final String ID = "only";

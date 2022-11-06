@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     compileOnly(project(":vanillagradle-forgeautorenamingtool-spi"))
+    api(libs.mammoth)
 }
 
 indraPluginPublishing {
@@ -12,7 +13,7 @@ indraPluginPublishing {
     bundleTags(listOf("remapping", "forge"))
     plugin(
         /* id = */ "gradle.remapper",
-        /* mainClass = */ "org.spongepowered.gradle.vanilla.remapper.RemapperPlugin",
+        /* mainClass = */ "org.spongepowered.gradle.vanilla.remap.RemapPlugin",
         /* displayName = */ "VanillaGradle Remapping",
         /* description = */ "Integrate ForgeAutoRenamingTool (and eventually source remapping) with the Gradle pipeline"
     )
