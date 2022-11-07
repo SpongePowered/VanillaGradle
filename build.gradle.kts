@@ -86,6 +86,7 @@ subprojects {
         }
 
         java {
+            targetExclude("build/generated/**")
             applyCommonSettings()
             importOrderFile(rootProject.file(".spotless/sponge.importorder"))
         }
