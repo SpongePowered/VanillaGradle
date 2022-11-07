@@ -4,9 +4,9 @@ version = "1.0"
 [versions]
 accessWidener = "2.1.0"
 asm = "9.4"
-checker = "3.26.0"
+checker = "3.27.0"
 forgeAutoRenamingTool = "0.1.24"
-forgeFlower = "1.5.605.9"
+forgeFlower = "1.5.605.10"
 ideaExt = "1.1.6"
 immutables = "2.9.2"
 indra = "3.0.1"
@@ -37,7 +37,7 @@ asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
 asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
 forgeAutoRenamingTool = { module = "net.minecraftforge:ForgeAutoRenamingTool", version.ref = "forgeAutoRenamingTool" }
 forgeFlower = { module = "net.minecraftforge:forgeflower", version.ref = "forgeFlower" }
-gson = { module = "com.google.code.gson:gson", version = "2.9.1" }
+gson = { module = "com.google.code.gson:gson", version = "2.10" }
 ideaExt = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version.ref = "ideaExt" }
 junit-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
@@ -46,7 +46,7 @@ shadowPlugin = { module = "com.github.jengelman.gradle.plugins:shadow", version 
 srgUtils = { module = "net.minecraftforge:srgutils", version = "0.4.13"}
 
 [plugins]
-eclipseApt = { id = "com.diffplug.eclipse.apt", version = "3.39.0" }
+eclipseApt = { id = "com.diffplug.eclipse.apt", version = "3.40.0" }
 gradlePluginPublish = { id = "com.gradle.plugin-publish", version = "1.0.0" }
 ideaExt = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "ideaExt" }
 indra = { id = "net.kyori.indra", version.ref = "indra" }
