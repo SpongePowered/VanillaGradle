@@ -58,9 +58,12 @@ public final class Constants {
         public static final String JARS = "jars";
         public static final String MANIFESTS = "manifests";
         public static final List<Path> SHARED_ASSET_LOCATIONS = Collections.unmodifiableList(Stream.of(
-            ".minecraft/assets", // linux, default launcher
+            ".local/share/PrismLauncher/assets/", // linux, PrismLauncher
             ".local/share/multimc/assets/", // linux, MultiMC
+            ".minecraft/assets", // linux, default launcher
+            "Library/Application Support/PrismLauncher/assets/", // macOS, PrismLauncher
             "Library/Application Support/minecraft/assets/", // macOS, default launcher
+            "AppData/Roaming/PrismLauncher/assets/", // Windows, PrismLauncher
             "scoop/persist/multimc/assets/", // Windows, MultiMC via Scoop
             "AppData/Roaming/.minecraft/assets/" // Windows, default launcher
             // Do you have another location? Add it here!
