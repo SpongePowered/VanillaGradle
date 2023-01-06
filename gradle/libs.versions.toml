@@ -27,7 +27,7 @@ asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
 asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
 forgeAutoRenamingTool = { module = "net.minecraftforge:ForgeAutoRenamingTool", version.ref = "forgeAutoRenamingTool" }
 forgeFlower = { module = "net.minecraftforge:forgeflower", version.ref = "forgeFlower" }
-gson = { module = "com.google.code.gson:gson", version = "2.9.1" }
+gson = { module = "com.google.code.gson:gson", version = "2.10.1" }
 ideaExt = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version.ref = "ideaExt" }
 immutables-value = { module = "org.immutables:value", version.ref = "immutables" }
 immutables-gson = { module = "org.immutables:gson", version.ref = "immutables" }
