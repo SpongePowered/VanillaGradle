@@ -152,7 +152,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
         }
 
         this.getLogger().lifecycle(
-            "Downloaded {} assets (out of {} total, {} already up-to-date",
+            "Downloaded {} assets (out of {} total, {} already up-to-date)",
             stats.found() - stats.upToDate(),
             stats.total(),
             stats.upToDate()
