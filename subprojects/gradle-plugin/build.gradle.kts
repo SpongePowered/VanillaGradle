@@ -1,4 +1,3 @@
-import org.gradle.kotlin.dsl.support.serviceOf
 import org.jetbrains.gradle.ext.TaskTriggersConfig
 
 plugins {
@@ -16,9 +15,6 @@ val jarMerge by sourceSets.creating {
 val jarDecompile by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
-val accessWiden by sourceSets.creating {
-    configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
-}
 val shadow by sourceSets.creating {
     configurations.named(this.implementationConfigurationName) { extendsFrom(commonDeps) }
 }
@@ -27,23 +23,13 @@ configurations {
     api { extendsFrom(commonDeps) }
 }
 
-val accessWidenerVersion: String by project
-val asmVersion: String by project
-val checkerVersion: String by project
-val forgeFlowerVersion: String by project
-val forgeAutoRenamingToolVersion: String by project
-val junitVersion: String by project
-val mergeToolVersion: String by project
 dependencies {
     // All source sets
     commonDeps(gradleApi())
     commonDeps(libs.asm)
     commonDeps(libs.asm.commons)
     commonDeps(libs.asm.util)
-    commonDeps(libs.forgeAutoRenamingTool) {
-        exclude("org.ow2.asm") // Use our own ASM
-        exclude("net.sf.jopt-simple")
-    }
+    commonDeps(libs.srgUtils)
 
     // Just main
     implementation(libs.gson)
@@ -68,12 +54,6 @@ dependencies {
     // Jar decompile worker (match with Constants)
     "jarDecompileCompileOnly"(libs.forgeFlower)
     implementation(jarDecompile.output)
-
-    // Access widener worker (match with Constants)
-    "accessWidenCompileOnly"(libs.accessWidener) {
-        exclude("org.ow2.asm")
-    }
-    implementation(accessWiden.output)
 
     "shadowCompileOnly"(libs.shadowPlugin)
     implementation(shadow.output)
@@ -118,7 +98,6 @@ tasks {
     jar {
         from(jarMerge.output)
         from(jarDecompile.output)
-        from(accessWiden.output)
         from(shadow.output)
     }
 

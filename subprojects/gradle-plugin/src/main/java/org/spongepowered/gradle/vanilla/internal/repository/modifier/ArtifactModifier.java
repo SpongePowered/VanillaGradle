@@ -24,8 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository.modifier;
 
-import net.minecraftforge.fart.api.Renamer;
-import net.minecraftforge.fart.api.Transformer;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 
 import java.io.IOException;
@@ -33,7 +31,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Some sort of operation that can be performed on a jar, via a {@link Renamer}.
+ * Some sort of operation that can be performed on a jar, via a {@code Renamer}.
  */
 public interface ArtifactModifier {
 
