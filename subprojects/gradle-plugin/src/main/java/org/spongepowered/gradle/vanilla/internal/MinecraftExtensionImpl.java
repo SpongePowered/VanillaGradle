@@ -35,6 +35,7 @@ import org.gradle.api.invocation.Gradle;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.ProviderFactory;
 import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
@@ -44,6 +45,7 @@ import org.spongepowered.gradle.vanilla.internal.repository.MinecraftRepositoryP
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.AccessWidenerModifier;
 import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactModifier;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
+import org.spongepowered.gradle.vanilla.repository.MinecraftSide;
 import org.spongepowered.gradle.vanilla.runs.RunConfiguration;
 import org.spongepowered.gradle.vanilla.runs.RunConfigurationContainer;
 
@@ -79,8 +81,10 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     private final RunConfigurationContainer runConfigurations;
     private volatile Set<ArtifactModifier> lazyModifiers;
 
+    private final Provider<Boolean> needsPrepareWorkspace;
+
     @Inject
-    public MinecraftExtensionImpl(final Gradle gradle, final ObjectFactory factory, final Project project, final Provider<MinecraftProviderService> providerService) {
+    public MinecraftExtensionImpl(final Gradle gradle, final ObjectFactory factory, final ProviderFactory providers, final Project project, final Provider<MinecraftProviderService> providerService) {
         this.project = project;
         this.providerService = providerService;
         this.version = factory.property(String.class);
@@ -129,6 +133,7 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
         this.targetVersion.finalizeValueOnRead();
 
         this.runConfigurations = factory.newInstance(RunConfigurationContainer.class, factory.domainObjectContainer(RunConfiguration.class), this);
+        this.needsPrepareWorkspace = providers.provider(() -> !this.runConfigurations.isEmpty() && this.platform.get().includes(MinecraftSide.CLIENT));
     }
 
     @Override
@@ -268,6 +273,10 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
 
     public Provider<VersionDescriptor.Full> targetVersion() {
         return this.targetVersion;
+    }
+
+    public Provider<Boolean> needsPrepareWorkspace() {
+        return this.needsPrepareWorkspace;
     }
 
 }
