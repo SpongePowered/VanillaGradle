@@ -56,6 +56,7 @@ subprojects {
             }
         }
 
+        signWithKeyFromPrefixedProperties("sponge")
         if (
             project.hasProperty("spongeSnapshotRepo") &&
             project.hasProperty("spongeReleaseRepo")
@@ -95,23 +96,6 @@ subprojects {
             applyCommonSettings()
             // ktlint()
             //    .editorConfigOverride(mapOf("ij_kotlin_imports_layout" to "$*,|,*,|,java.**,|,javax.**"))
-        }
-    }
-
-    afterEvaluate {
-        extensions.configure(SigningExtension::class) {
-            val spongeSigningKey = project.findProperty("spongeSigningKey") as String?
-            val spongeSigningPassword = project.findProperty("spongeSigningPassword") as String?
-            if (spongeSigningKey != null && spongeSigningPassword != null) {
-                val keyFile = rootProject.file(spongeSigningKey)
-                if (keyFile.exists()) {
-                    useInMemoryPgpKeys(keyFile.readText(Charsets.UTF_8), spongeSigningPassword)
-                } else {
-                    useInMemoryPgpKeys(spongeSigningKey, spongeSigningPassword)
-                }
-            } else {
-                signatories = PgpSignatoryProvider() // don't use gpg agent
-            }
         }
     }
 
