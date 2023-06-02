@@ -15,7 +15,7 @@ mergeTool = "1.1.5"
 
 [libraries]
 # shared
-checkerQual = { module = "org.checkerframework:checker-qual", version = "3.26.0" }
+checkerQual = { module = "org.checkerframework:checker-qual", version = "3.35.0" }
 
 # downloader-apache-http
 apache-httpClient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.1.3" }
