@@ -42,7 +42,7 @@ public final class Transformers {
     }
 
     public static Transformer.Factory recordSignatureFixer() {
-        return ctx -> new RecordSignatureFixer(ctx.getDebug(), ctx.getInheritance());
+        return ctx -> new RecordSignatureFixer(ctx.getDebug(), ctx.getClassProvider());
     }
 
 }

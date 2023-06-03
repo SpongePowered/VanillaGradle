@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.transformer;
 
-import net.minecraftforge.fart.api.Inheritance;
+import net.minecraftforge.fart.api.ClassProvider;
 import net.minecraftforge.fart.api.Transformer;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -48,9 +48,9 @@ import java.util.function.Consumer;
 
 public class RecordSignatureFixer implements Transformer {
     private final Consumer<String> debug;
-    private final Inheritance inh;
+    private final ClassProvider inh;
 
-    public RecordSignatureFixer(final Consumer<String> debug, final Inheritance inh) {
+    public RecordSignatureFixer(final Consumer<String> debug, final ClassProvider inh) {
         this.debug = debug;
         this.inh = inh;
     }
@@ -149,7 +149,7 @@ public class RecordSignatureFixer implements Transformer {
                 for (final Map.Entry<String, String> param : this.paramCollector.typeParameters.entrySet()) {
                     sw.visitFormalTypeParameter(param.getKey());
                     if (!param.getValue().equals(TypeParameterCollector.UNKNOWN)) {
-                        final Inheritance.IClassInfo cls = RecordSignatureFixer.this.inh.getClass(param.getValue()).orElse(null);
+                        final ClassProvider.IClassInfo cls = RecordSignatureFixer.this.inh.getClass(param.getValue()).orElse(null);
                         if (cls != null) {
                             final SignatureVisitor parent;
                             if ((cls.getAccess() & Opcodes.ACC_INTERFACE) != 0) {

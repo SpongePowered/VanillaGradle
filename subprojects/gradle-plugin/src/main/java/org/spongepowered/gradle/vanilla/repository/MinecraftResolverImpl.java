@@ -229,19 +229,18 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         }
                         renamerBuilder.add(Transformer.parameterAnnotationFixerFactory())
                             .add(Transformers.fixLvNames())
-                            .add(Transformer.renamerFactory(mappings))
+                            .add(Transformer.renamerFactory(mappings, true))
                             .add(Transformer.sourceFixerFactory(SourceFixerConfig.JAVA))
                             .add(Transformer.recordFixerFactory())
                             .add(Transformer.signatureStripperFactory(SignatureStripperConfig.ALL))
                             .add(Transformers.recordSignatureFixer()); // for versions where old PG produced invalid record signatures
 
-                        renamerBuilder.input(extracted.toFile())
-                        .output(outputTmp.toFile())
-                        .logger(MinecraftResolverImpl.LOGGER::info)
+                        renamerBuilder.logger(MinecraftResolverImpl.LOGGER::info);
                         // todo: threads
                         // todo: dependencies
-                        .build()
-                        .run();
+                        try (final Renamer ren = renamerBuilder.build()) {
+                            ren.run(extracted.toFile(), outputTmp.toFile());
+                        }
 
                         this.writeMetaIfNecessary(platform, potentialDescriptor, dependencies, outputJar.getParent());
                         FileUtils.atomicMove(outputTmp, outputJar);
@@ -420,16 +419,15 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         FileUtils.createDirectoriesSymlinkSafe(output.getParent());
 
                         final Renamer.Builder builder = Renamer.builder()
-                            .input(input.get().jar().toFile())
-                            .output(outputTmp.toFile())
                             .logger(MinecraftResolverImpl.LOGGER::info);
 
                         for (final CompletableFuture<ArtifactModifier.TransformerProvider> populator : populators) {
                             builder.add(populator.get().provide());
                         }
 
-                        builder.build()
-                            .run();
+                        try (final Renamer ren = builder.build()) {
+                            ren.run(input.get().jar().toFile(), outputTmp.toFile());
+                        }
 
                         FileUtils.atomicMove(outputTmp, output);
                         this.writeMetaIfNecessary(side, decoratedArtifact, input.mapIfPresent((upToDate, env) -> env.metadata()), input.get()::dependencies, output.getParent());
