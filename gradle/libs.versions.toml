@@ -37,7 +37,7 @@ mergeTool = { module = "net.minecraftforge:mergetool", version.ref = "mergeTool"
 shadowPlugin = { module = "com.github.jengelman.gradle.plugins:shadow", version = "6.1.0" }
 
 [plugins]
-eclipseApt = { id = "com.diffplug.eclipse.apt", version = "3.41.0" }
+eclipseApt = { id = "com.diffplug.eclipse.apt", version = "3.41.1" }
 gradlePluginPublish = { id = "com.gradle.plugin-publish", version = "1.2.0" }
 ideaExt = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "ideaExt" }
 indra = { id = "net.kyori.indra", version.ref = "indra" }
@@ -46,4 +46,4 @@ indra-licenserSpotless = { id = "net.kyori.indra.licenser.spotless", version.ref
 indra-publishing = { id = "net.kyori.indra.publishing", version.ref = "indra" }
 indra-publishing-gradlePlugin = { id = "net.kyori.indra.publishing.gradle-plugin", version.ref = "indra" }
 indra-publishing-sonatype = { id = "net.kyori.indra.publishing.sonatype", version.ref = "indra" }
-spotless = { id = "com.diffplug.spotless", version = "6.18.0" }
+spotless = { id = "com.diffplug.spotless", version = "6.19.0" }
