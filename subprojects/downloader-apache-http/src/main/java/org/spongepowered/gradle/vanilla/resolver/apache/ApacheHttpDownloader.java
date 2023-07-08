@@ -29,17 +29,13 @@ import org.apache.hc.client5.http.async.methods.SimpleRequestProducer;
 import org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
-import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManager;
-import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
 import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.Message;
 import org.apache.hc.core5.http.nio.AsyncEntityConsumer;
 import org.apache.hc.core5.http.nio.entity.BasicAsyncEntityConsumer;
 import org.apache.hc.core5.http.nio.entity.StringAsyncEntityConsumer;
-import org.apache.hc.core5.http.nio.ssl.TlsStrategy;
 import org.apache.hc.core5.http.nio.support.BasicResponseConsumer;
-import org.apache.hc.core5.http2.HttpVersionPolicy;
 import org.apache.hc.core5.io.CloseMode;
 import org.apache.hc.core5.reactor.IOReactorConfig;
 import org.apache.hc.core5.util.TimeValue;
@@ -113,16 +109,9 @@ public final class ApacheHttpDownloader implements AutoCloseable, Downloader {
             .setSoTimeout(Timeout.ofSeconds(5))
             .build();
 
-        final TlsStrategy tlsStrategy = TlsStrategyProvider.provide();
-        final PoolingAsyncClientConnectionManager cm = PoolingAsyncClientConnectionManagerBuilder.create()
-            .setTlsStrategy(tlsStrategy)
-            .build();
-
         this.client = HttpAsyncClientBuilder.create()
             .setIOReactorConfig(config)
             .setUserAgent("vanillagradle-resolver/" + this.getClass().getPackage().getImplementationVersion()) // todo: re-implement
-            .setVersionPolicy(HttpVersionPolicy.NEGOTIATE)
-            .setConnectionManager(cm)
             .setRetryStrategy(new DefaultHttpRequestRetryStrategy(5, TimeValue.ofMilliseconds(500)))
             .build();
         this.shouldClose = true;

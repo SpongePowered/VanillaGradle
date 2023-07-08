@@ -8,9 +8,3 @@ dependencies {
     api(project(":vanillagradle-resolver-core"))
     implementation(libs.apache.httpClient5)
 }
-
-sourceSets {
-    main {
-        multirelease.alternateVersions(9)
-    }
-}
