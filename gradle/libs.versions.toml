@@ -9,7 +9,7 @@ forgeAutoRenamingTool = "1.0.2"
 forgeFlower = "1.5.605.21"
 ideaExt = "1.1.7"
 immutables = "2.9.3"
-indra = "3.1.1"
+indra = "3.1.2"
 junit = "5.9.3"
 mergeTool = "1.1.7"
 
@@ -37,7 +37,7 @@ mergeTool = { module = "net.minecraftforge:mergetool", version.ref = "mergeTool"
 shadowPlugin = { module = "com.github.jengelman.gradle.plugins:shadow", version = "6.1.0" }
 
 [plugins]
-eclipseApt = { id = "com.diffplug.eclipse.apt", version = "3.41.1" }
+eclipseApt = { id = "com.diffplug.eclipse.apt", version = "3.42.1" }
 gradlePluginPublish = { id = "com.gradle.plugin-publish", version = "1.2.0" }
 ideaExt = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "ideaExt" }
 indra = { id = "net.kyori.indra", version.ref = "indra" }
