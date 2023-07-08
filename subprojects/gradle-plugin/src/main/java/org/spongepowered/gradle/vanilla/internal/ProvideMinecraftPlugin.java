@@ -26,6 +26,7 @@ package org.spongepowered.gradle.vanilla.internal;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.InvalidUserDataException;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -34,11 +35,16 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.artifacts.result.ResolvedArtifactResult;
+import org.gradle.api.attributes.AttributeContainer;
+import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DuplicatesStrategy;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemLocation;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Property;
@@ -50,6 +56,7 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.Sync;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
@@ -83,6 +90,8 @@ import java.util.Objects;
  */
 public class ProvideMinecraftPlugin implements Plugin<Project> {
 
+    private static final Logger LOGGER = Logging.getLogger(ProvideMinecraftPlugin.class);
+
     private Project project;
 
     @Override
@@ -110,7 +119,12 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
 
         final TaskProvider<DownloadAssetsTask> assets = this.createAssetsDownload(minecraft, minecraftProvider, target.getTasks());
 
-        this.createJarDecompile(minecraftConfig, minecraftProvider, minecraft);
+        this.createJarDecompile(
+            target.getExtensions().getByType(JavaToolchainService.class),
+            minecraftConfig,
+            minecraftProvider,
+            minecraft
+        );
 
         final TaskProvider<?> prepareWorkspace = target.getTasks().register(Constants.Tasks.PREPARE_WORKSPACE, task -> {
             task.setGroup(Constants.TASK_GROUP);
@@ -153,13 +167,46 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
     }
 
     private TaskProvider<DecompileJarTask> createJarDecompile(
+        final JavaToolchainService toolchains,
         final NamedDomainObjectProvider<Configuration> minecraftConfiguration,
         final Provider<MinecraftProviderService> minecraftProvider,
         final MinecraftExtensionImpl extension
     ) {
-        final Configuration forgeFlower = this.project.getConfigurations().maybeCreate(Constants.Configurations.FORGE_FLOWER);
-        forgeFlower.defaultDependencies(deps -> deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.FORGE_FLOWER)));
-        final FileCollection forgeFlowerClasspath = forgeFlower.getIncoming().getFiles();
+        final Configuration legacyForgeflower = this.project.getConfigurations().maybeCreate(Constants.Configurations.FORGE_FLOWER);
+        legacyForgeflower.withDependencies(set -> {
+            if (!set.isEmpty()) {
+                for (Dependency dependency : set) {
+                    LOGGER.warn(
+                        "Project {} declares dependency {} in deprecated configuration '" + Constants.Configurations.FORGE_FLOWER + "', declare this dependency in the '" + Constants.Configurations.DECOMPILER + "' configuration instead",
+                        this.project.getPath(),
+                        dependency
+                    );
+                }
+                LOGGER.warn("The legacy '" + Constants.Configurations.FORGE_FLOWER + "' configuration will be removed in a future version of " + Constants.NAME + ".");
+            }
+        });
+        final Configuration decompiler = this.project.getConfigurations().maybeCreate(Constants.Configurations.DECOMPILER);
+        decompiler.defaultDependencies(deps -> {
+            if (!legacyForgeflower.getAllDependencies().isEmpty()) {
+                // Don't override dependencies declared in the legacy configuration
+                return;
+            }
+            deps.add(this.project.getDependencies().create(Constants.WorkerDependencies.VINE_FLOWER));
+        });
+        decompiler.extendsFrom(legacyForgeflower);
+        final FileCollection decompilerClasspath = decompiler.getIncoming().getFiles();
+        final Provider<JavaLanguageVersion> targetVersion = decompiler.getIncoming().getArtifacts()
+            .getResolvedArtifacts()
+            .map(artifacts -> {
+                int version = JavaVersion.current().ordinal() + 1; // at least current java (at least until we want to handle specific minecraft targets)
+                for (final ResolvedArtifactResult result : artifacts) {
+                    AttributeContainer attributes = result.getVariant().getAttributes();
+                    if (attributes.contains(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE)) {
+                        version = Math.max(version, attributes.getAttribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE));
+                    }
+                }
+                return JavaLanguageVersion.of(version);
+            });
         final Provider<ArtifactCollection> minecraftArtifacts = minecraftConfiguration.map(mc -> mc.getIncoming().getArtifacts());
         final Provider<MinecraftPlatform> platform = minecraftConfiguration.zip(extension.platform(), (mc, declared) -> {
             final @Nullable Dependency dep = this.extractMinecraftDependency(mc.getAllDependencies());
@@ -183,7 +230,8 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             task.getMinecraftVersion().set(version);
             task.getInputArtifacts().set(minecraftArtifacts);
             task.getMinecraftProvider().set(minecraftProvider);
-            task.setWorkerClasspath(forgeFlowerClasspath);
+            task.setWorkerClasspath(decompilerClasspath);
+            task.getJavaLauncher().set(toolchains.launcherFor(spec -> spec.getLanguageVersion().set(targetVersion)));
         });
     }
 

@@ -1,4 +1,3 @@
-import org.gradle.kotlin.dsl.support.serviceOf
 import org.jetbrains.gradle.ext.TaskTriggersConfig
 
 plugins {
@@ -25,12 +24,17 @@ val shadow by sourceSets.creating {
 
 configurations {
     api { extendsFrom(commonDeps) }
+    "jarDecompileCompileClasspath" {
+        attributes {
+            attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 11) // VF needs 11
+        }
+    }
 }
 
 val accessWidenerVersion: String by project
 val asmVersion: String by project
 val checkerVersion: String by project
-val forgeFlowerVersion: String by project
+val vineFlowerVersion: String by project
 val forgeAutoRenamingToolVersion: String by project
 val junitVersion: String by project
 val mergeToolVersion: String by project
@@ -66,7 +70,7 @@ dependencies {
     implementation(jarMerge.output)
 
     // Jar decompile worker (match with Constants)
-    "jarDecompileCompileOnly"(libs.forgeFlower)
+    "jarDecompileCompileOnly"(libs.vineFlower)
     implementation(jarDecompile.output)
 
     // Access widener worker (match with Constants)
@@ -91,7 +95,7 @@ tasks {
         description = "Generate classes from templates for VanillaGradle"
         val properties = mutableMapOf(
             "asmVersion" to libs.versions.asm.get(),
-            "forgeFlowerVersion" to libs.versions.forgeFlower.get(),
+            "vineFlowerVersion" to libs.versions.vineFlower.get(),
             "mergeToolVersion" to libs.versions.mergeTool.get(),
             "accessWidenerVersion" to libs.versions.accessWidener.get()
         )
