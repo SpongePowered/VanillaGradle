@@ -105,7 +105,7 @@ public final class Constants {
     public static final class WorkerDependencies {
         public static final String MERGE_TOOL = "net.minecraftforge:mergetool:" + BuildVersions.MERGE_TOOL;
         public static final String ACCESS_WIDENER = "net.fabricmc:access-widener:" + BuildVersions.ACCESS_WIDENER;
-        public static final String FORGE_FLOWER = "net.minecraftforge:forgeflower:" + BuildVersions.FORGEFLOWER;
+        public static final String VINE_FLOWER = "org.vineflower:vineflower:" + BuildVersions.VINEFLOWER;
         public static final String FORCED_ASM = BuildVersions.ASM;
         public static final String ASM_UTIL = "org.ow2.asm:asm-util:" + WorkerDependencies.FORCED_ASM;
 
@@ -139,6 +139,7 @@ public final class Constants {
         public static final String MERGETOOL = "mergetool";
         public static final String ACCESS_WIDENER = "accessWidener";
         public static final String FORGE_FLOWER = "forgeFlower";
+        public static final String DECOMPILER = "decompiler";
         public static final String CLASS_DUMP = "classDump";
 
         private Configurations() {
