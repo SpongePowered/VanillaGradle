@@ -6,12 +6,12 @@ accessWidener = "1.1.0"
 asm = "9.5"
 checker = "3.36.0"
 forgeAutoRenamingTool = "1.0.2"
-vineFlower = "1.9.1"
+vineFlower = "1.9.2"
 ideaExt = "1.1.7"
 immutables = "2.9.3"
 indra = "3.1.2"
 junit = "5.9.3"
-mergeTool = "1.1.7"
+mergeTool = "1.1.8"
 
 [libraries]
 # shared
