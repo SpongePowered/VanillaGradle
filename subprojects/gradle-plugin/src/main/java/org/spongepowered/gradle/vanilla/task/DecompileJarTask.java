@@ -109,7 +109,7 @@ public abstract class DecompileJarTask extends DefaultTask {
      *
      * @return extra arguments
      */
-    @Nested
+    @Input
     @Optional
     public abstract MapProperty<String, String> getExtraFernFlowerArgs();
 
