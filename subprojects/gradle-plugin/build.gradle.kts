@@ -1,9 +1,8 @@
-import org.jetbrains.gradle.ext.TaskTriggersConfig
-
 plugins {
     `java-gradle-plugin`
     alias(libs.plugins.gradlePluginPublish)
     alias(libs.plugins.indra.publishing.gradlePlugin)
+    alias(libs.plugins.blossom)
     alias(libs.plugins.ideaExt)
 }
 
@@ -82,43 +81,24 @@ dependencies {
     "shadowCompileOnly"(libs.shadowPlugin)
     implementation(shadow.output)
 
+    testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.api)
+    testRuntimeOnly(libs.junit.launcher)
     testRuntimeOnly(libs.junit.engine)
 }
 
-tasks {
-    // Generate source templates
-    val templateSource = project.file("src/main/templates")
-    val templateDest = project.layout.buildDirectory.dir("generated/sources/templates")
-    val generateTemplates by registering(Copy::class) {
-        group = "sponge"
-        description = "Generate classes from templates for VanillaGradle"
-        val properties = mutableMapOf(
+sourceSets.main {
+    blossom.javaSources {
+        properties.putAll(mutableMapOf(
             "asmVersion" to libs.versions.asm.get(),
             "vineFlowerVersion" to libs.versions.vineFlower.get(),
             "mergeToolVersion" to libs.versions.mergeTool.get(),
             "accessWidenerVersion" to libs.versions.accessWidener.get()
-        )
-        inputs.properties(properties)
-
-        // Copy template
-        from(templateSource)
-        into(templateDest)
-        expand(properties)
+        ))
     }
+}
 
-    sourceSets.main {
-        java.srcDir(generateTemplates.map { it.outputs })
-    }
-
-    // Generate templates on IDE import as well
-    (rootProject.idea.project as? ExtensionAware)?.also {
-        (it.extensions["settings"] as ExtensionAware).extensions.getByType(TaskTriggersConfig::class).afterSync(generateTemplates)
-    }
-    project.eclipse {
-        synchronizationTasks(generateTemplates)
-    }
-
+tasks {
     jar {
         from(jarMerge.output)
         from(jarDecompile.output)

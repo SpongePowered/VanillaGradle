@@ -31,12 +31,15 @@ gson = { module = "com.google.code.gson:gson", version = "2.10.1" }
 ideaExt = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version.ref = "ideaExt" }
 immutables-value = { module = "org.immutables:value", version.ref = "immutables" }
 immutables-gson = { module = "org.immutables:gson", version.ref = "immutables" }
-junit-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
-junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+junit-api = { module = "org.junit.jupiter:junit-jupiter-api" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine" }
+junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 mergeTool = { module = "net.minecraftforge:mergetool", version.ref = "mergeTool" }
 shadowPlugin = { module = "com.github.jengelman.gradle.plugins:shadow", version = "6.1.0" }
 
 [plugins]
+blossom = { id = "net.kyori.blossom", version = "2.0.1" }
 eclipseApt = { id = "com.diffplug.eclipse.apt", version = "3.42.2" }
 gradlePluginPublish = { id = "com.gradle.plugin-publish", version = "1.2.1" }
 ideaExt = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "ideaExt" }

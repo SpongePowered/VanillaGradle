@@ -25,16 +25,16 @@
 package org.spongepowered.gradle.vanilla.internal;
 
 /**
- * Versions populated by the build process
+ * Versions populated by the build process.
  */
 class BuildVersions {
 
     private BuildVersions() {
     }
 
-    public static final String ASM = "${asmVersion}";
-    public static final String VINEFLOWER = "${vineFlowerVersion}";
-    public static final String MERGE_TOOL = "${mergeToolVersion}";
-    public static final String ACCESS_WIDENER = "${accessWidenerVersion}";
+    public static final String ASM = "{{ asmVersion }}";
+    public static final String VINEFLOWER = "{{ vineFlowerVersion }}";
+    public static final String MERGE_TOOL = "{{ mergeToolVersion }}";
+    public static final String ACCESS_WIDENER = "{{ accessWidenerVersion }}";
 
 }
