@@ -65,7 +65,7 @@ public final class ShadowConfigurationApplier {
         @Override
         public boolean isSatisfiedBy(final ResolvedDependency dep) {
             // Only exclude a dependency if its parent is a Minecraft module
-            if (dep.getParents().stream().noneMatch(d -> d.getModuleGroup().equals("net.minecraft"))) {
+            if (!dep.getModuleGroup().equals("net.minecraft") && dep.getParents().stream().noneMatch(d -> d.getModuleGroup().equals("net.minecraft"))) {
                 return false;
             }
             return this.minecraftNames.get().contains(dep.getName());
