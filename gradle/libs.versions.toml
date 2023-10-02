@@ -3,7 +3,7 @@ version = "1.0"
 
 [versions]
 accessWidener = "1.1.0"
-asm = "9.5"
+asm = "9.6"
 checker = "3.38.0"
 forgeAutoRenamingTool = "1.0.2"
 vineFlower = "1.9.2"
