@@ -303,7 +303,6 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         final File root
     ) {
         return providers.gradleProperty(propertyName)
-            .forUseAtConfigurationTime()
             .map(dirName -> {
                 final File dir = new File(dirName);
                 if (dir.isAbsolute()) {
