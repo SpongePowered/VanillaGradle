@@ -18,7 +18,7 @@ mergeTool = "1.2.0"
 checkerQual = { module = "org.checkerframework:checker-qual", version.ref = "checker" }
 
 # downloader-apache-http
-apache-httpClient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.2.1" }
+apache-httpClient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.2.3" }
 
 # gradle-plugin
 accessWidener = { module = "net.fabricmc:access-widener", version.ref = "accessWidener" }
