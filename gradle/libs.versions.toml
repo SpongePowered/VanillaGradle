@@ -49,4 +49,4 @@ indra-licenserSpotless = { id = "net.kyori.indra.licenser.spotless", version.ref
 indra-publishing = { id = "net.kyori.indra.publishing", version.ref = "indra" }
 indra-publishing-gradlePlugin = { id = "net.kyori.indra.publishing.gradle-plugin", version.ref = "indra" }
 indra-publishing-sonatype = { id = "net.kyori.indra.publishing.sonatype", version.ref = "indra" }
-spotless = { id = "com.diffplug.spotless", version = "6.22.0" }
+spotless = { id = "com.diffplug.spotless", version = "6.23.2" }
