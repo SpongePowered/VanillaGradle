@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository;
 
+import net.kyori.mammoth.Properties;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.Action;
 import org.gradle.api.InvalidUserDataException;
@@ -302,8 +303,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
         final String propertyName,
         final File root
     ) {
-        return providers.gradleProperty(propertyName)
-            .forUseAtConfigurationTime()
+        return Properties.forUseAtConfigurationTime(providers.gradleProperty(propertyName))
             .map(dirName -> {
                 final File dir = new File(dirName);
                 if (dir.isAbsolute()) {
