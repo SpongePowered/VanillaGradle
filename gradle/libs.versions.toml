@@ -12,6 +12,7 @@ immutables = "2.10.0"
 indra = "3.1.3"
 junit = "5.10.1"
 mergeTool = "1.2.0"
+mammoth = "1.3.1"
 
 [libraries]
 # shared
@@ -37,6 +38,7 @@ junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine" }
 junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 mergeTool = { module = "net.minecraftforge:mergetool", version.ref = "mergeTool" }
 shadowPlugin = { module = "com.github.jengelman.gradle.plugins:shadow", version = "6.1.0" }
+mammoth = { module = "net.kyori:mammoth", version.ref = "mammoth" }
 
 [plugins]
 blossom = { id = "net.kyori.blossom", version = "2.1.0" }

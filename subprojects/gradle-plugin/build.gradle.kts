@@ -47,6 +47,7 @@ dependencies {
         exclude("org.ow2.asm") // Use our own ASM
         exclude("net.sf.jopt-simple")
     }
+    commonDeps(libs.mammoth)
 
     // Just main
     implementation(libs.gson)
