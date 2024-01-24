@@ -151,7 +151,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             this.configureRepositories(minecraft, p.getRepositories());
 
             prepareWorkspace.configure(task -> {
-                if (minecraft.platform().get().includes(MinecraftSide.CLIENT)) {
+                if (minecraft.needsPrepareWorkspace().get()) {
                     task.dependsOn(assets);
                 }
             });

@@ -125,6 +125,7 @@ public final class VanillaGradle implements Plugin<Object> {
 
             this.configureIDEIntegrations(
                 project,
+                minecraft.needsPrepareWorkspace(),
                 p.getTasks().named(Constants.Tasks.PREPARE_WORKSPACE)
             );
         });
@@ -158,6 +159,7 @@ public final class VanillaGradle implements Plugin<Object> {
 
     private void configureIDEIntegrations(
         final Project project,
+        final Provider<Boolean> shouldRunPrepare,
         final TaskProvider<?> prepareWorkspaceTask
     ) {
         project.getPlugins().apply(IdeaExtPlugin.class);
@@ -171,12 +173,16 @@ public final class VanillaGradle implements Plugin<Object> {
                 final TaskTriggersConfig taskTriggers = ((ExtensionAware) ideaExtension).getExtensions().getByType(TaskTriggersConfig.class);
 
                 // Automatically prepare a workspace after importing
-                taskTriggers.afterSync(prepareWorkspaceTask);
+                if (shouldRunPrepare.get()) {
+                    taskTriggers.afterSync(prepareWorkspaceTask);
+                }
             }
 
             @Override
             public void eclipse(final Project project, final EclipseModel eclipse) {
-                eclipse.synchronizationTasks(prepareWorkspaceTask);
+                if (shouldRunPrepare.get()) {
+                    eclipse.synchronizationTasks(prepareWorkspaceTask);
+                }
             }
         });
     }
