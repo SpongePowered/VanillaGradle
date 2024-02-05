@@ -10,8 +10,8 @@ vineFlower = "1.9.3"
 ideaExt = "1.1.7"
 immutables = "2.10.0"
 indra = "3.1.3"
-junit = "5.10.1"
-mergeTool = "1.2.0"
+junit = "5.10.2"
+mergeTool = "1.2.2"
 mammoth = "1.3.1"
 
 [libraries]
@@ -19,7 +19,7 @@ mammoth = "1.3.1"
 checkerQual = { module = "org.checkerframework:checker-qual", version.ref = "checker" }
 
 # downloader-apache-http
-apache-httpClient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.3" }
+apache-httpClient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.3.1" }
 
 # gradle-plugin
 accessWidener = { module = "net.fabricmc:access-widener", version.ref = "accessWidener" }
