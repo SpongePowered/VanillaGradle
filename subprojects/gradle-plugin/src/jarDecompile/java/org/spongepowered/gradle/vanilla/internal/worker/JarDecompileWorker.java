@@ -84,6 +84,7 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
         // Decompile
         final File input = params.getInputJar().get().getAsFile();
         try (final Decompilation.VanillaGradleBytecodeProvider bytecode = Decompilation.bytecodeFromJar()) {
+            @SuppressWarnings("deprecation")
             final Fernflower decompiler = new Fernflower(
                 bytecode,
                 new LineMappingResultSaver(input.getAbsolutePath(), params.getOutputJar().get().getAsFile(), bytecode),
@@ -106,8 +107,8 @@ public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorke
                 decompiler.clearContext();
                 System.gc();
             }
-        } catch (final IOException e) {
-            e.printStackTrace();
+        } catch (final IOException ex) {
+            JarDecompileWorker.LOGGER.error("Failed to decompile {}:", params.getInputJar().get().getAsFile(), ex);
         }
     }
 }

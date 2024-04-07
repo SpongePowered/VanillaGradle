@@ -42,13 +42,13 @@ import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
-import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.internal.model.Argument;
 import org.spongepowered.gradle.vanilla.internal.model.Arguments;
 import org.spongepowered.gradle.vanilla.internal.model.JavaRuntimeVersion;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
+import org.spongepowered.gradle.vanilla.internal.util.GradleCompat;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -63,6 +63,7 @@ import java.util.SortedSet;
 import javax.inject.Inject;
 
 public class RunConfigurationContainer implements NamedDomainObjectContainer<RunConfiguration> {
+
     private final NamedDomainObjectContainer<RunConfiguration> delegate;
     private final MinecraftExtensionImpl extension;
 
@@ -245,8 +246,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     @Override
     @SuppressWarnings("rawtypes")
     public NamedDomainObjectContainer<RunConfiguration> configure(final Closure configureClosure) {
-        // TODO: This uses internal API, see if there's a more 'public' way to do this
-        return ConfigureUtil.configureSelf(configureClosure, this, new NamedDomainObjectContainerConfigureDelegate(configureClosure, this));
+        return GradleCompat.configureSelf(this, configureClosure);
     }
 
     @Override
@@ -401,6 +401,11 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     @Override
     public <S extends RunConfiguration> NamedDomainObjectSet<S> withType(final Class<S> type) {
         return this.delegate.withType(type);
+    }
+
+    @Override
+    public NamedDomainObjectSet<RunConfiguration> named(Spec<String> nameFilter) {
+        return this.delegate.named(nameFilter);
     }
 
     @Override

@@ -114,6 +114,12 @@ subprojects {
 
         withType(JavaCompile::class).configureEach {
             options.compilerArgs.add("-Xlint:-processing")
+
+            doFirst {
+                if (javaCompiler.get().metadata.languageVersion >= JavaLanguageVersion.of(21)) {
+                    options.compilerArgs.add("-Xlint:-this-escape")
+                }
+            }
         }
     }
 }

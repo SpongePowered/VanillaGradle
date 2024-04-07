@@ -36,7 +36,6 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
-import org.gradle.util.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
@@ -263,7 +262,7 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     @Override
     @SuppressWarnings("rawtypes")
     public void runs(@DelegatesTo(value = RunConfigurationContainer.class, strategy = Closure.DELEGATE_FIRST) final Closure run) {
-        ConfigureUtil.configure(run, this.runConfigurations);
+        this.runConfigurations.configure(run);
     }
 
     @Override

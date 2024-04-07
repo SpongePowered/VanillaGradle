@@ -30,6 +30,8 @@ import org.gradle.api.Action;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.ProjectEvaluationListener;
+import org.gradle.api.ProjectState;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.ModuleVersionSelector;
 import org.gradle.api.artifacts.ResolutionStrategy;
@@ -44,6 +46,7 @@ import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.build.event.BuildEventsListenerRegistry;
+import org.jetbrains.annotations.NotNull;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
@@ -281,10 +284,22 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
     // Common handling //
 
     private void registerPostTaskListener(final Provider<MinecraftProviderService> service, final Gradle gradle) {
-        gradle.getTaskGraph().afterTask(new Action<Task>() {
+        gradle.addProjectEvaluationListener(new ProjectEvaluationListener() {
             @Override
-            public void execute(final Task task) {
-                service.get().dropState();
+            public void beforeEvaluate(final @NotNull Project project) {}
+
+            @Override
+            public void afterEvaluate(final Project project, final ProjectState state) {
+                if (state.getFailure() != null) return;
+                project.getTasks().configureEach(task -> {
+                    task.doLast(new Action<Task>() {
+                        @Override
+                        public void execute(final Task task) {
+                            task.getLogger().info("Dropping VG resolver state on thread '{}' (task doLast action)", Thread.currentThread().getName());
+                            service.get().dropState();
+                        }
+                    });
+                });
             }
         });
     }

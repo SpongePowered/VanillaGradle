@@ -24,8 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla.internal.worker;
 
-import org.jetbrains.java.decompiler.main.extern.IBytecodeProvider;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -102,7 +100,8 @@ public final class Decompilation {
         };
     }
 
-    public interface VanillaGradleBytecodeProvider extends IBytecodeProvider, AutoCloseable {
+    @SuppressWarnings("deprecation")
+    public interface VanillaGradleBytecodeProvider extends org.jetbrains.java.decompiler.main.extern.IBytecodeProvider, AutoCloseable {
 
         void setBytecode(final String external, final String internal, final byte[] bytes) throws IOException;
 
