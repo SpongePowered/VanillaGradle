@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla.internal.worker;
 
 import net.fabricmc.accesswidener.AccessWidener;
+import net.fabricmc.accesswidener.AccessWidenerClassVisitor;
 import net.fabricmc.accesswidener.AccessWidenerVisitor;
 import net.minecraftforge.fart.api.Transformer;
 import org.objectweb.asm.ClassReader;
@@ -46,7 +47,7 @@ final class AccessWidenerEntryTransformer implements Transformer {
         final ClassReader reader = new ClassReader(entry.getData());
         final ClassWriter writer = new ClassWriter(reader, 0);
         // TODO: Expose the ASM version constant somewhere visible to this worker
-        final ClassVisitor visitor = AccessWidenerVisitor.createClassVisitor(Opcodes.ASM9, writer, this.widener);
+        final ClassVisitor visitor = AccessWidenerClassVisitor.createClassVisitor(Opcodes.ASM9, writer, this.widener);
         reader.accept(visitor, 0);
         if (entry.isMultiRelease()) {
             return ClassEntry.create(entry.getName(), entry.getTime(), writer.toByteArray(), entry.getVersion());
