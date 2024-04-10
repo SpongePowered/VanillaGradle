@@ -55,6 +55,11 @@ public final class LocalVariableNamer extends MethodVisitor {
     @Override
     public void visitParameter(final String name, final int access) {
         // Normalize parameter attributes
+        if (name == null)  {
+            super.visitParameter(null, access);
+            return;
+        }
+
         if (LocalVariableNamer.isValidJavaIdentifier(name)) {
             super.visitParameter(this.scope.produceSafe(name, VariableScope.Usage.PARAMETER), access);
         } else {
