@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.transformer;
 
-import net.minecraftforge.fart.api.Transformer;
+import net.neoforged.art.api.Transformer;
 
 import java.util.Set;
 

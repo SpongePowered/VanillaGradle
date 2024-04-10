@@ -24,11 +24,11 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
-import net.minecraftforge.fart.api.Renamer;
-import net.minecraftforge.fart.api.SignatureStripperConfig;
-import net.minecraftforge.fart.api.SourceFixerConfig;
-import net.minecraftforge.fart.api.Transformer;
-import net.minecraftforge.srgutils.IMappingFile;
+import net.neoforged.art.api.Renamer;
+import net.neoforged.art.api.SignatureStripperConfig;
+import net.neoforged.art.api.SourceFixerConfig;
+import net.neoforged.art.api.Transformer;
+import net.neoforged.srgutils.IMappingFile;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.GradleException;
 import org.immutables.value.Value;

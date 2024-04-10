@@ -26,8 +26,7 @@ package org.spongepowered.gradle.vanilla.internal.worker;
 
 import net.fabricmc.accesswidener.AccessWidener;
 import net.fabricmc.accesswidener.AccessWidenerClassVisitor;
-import net.fabricmc.accesswidener.AccessWidenerVisitor;
-import net.minecraftforge.fart.api.Transformer;
+import net.neoforged.art.api.Transformer;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;

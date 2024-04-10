@@ -5,7 +5,7 @@ version = "1.0"
 accessWidener = "2.1.0"
 asm = "9.7"
 checker = "3.42.0"
-forgeAutoRenamingTool = "1.0.6"
+autoRenamingTool = "2.0.0"
 vineFlower = "1.9.3"
 ideaExt = "1.1.8"
 immutables = "2.10.1"
@@ -26,7 +26,7 @@ accessWidener = { module = "net.fabricmc:access-widener", version.ref = "accessW
 asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
 asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
-forgeAutoRenamingTool = { module = "net.minecraftforge:ForgeAutoRenamingTool", version.ref = "forgeAutoRenamingTool" }
+autoRenamingTool = { module = "net.neoforged:AutoRenamingTool", version.ref = "autoRenamingTool" }
 vineFlower = { module = "org.vineflower:vineflower", version.ref = "vineFlower" }
 gson = { module = "com.google.code.gson:gson", version = "2.10.1" }
 ideaExt = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version.ref = "ideaExt" }

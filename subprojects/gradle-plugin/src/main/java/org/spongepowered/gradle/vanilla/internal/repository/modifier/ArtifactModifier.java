@@ -24,8 +24,8 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository.modifier;
 
-import net.minecraftforge.fart.api.Renamer;
-import net.minecraftforge.fart.api.Transformer;
+import net.neoforged.art.api.Renamer;
+import net.neoforged.art.api.Transformer;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 
 import java.io.IOException;

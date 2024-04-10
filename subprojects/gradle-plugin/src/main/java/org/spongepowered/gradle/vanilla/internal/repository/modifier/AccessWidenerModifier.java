@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository.modifier;
 
-import net.minecraftforge.fart.api.Transformer;
+import net.neoforged.art.api.Transformer;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
