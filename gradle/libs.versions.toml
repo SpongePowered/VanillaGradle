@@ -4,7 +4,7 @@ version = "1.0"
 [versions]
 accessWidener = "2.1.0"
 asm = "9.7"
-checker = "3.42.0"
+checker = "3.43.0"
 forgeAutoRenamingTool = "1.0.8"
 vineFlower = "1.9.3"
 ideaExt = "1.1.8"
