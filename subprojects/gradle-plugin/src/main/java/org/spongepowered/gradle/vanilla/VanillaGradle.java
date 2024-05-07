@@ -24,6 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla;
 
+import java.util.Collections;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectProvider;
@@ -73,10 +74,10 @@ import java.util.stream.Stream;
 public final class VanillaGradle implements Plugin<Object> {
 
     private static final String SHADOW_JAR_TASK_CLASS_NAME = "com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar";
-    private static final List<String> SHADOW_PLUGIN_IDS = Arrays.asList(
+    private static final List<String> SHADOW_PLUGIN_IDS = Collections.unmodifiableList(Arrays.asList(
             "com.github.johnrengelman.shadow",
             "io.github.goooler.shadow"
-    );
+    ));
     private static final AtomicBoolean VERSION_ANNOUNCED = new AtomicBoolean();
 
     @Override
