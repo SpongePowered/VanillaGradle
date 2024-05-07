@@ -61,6 +61,9 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
@@ -71,6 +74,10 @@ import java.util.stream.Stream;
 public final class VanillaGradle implements Plugin<Object> {
 
     private static final String SHADOW_JAR_TASK_CLASS_NAME = "com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar";
+    private static final List<String> SHADOW_PLUGIN_IDS = Collections.unmodifiableList(Arrays.asList(
+            "com.github.johnrengelman.shadow",
+            "io.github.goooler.shadow"
+    ));
     private static final AtomicBoolean VERSION_ANNOUNCED = new AtomicBoolean();
 
     @Override
@@ -107,10 +114,12 @@ public final class VanillaGradle implements Plugin<Object> {
             });
         });
 
-        project.getPlugins().withId("com.github.johnrengelman.shadow", plugin -> {
-            final Provider<Set<String>> provider = project.provider(new ResolveMinecraftLibNames(minecraftConfig));
-            VanillaGradle.applyShadowConfiguration(project.getTasks(), provider, plugin);
-        });
+        for (final String shadowPluginId : SHADOW_PLUGIN_IDS) {
+            project.getPlugins().withId(shadowPluginId, plugin -> {
+                final Provider<Set<String>> provider = project.provider(new ResolveMinecraftLibNames(minecraftConfig));
+                VanillaGradle.applyShadowConfiguration(project.getTasks(), provider, plugin);
+            });
+        }
 
         this.createDumpClass(project, minecraftConfig);
         this.createDisplayMinecraftVersions(project.getPlugins().getPlugin(MinecraftRepositoryPlugin.class).service(), project.getTasks());
