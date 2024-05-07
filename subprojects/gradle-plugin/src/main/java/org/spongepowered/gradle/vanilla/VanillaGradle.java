@@ -24,7 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla;
 
-import java.util.Collections;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectProvider;
@@ -63,6 +62,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
