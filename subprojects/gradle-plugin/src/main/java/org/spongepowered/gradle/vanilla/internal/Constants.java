@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla.internal;
 
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.artifacts.repositories.MavenRepositoryContentDescriptor;
 import org.gradle.util.GradleVersion;
 import org.objectweb.asm.Opcodes;
@@ -121,10 +122,18 @@ public final class Constants {
         }
 
         public static void applyTo(final RepositoryHandler repositories) {
-            repositories.maven(repo -> {
+            final MavenArtifactRepository mojang = repositories.maven(repo -> {
                 repo.setUrl(Constants.Repositories.MINECRAFT);
                 repo.mavenContent(MavenRepositoryContentDescriptor::releasesOnly);
+                repo.metadataSources(MavenArtifactRepository.MetadataSources::mavenPom); // mojang's repo doesn't include GMM
                 repo.setName("minecraft");
+            });
+            repositories.exclusiveContent(exc -> {
+                exc.forRepositories(mojang)
+                    .filter(conf -> {
+                        conf.includeGroupAndSubgroups("org.lwjgl");
+                        conf.includeGroupAndSubgroups("com.mojang");
+                    });
             });
             repositories.maven(repo -> {
                 repo.setUrl(Constants.Repositories.MINECRAFT_FORGE);
