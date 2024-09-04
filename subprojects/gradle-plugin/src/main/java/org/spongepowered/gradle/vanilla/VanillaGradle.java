@@ -76,7 +76,8 @@ public final class VanillaGradle implements Plugin<Object> {
     private static final String SHADOW_JAR_TASK_CLASS_NAME = "com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar";
     private static final List<String> SHADOW_PLUGIN_IDS = Collections.unmodifiableList(Arrays.asList(
             "com.github.johnrengelman.shadow",
-            "io.github.goooler.shadow"
+            "io.github.goooler.shadow",
+            "com.gradleup.shadow"
     ));
     private static final AtomicBoolean VERSION_ANNOUNCED = new AtomicBoolean();
 
