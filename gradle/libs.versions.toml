@@ -43,7 +43,7 @@ mammoth = { module = "net.kyori:mammoth", version.ref = "mammoth" }
 [plugins]
 blossom = { id = "net.kyori.blossom", version = "2.1.0" }
 eclipseApt = { id = "com.diffplug.eclipse.apt", version = "3.44.0" }
-gradlePluginPublish = { id = "com.gradle.plugin-publish", version = "1.2.1" }
+gradlePluginPublish = { id = "com.gradle.plugin-publish", version = "1.2.2" }
 ideaExt = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "ideaExt" }
 indra = { id = "net.kyori.indra", version.ref = "indra" }
 indra-git = { id = "net.kyori.indra.git", version.ref = "indra" }
