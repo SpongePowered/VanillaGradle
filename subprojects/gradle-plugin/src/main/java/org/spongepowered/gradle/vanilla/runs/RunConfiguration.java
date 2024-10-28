@@ -27,6 +27,7 @@ package org.spongepowered.gradle.vanilla.runs;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.gradle.api.Action;
 import org.gradle.api.Named;
+import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.ProjectLayout;
@@ -38,6 +39,7 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.spongepowered.gradle.vanilla.internal.Constants;
@@ -70,10 +72,11 @@ public class RunConfiguration implements Named {
     private final MapProperty<String, String> parameterTokens;
     private final Property<Boolean> requiresAssetsAndNatives;
     private final Property<SourceSet> ideaSourceSet;
+    private final Property<SourceSet> sourceSet;
     private final Property<JavaLanguageVersion> targetVersion;
 
     @Inject
-    public RunConfiguration(final String name, final ProjectLayout layout, final ObjectFactory objects) {
+    public RunConfiguration(final String name, final ProjectLayout layout, final ObjectFactory objects, final Project project) {
         this.name = name;
         this.displayName = objects.property(String.class);
 
@@ -89,7 +92,11 @@ public class RunConfiguration implements Named {
         this.parameterTokens = objects.mapProperty(String.class, String.class);
         this.requiresAssetsAndNatives = objects.property(Boolean.class).convention(false);
         this.ideaSourceSet = objects.property(SourceSet.class);
+        this.sourceSet = objects.property(SourceSet.class)
+                .convention(project.getExtensions().getByType(SourceSetContainer.class).named(SourceSet.MAIN_SOURCE_SET_NAME));
         this.targetVersion = objects.property(JavaLanguageVersion.class);
+
+        this.classpath.from(this.sourceSet.map(SourceSet::getOutput), this.sourceSet.map(SourceSet::getRuntimeClasspath));
 
         // Apply global environment here
         this.parameterTokens.put(ClientRunParameterTokens.LAUNCHER_NAME, Constants.NAME);
@@ -156,11 +163,24 @@ public class RunConfiguration implements Named {
      *
      * @return the source set to use
      * @since 0.2
+     * @deprecated Use {@link #getSourceSet()} instead.
      */
+    @Deprecated
     @Input
     @Optional
     public Property<SourceSet> getIdeaRunSourceSet() {
         return this.ideaSourceSet;
+    }
+
+    /**
+     * Get the source set to use in the classpath and IDE runs.
+     *
+     * @return the source set to use
+     * @since 0.2.1
+     */
+    @Input
+    public Property<SourceSet> getSourceSet() {
+        return this.sourceSet;
     }
 
     @Nested

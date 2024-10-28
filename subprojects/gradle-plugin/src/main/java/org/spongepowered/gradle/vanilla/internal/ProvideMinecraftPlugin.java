@@ -51,8 +51,6 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.JavaExec;
-import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.Sync;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
@@ -73,7 +71,6 @@ import org.spongepowered.gradle.vanilla.internal.util.IdeConfigurer;
 import org.spongepowered.gradle.vanilla.internal.util.StringUtils;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
-import org.spongepowered.gradle.vanilla.repository.MinecraftSide;
 import org.spongepowered.gradle.vanilla.runs.ClientRunParameterTokens;
 import org.spongepowered.gradle.vanilla.task.DecompileJarTask;
 import org.spongepowered.gradle.vanilla.task.DownloadAssetsTask;
@@ -348,13 +345,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                         ideaRun.setWorkingDirectory(runDirectory.getAbsolutePath());
                         runDirectory.mkdirs();
 
-                        final SourceSet moduleSet;
-                        if (run.getIdeaRunSourceSet().isPresent()) {
-                            moduleSet = run.getIdeaRunSourceSet().get();
-                        } else {
-                            moduleSet = project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-                        }
-                        ideaRun.moduleRef(project, moduleSet);
+                        ideaRun.moduleRef(project, run.getIdeaRunSourceSet().orElse(run.getSourceSet()).get());
                         ideaRun.setJvmArgs(StringUtils.join(run.getAllJvmArgumentProviders(), true));
                         ideaRun.setProgramParameters(StringUtils.join(run.getAllArgumentProviders(), true));
                     });
