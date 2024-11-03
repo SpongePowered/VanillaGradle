@@ -4,13 +4,13 @@ version = "1.0"
 [versions]
 accessWidener = "2.1.0"
 asm = "9.7.1"
-checker = "3.48.0"
+checker = "3.48.2"
 forgeAutoRenamingTool = "1.0.8"
 vineFlower = "1.10.1"
 ideaExt = "1.1.9"
 immutables = "2.10.1"
 indra = "3.1.3"
-junit = "5.11.2"
+junit = "5.11.3"
 mergeTool = "1.2.3"
 mammoth = "1.4.0"
 
@@ -19,7 +19,7 @@ mammoth = "1.4.0"
 checkerQual = { module = "org.checkerframework:checker-qual", version.ref = "checker" }
 
 # downloader-apache-http
-apache-httpClient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.4" }
+apache-httpClient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.4.1" }
 
 # gradle-plugin
 accessWidener = { module = "net.fabricmc:access-widener", version.ref = "accessWidener" }
