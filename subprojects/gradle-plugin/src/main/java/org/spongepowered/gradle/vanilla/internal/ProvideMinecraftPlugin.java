@@ -348,6 +348,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                         ideaRun.moduleRef(project, run.getIdeaRunSourceSet().orElse(run.getSourceSet()).get());
                         ideaRun.setJvmArgs(StringUtils.join(run.getAllJvmArgumentProviders(), true));
                         ideaRun.setProgramParameters(StringUtils.join(run.getAllArgumentProviders(), true));
+                        ideaRun.setEnvs(run.getActualEnvironment());
                     });
                 });
             }
@@ -374,6 +375,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 exec.setWorkingDir(config.getWorkingDirectory());
                 exec.getJvmArgumentProviders().addAll(config.getAllJvmArgumentProviders());
                 exec.getArgumentProviders().addAll(config.getAllArgumentProviders());
+                exec.environment(config.getEnvironment());
                 if (config.getRequiresAssetsAndNatives().get()) {
                     exec.dependsOn(Constants.Tasks.DOWNLOAD_ASSETS);
                     exec.dependsOn(Constants.Tasks.COLLECT_NATIVES);

@@ -48,7 +48,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import javax.inject.Inject;
@@ -74,6 +76,7 @@ public class RunConfiguration implements Named {
     private final Property<SourceSet> ideaSourceSet;
     private final Property<SourceSet> sourceSet;
     private final Property<JavaLanguageVersion> targetVersion;
+    private Map<String, Object> environment = new HashMap<>();
 
     @Inject
     public RunConfiguration(final String name, final ProjectLayout layout, final ObjectFactory objects, final Project project) {
@@ -146,6 +149,52 @@ public class RunConfiguration implements Named {
     @Input
     public Property<Boolean> getRequiresAssetsAndNatives() {
         return this.requiresAssetsAndNatives;
+    }
+
+    public Map<String, String> getActualEnvironment() {
+        final Map<String, String> actual = new HashMap<>();
+        for (Map.Entry<String, Object> entry : this.getEnvironment().entrySet()) {
+            actual.put(entry.getKey(), String.valueOf(entry.getValue()));
+        }
+        return actual;
+    }
+
+    /**
+     * The environment variables to use for the process.
+     *
+     * @return The environment.
+     */
+    @Internal
+    public Map<String, Object> getEnvironment() {
+        return this.environment;
+    }
+
+    /**
+     * Sets the environment variable to use for the process.
+     *
+     * @param environment The environment variables.
+     */
+    public void setEnvironment(Map<String, ?> environment) {
+        this.environment = new HashMap<>(Objects.requireNonNull(environment, "environment"));
+    }
+
+    /**
+     * Adds an environment variable to the environment for this process.
+     *
+     * @param name The name of the variable.
+     * @param value The value for the variable.
+     */
+    public void environment(String name, Object value) {
+        this.getEnvironment().put(Objects.requireNonNull(name, "name"), Objects.requireNonNull(value, "value"));
+    }
+
+    /**
+     * Adds some environment variables to the environment for this process.
+     *
+     * @param environment The environment variables.
+     */
+    public void environment(Map<String, ?> environment) {
+        this.getEnvironment().putAll(Objects.requireNonNull(environment, "environment"));
     }
 
     /**
