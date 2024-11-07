@@ -39,6 +39,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -117,6 +118,8 @@ public class EclipseRunConfigurationWriter implements AutoCloseable {
         this.stringAttribute(this.launching("VM_ARGUMENTS"), StringUtils.join(run.getAllJvmArgumentProviders(), true));
         this.stringAttribute(this.launching("WORKING_DIRECTORY"), run.getWorkingDirectory().get().getAsFile().getAbsolutePath());
 
+        this.mapAttribute(this.debug("core.environmentVariables"), run.getActualEnvironment());
+
         this.writer.writeEndElement();
         this.writer.writeEndDocument();
     }
@@ -127,6 +130,17 @@ public class EclipseRunConfigurationWriter implements AutoCloseable {
 
     private String debug(final String value) {
         return "org.eclipse.debug." + value;
+    }
+
+    private void mapAttribute(final String key, final Map<String, String> map) throws XMLStreamException {
+        this.writer.writeStartElement("mapAttribute");
+        this.writer.writeAttribute("key", key);
+        for (final Map.Entry<String, String> entry : map.entrySet()) {
+            this.writer.writeEmptyElement("mapEntry");
+            this.writer.writeAttribute("key", entry.getKey());
+            this.writer.writeAttribute("value", entry.getValue());
+        }
+        this.writer.writeEndElement();
     }
 
     private void listAttribute(final String key, final List<String> values) throws XMLStreamException {

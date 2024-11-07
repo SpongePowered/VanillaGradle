@@ -106,13 +106,6 @@ public final class VanillaGradle implements Plugin<Object> {
                     c.extendsFrom(minecraftConfig.get());
                 });
             });
-
-            project.afterEvaluate(p -> {
-                final NamedDomainObjectProvider<SourceSet> mainSourceSet =
-                    p.getExtensions().getByType(SourceSetContainer.class).named(SourceSet.MAIN_SOURCE_SET_NAME);
-                minecraft.getRuns().configureEach(
-                    run -> run.getClasspath().from(mainSourceSet.map(SourceSet::getOutput), mainSourceSet.map(SourceSet::getRuntimeClasspath)));
-            });
         });
 
         for (final String shadowPluginId : SHADOW_PLUGIN_IDS) {
