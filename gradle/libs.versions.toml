@@ -37,7 +37,7 @@ junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine" }
 junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 mergeTool = { module = "net.minecraftforge:mergetool", version.ref = "mergeTool" }
-shadowPlugin = { module = "com.github.jengelman.gradle.plugins:shadow", version = "6.1.0" }
+shadowPlugin = { module = "com.github.jengelman.gradle.plugins:shadow", version = "9.0.2" }
 mammoth = { module = "net.kyori:mammoth", version.ref = "mammoth" }
 
 [plugins]
