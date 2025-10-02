@@ -19,7 +19,7 @@ mammoth = "1.4.0"
 checkerQual = { module = "org.checkerframework:checker-qual", version.ref = "checker" }
 
 # downloader-apache-http
-apache-httpClient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.4.1" }
+apache-httpClient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.5.1" }
 
 # gradle-plugin
 accessWidener = { module = "net.fabricmc:access-widener", version.ref = "accessWidener" }
