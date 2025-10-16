@@ -56,18 +56,16 @@ import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
-import org.gradle.plugins.ide.eclipse.model.EclipseModel;
-import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.jetbrains.gradle.ext.Application;
-import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
+import org.spongepowered.gradle.vanilla.internal.ide.EclipseIntegration;
+import org.spongepowered.gradle.vanilla.internal.ide.IdeaIntegration;
 import org.spongepowered.gradle.vanilla.internal.model.Library;
 import org.spongepowered.gradle.vanilla.internal.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftRepositoryPlugin;
-import org.spongepowered.gradle.vanilla.internal.util.IdeConfigurer;
 import org.spongepowered.gradle.vanilla.internal.util.StringUtils;
 import org.spongepowered.gradle.vanilla.repository.MinecraftPlatform;
 import org.spongepowered.gradle.vanilla.repository.MinecraftRepositoryExtension;
@@ -79,6 +77,7 @@ import org.spongepowered.gradle.vanilla.task.GenEclipseRuns;
 import java.io.File;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * A plugin that creates the necessary tasks and configurations to provide the
@@ -331,33 +330,26 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
         final Project project,
         final MinecraftExtensionImpl extension
     ) {
-        IdeConfigurer.apply(project, new IdeConfigurer.IdeImportAction() {
-            @Override
-            public void idea(final Project project, final IdeaModel idea, final ProjectSettings ideaExtension) {
-                final RunConfigurationContainer runConfigurations =
+        IdeaIntegration.apply(project, (idea, ideaExtension) -> {
+            final RunConfigurationContainer runConfigurations =
                     (RunConfigurationContainer) ((ExtensionAware) ideaExtension).getExtensions().getByName("runConfigurations");
 
-                extension.getRuns().all(run -> {
-                    final String displayName = run.getDisplayName().getOrNull();
-                    runConfigurations.create(displayName == null ? run.getName() + " (" + project.getName() + ")" : displayName, Application.class, ideaRun -> {
-                        ideaRun.setMainClass(run.getMainClass().get());
-                        final File runDirectory = run.getWorkingDirectory().get().getAsFile();
-                        ideaRun.setWorkingDirectory(runDirectory.getAbsolutePath());
-                        runDirectory.mkdirs();
+            extension.getRuns().all(run -> {
+                final String displayName = run.getDisplayName().getOrNull();
+                runConfigurations.create(displayName == null ? run.getName() + " (" + project.getName() + ")" : displayName, Application.class, ideaRun -> {
+                    ideaRun.setMainClass(run.getMainClass().get());
+                    final File runDirectory = run.getWorkingDirectory().get().getAsFile();
+                    ideaRun.setWorkingDirectory(runDirectory.getAbsolutePath());
+                    runDirectory.mkdirs();
 
-                        ideaRun.moduleRef(project, run.getIdeaRunSourceSet().orElse(run.getSourceSet()).get());
-                        ideaRun.setJvmArgs(StringUtils.join(run.getAllJvmArgumentProviders(), true));
-                        ideaRun.setProgramParameters(StringUtils.join(run.getAllArgumentProviders(), true));
-                        ideaRun.setEnvs(run.getActualEnvironment());
-                    });
+                    ideaRun.moduleRef(project, run.getIdeaRunSourceSet().orElse(run.getSourceSet()).get());
+                    ideaRun.setJvmArgs(StringUtils.join(run.getAllJvmArgumentProviders(), true));
+                    ideaRun.setProgramParameters(StringUtils.join(run.getAllArgumentProviders(), true));
+                    ideaRun.setEnvs(run.getActualEnvironment());
                 });
-            }
-
-            @Override
-            public void eclipse(final Project project, final EclipseModel eclipse) {
-                eclipse.synchronizationTasks(project.getTasks().named(Constants.Tasks.GEN_ECLIPSE_RUNS));
-            }
+            });
         });
+        EclipseIntegration.addSynchronizationTask(project, () -> Optional.of(project.getTasks().named(Constants.Tasks.GEN_ECLIPSE_RUNS)));
     }
 
     private void createRunTasks(final MinecraftExtension extension, final TaskContainer tasks, final JavaToolchainService service) {
