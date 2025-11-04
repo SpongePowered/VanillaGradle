@@ -66,6 +66,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -159,7 +160,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                 }
                 final VersionDescriptor.Full descriptor = potentialDescriptor.get();
                 final Download jarDownload = descriptor.requireDownload(side.executableArtifact());
-                final Download mappingsDownload = descriptor.requireDownload(side.mappingsArtifact());
+                final Optional<Download> mappingsDownload = descriptor.download(side.mappingsArtifact());
 
                 // download to temp path
                 final String tempJarPath = this.sharedArtifactFileName(platform.artifactId() + "_m-obf_b-bundled", version, null, "jar");
@@ -172,12 +173,16 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                     HashAlgorithm.SHA1,
                     jarDownload.sha1()
                 );
-                final CompletableFuture<ResolutionResult<Path>> mappingsFuture = this.downloader.downloadAndValidate(
-                    mappingsDownload.url(),
-                    mappingsPath,
-                    HashAlgorithm.SHA1,
-                    mappingsDownload.sha1()
-                );
+                final CompletableFuture<Optional<ResolutionResult<Path>>> mappingsFuture = mappingsDownload
+                    .map(download -> this.downloader
+                        .downloadAndValidate(
+                            download.url(),
+                            mappingsPath,
+                            HashAlgorithm.SHA1,
+                            download.sha1()
+                        )
+                        .thenApply(Optional::of))
+                    .orElseGet(() -> CompletableFuture.completedFuture(Optional.empty()));
 
                 return jarFuture.thenCombineAsync(mappingsFuture, (jar, mappingsFile) -> {
                     try {
@@ -189,7 +194,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                             MinecraftResolverImpl.LOGGER.info("No bundler metadata found in jar {}", jar.get());
                         }
                         final Supplier<Set<GroupArtifactVersion>> dependencies = () -> side.dependencies(descriptor, bundlerMeta);
-                        if (!this.forceRefresh && jar.upToDate() && mappingsFile.upToDate() && outputExists) {
+                        if (!this.forceRefresh && jar.upToDate() && mappingsFile.map(ResolutionResult::upToDate).orElse(true) && outputExists) {
                             // Our inputs are up-to-date, and the output exists, so we can assume (for now) that the output is up-to-date
                             // Check meta here too, before returning
                             this.writeMetaIfNecessary(platform, potentialDescriptor, dependencies, outputJar.getParent());
@@ -198,7 +203,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         } else if (!jar.isPresent()) {
                             throw new IllegalArgumentException("No jar was available for Minecraft " + descriptor.id() + "side " + side.name()
                                 + "! Are you sure the data file is correct?");
-                        } else if (!mappingsFile.isPresent()) {
+                        } else if (!mappingsFile.map(ResolutionResult::isPresent).orElse(true)) {
                             throw new IllegalArgumentException("No mappings were available for Minecraft " + descriptor.id() + "side " + side.name()
                                 + "! Official mappings are only available for releases 1.14.4 and newer.");
                         }
@@ -210,17 +215,20 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
                         // Extract jar
                         final Path extracted = this.downloader.baseDir().resolve(jarPath);
+                        FileUtils.createDirectoriesSymlinkSafe(extracted.getParent());
                         side.extractJar(jar.get(), extracted, bundlerMeta);
 
-                        final IMappingFile scratchMappings;
-                        try (
-                            final InputStream reader = Files.newInputStream(mappingsFile.get())
-                        ) {
-                            scratchMappings = IMappingFile.load(reader);
-                        } catch (final IOException ex) {
-                            throw new GradleException("Failed to read mappings from " + mappingsFile, ex);
-                        }
-                        final IMappingFile mappings = scratchMappings.reverse();
+                        final Optional<IMappingFile> mappings = mappingsFile.map(file -> {
+                            final IMappingFile scratchMappings;
+                            try (
+                                final InputStream reader = Files.newInputStream(file.get())
+                            ) {
+                                scratchMappings = IMappingFile.load(reader);
+                            } catch (final IOException ex) {
+                                throw new GradleException("Failed to read mappings from " + file, ex);
+                            }
+                            return scratchMappings.reverse();
+                        });
 
                         final Renamer.Builder renamerBuilder = Renamer.builder();
 
@@ -228,8 +236,11 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                             renamerBuilder.add(ctx -> Transformers.filterEntries(side.allowedPackages()));
                         }
                         renamerBuilder.add(Transformer.parameterAnnotationFixerFactory())
-                            .add(Transformers.fixLvNames())
-                            .add(Transformer.renamerFactory(mappings, true))
+                            .add(Transformers.fixLvNames());
+                        // apply mappings if available
+                        mappings.ifPresent(file -> renamerBuilder
+                            .add(Transformer.renamerFactory(file, true)));
+                        renamerBuilder
                             .add(Transformer.sourceFixerFactory(SourceFixerConfig.JAVA))
                             .add(Transformer.recordFixerFactory())
                             .add(Transformer.signatureStripperFactory(SignatureStripperConfig.ALL))
