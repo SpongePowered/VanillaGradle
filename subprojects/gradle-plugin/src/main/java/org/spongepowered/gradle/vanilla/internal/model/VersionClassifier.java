@@ -50,7 +50,9 @@ public enum VersionClassifier {
     @SerializedName("pending")
     PENDING,
     @SerializedName("release")
-    RELEASE;
+    RELEASE,
+    @SerializedName("unobfuscated")
+    UNOBFUSCATED;
 
     private static final List<String> NAMES;
     private static final Map<String, VersionClassifier> BY_NAME;
