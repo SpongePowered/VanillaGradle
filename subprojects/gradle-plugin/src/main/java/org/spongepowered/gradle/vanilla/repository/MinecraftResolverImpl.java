@@ -215,6 +215,8 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
                         // Extract jar
                         final Path extracted = this.downloader.baseDir().resolve(jarPath);
+                        // the mapping download will create this directory for us,
+                        // but we still need to ensure the directory is created as mappings are optional
                         FileUtils.createDirectoriesSymlinkSafe(extracted.getParent());
                         side.extractJar(jar.get(), extracted, bundlerMeta);
 
