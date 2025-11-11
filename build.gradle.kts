@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "org.spongepowered"
-version = "0.2.1-SNAPSHOT"
+version = "0.2.1"
 
 
 spotless {
