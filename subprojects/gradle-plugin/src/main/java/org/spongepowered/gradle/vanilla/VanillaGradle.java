@@ -31,28 +31,22 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.initialization.Settings;
-import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.plugins.ide.eclipse.EclipsePlugin;
-import org.gradle.plugins.ide.eclipse.model.EclipseModel;
-import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
-import org.jetbrains.gradle.ext.ProjectSettings;
-import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.internal.ProvideMinecraftPlugin;
 import org.spongepowered.gradle.vanilla.internal.ResolveMinecraftLibNames;
 import org.spongepowered.gradle.vanilla.internal.ShadowConfigurationApplier;
+import org.spongepowered.gradle.vanilla.internal.ide.EclipseIntegration;
+import org.spongepowered.gradle.vanilla.internal.ide.IdeaIntegration;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftRepositoryPlugin;
 import org.spongepowered.gradle.vanilla.internal.util.ConfigurationUtils;
-import org.spongepowered.gradle.vanilla.internal.util.IdeConfigurer;
 import org.spongepowered.gradle.vanilla.internal.util.SelfPreferringClassLoader;
 import org.spongepowered.gradle.vanilla.task.DisplayMinecraftVersionsTask;
 import org.spongepowered.gradle.vanilla.task.DumpClassTask;
@@ -64,8 +58,10 @@ import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -168,26 +164,9 @@ public final class VanillaGradle implements Plugin<Object> {
         project.getPlugins().apply(IdeaExtPlugin.class);
         project.getPlugins().apply(EclipsePlugin.class);
 
-        IdeConfigurer.apply(project, new IdeConfigurer.IdeImportAction() {
-            @Override
-            public void idea(final Project project, final IdeaModel idea, final ProjectSettings ideaExtension) {
-                // Navigate via the extension properties...
-                // https://github.com/JetBrains/gradle-idea-ext-plugin/wiki
-                final TaskTriggersConfig taskTriggers = ((ExtensionAware) ideaExtension).getExtensions().getByType(TaskTriggersConfig.class);
-
-                // Automatically prepare a workspace after importing
-                if (shouldRunPrepare.get()) {
-                    taskTriggers.afterSync(prepareWorkspaceTask);
-                }
-            }
-
-            @Override
-            public void eclipse(final Project project, final EclipseModel eclipse) {
-                if (shouldRunPrepare.get()) {
-                    eclipse.synchronizationTasks(prepareWorkspaceTask);
-                }
-            }
-        });
+        final Supplier<Optional<TaskProvider<?>>> supplier = () -> shouldRunPrepare.get() ? Optional.of(prepareWorkspaceTask) : Optional.empty();
+        IdeaIntegration.addSynchronizationTask(project, supplier);
+        EclipseIntegration.addSynchronizationTask(project, supplier);
     }
 
     private static void applyShadowConfiguration(final TaskContainer tasks, final Provider<Set<String>> minecraftNames, final Plugin<?> shadowPlugin) {

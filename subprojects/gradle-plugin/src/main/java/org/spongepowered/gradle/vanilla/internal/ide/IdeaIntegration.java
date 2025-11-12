@@ -22,20 +22,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.internal.util;
+package org.spongepowered.gradle.vanilla.internal.ide;
 
+import org.gradle.StartParameter;
+import org.gradle.TaskExecutionRequest;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.ExtensionAware;
-import org.gradle.plugins.ide.eclipse.EclipsePlugin;
-import org.gradle.plugins.ide.eclipse.model.EclipseModel;
+import org.gradle.api.tasks.TaskProvider;
+import org.gradle.internal.DefaultTaskExecutionRequest;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ProjectSettings;
 
-/**
- * Configures different IDEs when applicable
- */
-public final class IdeConfigurer {
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
+
+public final class IdeaIntegration {
 
     /**
      * Get whether Gradle is being invoked through IntelliJ IDEA.
@@ -44,31 +50,30 @@ public final class IdeConfigurer {
      *
      * @return whether this is an IntelliJ-based invocation
      */
-    public static boolean isIdeaImport() {
+    public static boolean isIdea() {
         return Boolean.getBoolean("idea.active");
     }
 
     /**
-     * Get whether this Gradle invocation is from an Eclipse project import.
+     * Get whether Gradle is being invoked through IntelliJ IDEA project synchronization.
      *
-     * @return whether an eclipse import is ongoing
+     * @return whether this is an IntelliJ-based synchronization
      */
-    public static boolean isEclipseImport() {
-        return System.getProperty("eclipse.application") != null;
+    public static boolean isIdeaSync() {
+        return Boolean.getBoolean("idea.sync.active");
     }
 
     /**
-     * Applies the specified configuration action to configure IDE projects.
+     * Applies the specified configuration action to configure Idea projects.
      *
-     * <p>This does not apply the IDEs' respective plugins, but will perform
-     * actions when those plugins are applied.</p>
+     * <p>This does not apply the Idea plugin, but will perform the action when the plugin is applied.</p>
      *
      * @param project project to apply to
-     * @param toPerform the actions to perform
+     * @param action the action to perform
      */
-    public static void apply(final Project project, final IdeImportAction toPerform) {
+    public static void apply(final Project project, final BiConsumer<IdeaModel, ProjectSettings> action) {
         project.getPlugins().withType(IdeaExtPlugin.class, plugin -> {
-            if (!IdeConfigurer.isIdeaImport()) {
+            if (!IdeaIntegration.isIdea()) {
                 return;
             }
 
@@ -84,36 +89,27 @@ public final class IdeConfigurer {
             final ProjectSettings ideaExt = ((ExtensionAware) model.getProject()).getExtensions().getByType(ProjectSettings.class);
 
             // But actually perform the configuration with the subproject context
-            toPerform.idea(project, model, ideaExt);
-        });
-        project.getPlugins().withType(EclipsePlugin.class, plugin -> {
-            final EclipseModel model = project.getExtensions().findByType(EclipseModel.class);
-            if (model == null) {
-                return;
-            }
-            toPerform.eclipse(project, model);
+            action.accept(model, ideaExt);
         });
     }
 
-    public interface IdeImportAction {
+    /**
+     * Executes a task when Idea performs a project synchronization.
+     *
+     * @param project project of the task
+     * @param supplier supplier that may provide a task
+     */
+    public static void addSynchronizationTask(final Project project, final Supplier<Optional<TaskProvider<?>>> supplier) {
+        if (!IdeaIntegration.isIdeaSync()) {
+            return;
+        }
 
-        /**
-         * Configure an IntelliJ project.
-         *
-         * @param project the project to configure on import
-         * @param idea the basic idea gradle extension
-         * @param ideaExtension JetBrain's extensions to the base idea model
-         */
-        void idea(final Project project, final IdeaModel idea, final ProjectSettings ideaExtension);
+        project.afterEvaluate(p -> supplier.get().ifPresent(task -> {
+            final StartParameter startParameter = project.getGradle().getStartParameter();
+            final List<TaskExecutionRequest> taskRequests = new ArrayList<>(startParameter.getTaskRequests());
 
-        /**
-         * Configure an eclipse project.
-         *
-         * @param project the project being imported
-         * @param eclipse the eclipse project model to modify
-         */
-        void eclipse(final Project project, final EclipseModel eclipse);
-
+            taskRequests.add(new DefaultTaskExecutionRequest(Collections.singletonList(":" + project.getName() + ":" + task.getName())));
+            startParameter.setTaskRequests(taskRequests);
+        }));
     }
-
 }
