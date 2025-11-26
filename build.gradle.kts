@@ -44,7 +44,8 @@ subprojects {
         mitLicense()
 
         javaVersions {
-            testWith(8, 11, 17)
+            target(11)
+            testWith(11, 17, 21)
         }
 
         configurePublications {
