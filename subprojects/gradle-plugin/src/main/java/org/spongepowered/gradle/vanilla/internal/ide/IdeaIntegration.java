@@ -108,7 +108,7 @@ public final class IdeaIntegration {
             final StartParameter startParameter = project.getGradle().getStartParameter();
             final List<TaskExecutionRequest> taskRequests = new ArrayList<>(startParameter.getTaskRequests());
 
-            taskRequests.add(new DefaultTaskExecutionRequest(Collections.singletonList(":" + project.getName() + ":" + task.getName())));
+            taskRequests.add(new DefaultTaskExecutionRequest(Collections.singletonList((project == project.getRootProject() ? "" : project.getPath()) + ":" + task.getName())));
             startParameter.setTaskRequests(taskRequests);
         }));
     }
