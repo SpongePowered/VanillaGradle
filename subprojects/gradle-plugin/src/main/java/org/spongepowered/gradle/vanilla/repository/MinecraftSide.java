@@ -46,7 +46,7 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 
 public enum MinecraftSide {
-    CLIENT(DownloadClassifier.CLIENT, DownloadClassifier.CLIENT_MAPPINGS) {
+    CLIENT(DownloadClassifier.CLIENT) {
         @Override
         public Set<GroupArtifactVersion> dependencies(
             final VersionDescriptor.Full descriptor,
@@ -56,15 +56,7 @@ public enum MinecraftSide {
             return MinecraftSide.manifestLibraries(descriptor, RuleContext.create(), lib -> !lib.isNatives());
         }
     },
-    SERVER(DownloadClassifier.SERVER, DownloadClassifier.SERVER_MAPPINGS) {
-        private final Set<String> packages;
-
-        {
-            final Set<String> allowedPackages = new HashSet<>();
-            allowedPackages.add("net/minecraft");
-            this.packages = Collections.unmodifiableSet(allowedPackages);
-        }
-
+    SERVER(DownloadClassifier.SERVER) {
         @Override
         public Set<GroupArtifactVersion> dependencies(
             final VersionDescriptor.Full descriptor,
@@ -103,28 +95,16 @@ public enum MinecraftSide {
                 }
             }
         }
-
-        @Override
-        public Set<String> allowedPackages() {
-            // Filter this out if there is bundler metadata
-            return this.packages;
-        }
     };
 
     private final DownloadClassifier executableArtifact;
-    private final DownloadClassifier mappingsArtifact;
 
-    MinecraftSide(final DownloadClassifier executableArtifact, final DownloadClassifier mappingsArtifact) {
+    MinecraftSide(final DownloadClassifier executableArtifact) {
         this.executableArtifact = executableArtifact;
-        this.mappingsArtifact = mappingsArtifact;
     }
 
     public final DownloadClassifier executableArtifact() {
         return this.executableArtifact;
-    }
-
-    public final DownloadClassifier mappingsArtifact() {
-        return this.mappingsArtifact;
     }
 
     public abstract Set<GroupArtifactVersion> dependencies(
