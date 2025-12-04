@@ -22,22 +22,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.internal.worker;
+package org.spongepowered.gradle.vanilla.internal.transformer;
 
-import net.fabricmc.accesswidener.AccessWidener;
-import net.fabricmc.accesswidener.AccessWidenerClassVisitor;
 import org.objectweb.asm.ClassVisitor;
-import org.spongepowered.gradle.vanilla.internal.transformer.ClassTransformer;
+import org.objectweb.asm.Opcodes;
 
-final class AccessWidenerEntryTransformer implements ClassTransformer {
-    private final AccessWidener widener;
+import java.io.IOException;
+import java.util.function.UnaryOperator;
 
-    public AccessWidenerEntryTransformer(final AccessWidener widener) {
-        this.widener = widener;
-    }
+/**
+ * Transforms the content of a class using a {@link ClassVisitor}.
+ */
+public interface ClassTransformer extends UnaryOperator<ClassVisitor> {
+    int ASM_VERSION = Opcodes.ASM9;
 
-    @Override
-    public ClassVisitor apply(final ClassVisitor parent) {
-        return AccessWidenerClassVisitor.createClassVisitor(ClassTransformer.ASM_VERSION, parent, this.widener);
+    /**
+     * A function that can provide a {@link ClassTransformer}, optionally having a post-rename operation to clean up resources.
+     */
+    @FunctionalInterface
+    interface Provider extends AutoCloseable {
+        ClassTransformer provide();
+
+        @Override
+        default void close() throws IOException {
+        }
     }
 }

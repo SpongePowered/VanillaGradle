@@ -26,10 +26,10 @@ package org.spongepowered.gradle.vanilla.internal.worker;
 
 import net.fabricmc.accesswidener.AccessWidener;
 import net.fabricmc.accesswidener.AccessWidenerReader;
-import net.minecraftforge.fart.api.Transformer;
 import org.gradle.api.GradleException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.spongepowered.gradle.vanilla.internal.transformer.ClassTransformer;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -39,12 +39,12 @@ import java.nio.file.Path;
 import java.util.Set;
 import java.util.function.Function;
 
-public final class AccessWidenerTransformerProvider implements Function<Set<Path>, Transformer> {
+public final class AccessWidenerTransformerProvider implements Function<Set<Path>, ClassTransformer> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AccessWidenerTransformerProvider.class);
 
     @Override
-    public Transformer apply(final Set<Path> paths) {
+    public ClassTransformer apply(final Set<Path> paths) {
         final AccessWidener widener = new AccessWidener();
         final AccessWidenerReader reader = new AccessWidenerReader(widener);
 

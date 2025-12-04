@@ -24,11 +24,11 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository.modifier;
 
-import net.minecraftforge.fart.api.Transformer;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
 import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;
+import org.spongepowered.gradle.vanilla.internal.transformer.ClassTransformer;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 
@@ -86,13 +86,13 @@ public final class AccessWidenerModifier implements ArtifactModifier {
 
     @Override
     @SuppressWarnings("unchecked")
-    public CompletableFuture<TransformerProvider> providePopulator(
+    public CompletableFuture<ClassTransformer.Provider> providePopulator(
         final MinecraftResolver.Context context
     ) {
         final Supplier<URLClassLoader> loaderProvider = context.classLoaderWithTool(ResolvableTool.ACCESS_WIDENER);
-        return AsyncUtils.failableFuture(() -> new TransformerProvider() {
+        return AsyncUtils.failableFuture(() -> new ClassTransformer.Provider() {
             private final URLClassLoader loader = loaderProvider.get();
-            private @Nullable Function<Set<Path>, Transformer> accessWidenerLoader = (Function<Set<Path>, Transformer>) Class.forName(
+            private @Nullable Function<Set<Path>, ClassTransformer> accessWidenerLoader = (Function<Set<Path>, ClassTransformer>) Class.forName(
                 "org.spongepowered.gradle.vanilla.internal.worker.AccessWidenerTransformerProvider",
                 true,
                 this.loader
@@ -101,7 +101,7 @@ public final class AccessWidenerModifier implements ArtifactModifier {
                 .newInstance();
 
             @Override
-            public Transformer provide() {
+            public ClassTransformer provide() {
                 if (this.accessWidenerLoader == null) {
                     throw new IllegalStateException("Already closed!");
                 }
