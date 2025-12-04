@@ -22,25 +22,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.internal.worker;
+package org.spongepowered.gradle.vanilla.internal.transformer;
 
-import net.fabricmc.accesswidener.AccessWidener;
-import net.fabricmc.accesswidener.AccessWidenerClassVisitor;
 import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.Opcodes;
 
+import java.io.IOException;
 import java.util.function.UnaryOperator;
 
-final class AccessWidenerEntryTransformer implements UnaryOperator<ClassVisitor> {
-    private final AccessWidener widener;
+/**
+ * A function that can provide a {@link UnaryOperator} for {@link ClassVisitor}, optionally having a transformation operation to clean up resources.
+ */
+@FunctionalInterface
+public interface ClassTransformerProvider extends AutoCloseable {
 
-    public AccessWidenerEntryTransformer(final AccessWidener widener) {
-        this.widener = widener;
-    }
+    UnaryOperator<ClassVisitor> provide();
 
     @Override
-    public ClassVisitor apply(final ClassVisitor parent) {
-        // TODO: Expose the ASM version constant somewhere visible to this worker
-        return AccessWidenerClassVisitor.createClassVisitor(Opcodes.ASM9, parent, this.widener);
+    default void close() throws IOException {
     }
 }

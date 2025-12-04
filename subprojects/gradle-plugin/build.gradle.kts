@@ -23,18 +23,12 @@ val shadow by sourceSets.creating {
 
 configurations {
     api { extendsFrom(commonDeps) }
-    "jarDecompileCompileClasspath" {
-        attributes {
-            attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 11) // VF needs 11
-        }
-    }
 }
 
 val accessWidenerVersion: String by project
 val asmVersion: String by project
 val checkerVersion: String by project
 val vineFlowerVersion: String by project
-val forgeAutoRenamingToolVersion: String by project
 val junitVersion: String by project
 val mergeToolVersion: String by project
 dependencies {
@@ -43,10 +37,6 @@ dependencies {
     commonDeps(libs.asm)
     commonDeps(libs.asm.commons)
     commonDeps(libs.asm.util)
-    commonDeps(libs.forgeAutoRenamingTool) {
-        exclude("org.ow2.asm") // Use our own ASM
-        exclude("net.sf.jopt-simple")
-    }
     commonDeps(libs.mammoth)
 
     // Just main

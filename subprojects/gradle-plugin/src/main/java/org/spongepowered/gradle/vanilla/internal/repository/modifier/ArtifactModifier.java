@@ -24,16 +24,14 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository.modifier;
 
-import net.minecraftforge.fart.api.Renamer;
-import net.minecraftforge.fart.api.Transformer;
+import org.spongepowered.gradle.vanilla.internal.transformer.ClassTransformerProvider;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 
-import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Some sort of operation that can be performed on a jar, via a {@link Renamer}.
+ * Some sort of operation that can be performed on a jar, via a {@link ClassTransformerProvider}.
  */
 public interface ArtifactModifier {
 
@@ -86,7 +84,7 @@ public interface ArtifactModifier {
      *     asynchronously
      * @return a future providing the populator
      */
-    CompletableFuture<TransformerProvider> providePopulator(final MinecraftResolver.Context context);
+    CompletableFuture<ClassTransformerProvider> providePopulator(final MinecraftResolver.Context context);
 
     /**
      * Indicates that the result of this modification should be stored in the
@@ -95,17 +93,5 @@ public interface ArtifactModifier {
      * @return whether local storage is required
      */
     boolean requiresLocalStorage();
-
-    /**
-     * A function that can provide a {@link Transformer} for use with a renamer, optionally having a post-rename operation to clean up resources.
-     */
-    @FunctionalInterface
-    interface TransformerProvider extends AutoCloseable {
-        Transformer provide();
-
-        @Override
-        default void close() throws IOException {
-        }
-    }
 
 }
