@@ -22,35 +22,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.internal.asm;
+package org.spongepowered.gradle.vanilla.internal.transformer;
 
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.objectweb.asm.ClassVisitor;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.IOException;
+import java.util.function.UnaryOperator;
 
-final class VariableScopeTracker {
-    private final Map<String, VariableScope> trackedScopes = new HashMap<>();
-    private @MonotonicNonNull String className;
+/**
+ * A function that can provide a {@link UnaryOperator} for {@link ClassVisitor}, optionally having a transformation operation to clean up resources.
+ */
+@FunctionalInterface
+public interface ClassTransformerProvider extends AutoCloseable {
 
-    public VariableScope scope(final String methodName, final String desc) {
-        return this.trackedScopes.computeIfAbsent(VariableScopeTracker.toMapKey(methodName, desc), $ -> VariableScope.root());
-    }
+    UnaryOperator<ClassVisitor> provide();
 
-    public void makeChild(final VariableScope parent, final String childName, final String childDesc) {
-        final VariableScope childScope = new VariableScope(parent);
-        this.trackedScopes.putIfAbsent(VariableScopeTracker.toMapKey(childName, childDesc), childScope);
-    }
-
-    private static String toMapKey(final String methodName, final String methodDesc) {
-        return methodName + methodDesc;
-    }
-
-    String className() {
-        return this.className;
-    }
-
-    void className(final String name) {
-        this.className = name;
+    @Override
+    default void close() throws IOException {
     }
 }

@@ -24,11 +24,12 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository.modifier;
 
-import net.minecraftforge.fart.api.Transformer;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.objectweb.asm.ClassVisitor;
 import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
 import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;
+import org.spongepowered.gradle.vanilla.internal.transformer.ClassTransformerProvider;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 
@@ -44,6 +45,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 public final class AccessWidenerModifier implements ArtifactModifier {
@@ -86,13 +88,13 @@ public final class AccessWidenerModifier implements ArtifactModifier {
 
     @Override
     @SuppressWarnings("unchecked")
-    public CompletableFuture<TransformerProvider> providePopulator(
+    public CompletableFuture<ClassTransformerProvider> providePopulator(
         final MinecraftResolver.Context context
     ) {
         final Supplier<URLClassLoader> loaderProvider = context.classLoaderWithTool(ResolvableTool.ACCESS_WIDENER);
-        return AsyncUtils.failableFuture(() -> new TransformerProvider() {
+        return AsyncUtils.failableFuture(() -> new ClassTransformerProvider() {
             private final URLClassLoader loader = loaderProvider.get();
-            private @Nullable Function<Set<Path>, Transformer> accessWidenerLoader = (Function<Set<Path>, Transformer>) Class.forName(
+            private @Nullable Function<Set<Path>, UnaryOperator<ClassVisitor>> accessWidenerLoader = (Function<Set<Path>, UnaryOperator<ClassVisitor>>) Class.forName(
                 "org.spongepowered.gradle.vanilla.internal.worker.AccessWidenerTransformerProvider",
                 true,
                 this.loader
@@ -101,7 +103,7 @@ public final class AccessWidenerModifier implements ArtifactModifier {
                 .newInstance();
 
             @Override
-            public Transformer provide() {
+            public UnaryOperator<ClassVisitor> provide() {
                 if (this.accessWidenerLoader == null) {
                     throw new IllegalStateException("Already closed!");
                 }

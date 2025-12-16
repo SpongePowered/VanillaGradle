@@ -26,14 +26,12 @@ package org.spongepowered.gradle.vanilla.internal.worker;
 
 import net.fabricmc.accesswidener.AccessWidener;
 import net.fabricmc.accesswidener.AccessWidenerClassVisitor;
-import net.fabricmc.accesswidener.AccessWidenerVisitor;
-import net.minecraftforge.fart.api.Transformer;
-import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
-final class AccessWidenerEntryTransformer implements Transformer {
+import java.util.function.UnaryOperator;
+
+final class AccessWidenerEntryTransformer implements UnaryOperator<ClassVisitor> {
     private final AccessWidener widener;
 
     public AccessWidenerEntryTransformer(final AccessWidener widener) {
@@ -41,18 +39,8 @@ final class AccessWidenerEntryTransformer implements Transformer {
     }
 
     @Override
-    public ClassEntry process(final ClassEntry entry) {
-        // Because InnerClass attributes can be present in any class AW'd classes
-        // are referenced from, we have to target every class to get a correct output.
-        final ClassReader reader = new ClassReader(entry.getData());
-        final ClassWriter writer = new ClassWriter(reader, 0);
+    public ClassVisitor apply(final ClassVisitor parent) {
         // TODO: Expose the ASM version constant somewhere visible to this worker
-        final ClassVisitor visitor = AccessWidenerClassVisitor.createClassVisitor(Opcodes.ASM9, writer, this.widener);
-        reader.accept(visitor, 0);
-        if (entry.isMultiRelease()) {
-            return ClassEntry.create(entry.getName(), entry.getTime(), writer.toByteArray(), entry.getVersion());
-        } else {
-            return ClassEntry.create(entry.getName(), entry.getTime(), writer.toByteArray());
-        }
+        return AccessWidenerClassVisitor.createClassVisitor(Opcodes.ASM9, parent, this.widener);
     }
 }
