@@ -106,11 +106,14 @@ public final class VanillaGradle implements Plugin<Object> {
         this.createDisplayMinecraftVersions(project.getPlugins().getPlugin(MinecraftRepositoryPlugin.class).service(), project.getTasks());
         project.afterEvaluate(p -> {
             if (minecraft.targetVersion().isPresent()) {
+                if (minecraft.targetVersion().get().releaseTime().toInstant().isBefore(Constants.MIN_MC_VERSION_TIMESTAMP)) {
+                    throw new GradleException(String.format("The targeted version '%s' is older than the minimum supported version '%s'.", minecraft.version().get(), Constants.MIN_MC_VERSION_NAME));
+                }
                 p.getLogger().lifecycle(String.format("Targeting Minecraft '%s' on a '%s' platform", minecraft.version().get(),
                     minecraft.platform().get().name()
                 ));
             } else {
-                throw new GradleException("No minecraft version has been set! Did you set the version() property in the 'minecraft' extension");
+                throw new GradleException("No Minecraft version has been set! Did you set the version() property in the 'minecraft' extension");
             }
 
             this.configureIDEIntegrations(
