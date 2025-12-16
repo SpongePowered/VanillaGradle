@@ -32,9 +32,6 @@ import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.repository.MinecraftProviderService;
 
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
 import java.util.concurrent.ExecutionException;
 
 public abstract class DisplayMinecraftVersionsTask extends DefaultTask {
@@ -45,17 +42,11 @@ public abstract class DisplayMinecraftVersionsTask extends DefaultTask {
     @TaskAction
     public void execute() throws ExecutionException, InterruptedException {
         // It is ugly to hardcode the bottom limit but if we don't we'll have to download EACH VERSION to know what we can target!
-        final DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
-        final Date earliestDate = Date.from(Instant.from(formatter.parse(Constants.FIRST_TARGETABLE_RELEASE_TIMESTAMP)));
-
         for (final VersionDescriptor version : this.getMinecraftProvider().get().versions().availableVersions().get()) {
-            final Date versionDate = Date.from(version.releaseTime().toInstant());
-            if (versionDate.before(earliestDate)) {
+            if (version.releaseTime().toInstant().isBefore(Constants.MIN_MC_VERSION_TIMESTAMP)) {
                 continue;
             }
             this.getLogger().lifecycle(version.id());
         }
-
-        this.getLogger().lifecycle(Constants.OUT_OF_BAND_RELEASE);
     }
 }
