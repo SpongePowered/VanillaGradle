@@ -82,7 +82,7 @@ public class SelfPreferringClassLoader extends URLClassLoader {
 
     @Override
     public Enumeration<URL> getResources(final String name) throws IOException {
-        return new Enumeration<URL>() {
+        return new Enumeration<>() {
 
             @Nullable Enumeration<URL> active = SelfPreferringClassLoader.this.findResources(name);
             @Nullable Enumeration<URL> staged = SelfPreferringClassLoader.this.parent == null

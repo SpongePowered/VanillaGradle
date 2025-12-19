@@ -44,8 +44,7 @@ subprojects {
         mitLicense()
 
         javaVersions {
-            target(11)
-            testWith(11, 17, 21)
+            target(25)
         }
 
         configurePublications {
@@ -114,13 +113,7 @@ subprojects {
         }
 
         withType(JavaCompile::class).configureEach {
-            options.compilerArgs.add("-Xlint:-processing")
-
-            doFirst {
-                if (javaCompiler.get().metadata.languageVersion >= JavaLanguageVersion.of(21)) {
-                    options.compilerArgs.add("-Xlint:-this-escape")
-                }
-            }
+            options.compilerArgs.addAll(listOf("-Xlint:-processing", "-Xlint:-this-escape"))
         }
     }
 }

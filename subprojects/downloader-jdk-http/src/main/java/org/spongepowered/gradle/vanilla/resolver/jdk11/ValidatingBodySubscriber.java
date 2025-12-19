@@ -60,8 +60,7 @@ class ValidatingBodySubscriber<T> implements HttpResponse.BodySubscriber<T> {
 
     @Override
     public void onNext(final List<ByteBuffer> item) {
-        for (int i = 0, size = item.size(); i < size; i++) {
-            final ByteBuffer buf = item.get(i);
+        for (final ByteBuffer buf : item) {
             final int pos = buf.position();
             this.md.update(buf);
             buf.position(pos);

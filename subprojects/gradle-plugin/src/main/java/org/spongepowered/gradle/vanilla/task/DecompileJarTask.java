@@ -146,13 +146,12 @@ public abstract class DecompileJarTask extends DefaultTask {
                 flags,
                 (env, output) -> {
                     final long totalSystemMemoryBytes =
-                        ((OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getTotalPhysicalMemorySize() / (1024L * 1024L);
+                        ((OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getTotalMemorySize() / (1024L * 1024L);
                     return CompletableFuture.runAsync(() -> {
                         // Determine which parts of the configuration are MC, and which are its dependencies
                         final Set<File> dependencies = new HashSet<>();
                         for (final ResolvedArtifactResult artifact : this.getInputArtifacts().get()) {
-                            if (artifact.getId() instanceof ModuleComponentArtifactIdentifier) {
-                                final ModuleComponentArtifactIdentifier id = (ModuleComponentArtifactIdentifier) artifact.getId();
+                            if (artifact.getId() instanceof ModuleComponentArtifactIdentifier id) {
                                 if (id.getComponentIdentifier().getGroup().equals(MinecraftPlatform.GROUP)) {
                                     if (env.decoratedArtifactId().equals(id.getComponentIdentifier().getModule())) {
                                         continue;

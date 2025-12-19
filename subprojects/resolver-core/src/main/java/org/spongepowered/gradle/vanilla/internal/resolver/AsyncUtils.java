@@ -55,8 +55,9 @@ public final class AsyncUtils {
     }
 
     public static <T> Supplier<T> memoizedSupplier(final Supplier<T> input) {
-        return new Supplier<T>() {
+        return new Supplier<>() {
             private volatile @MonotonicNonNull T value;
+
             @Override
             public T get() {
                 if (this.value == null) {

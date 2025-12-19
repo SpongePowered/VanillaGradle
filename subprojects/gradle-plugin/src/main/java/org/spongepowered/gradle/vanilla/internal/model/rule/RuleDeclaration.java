@@ -100,7 +100,7 @@ public final class RuleDeclaration {
         }
 
         public Builder nextEntry() {
-            this.entries.add(new Entry(this.action, Collections.unmodifiableMap(new HashMap<>(this.rules))));
+            this.entries.add(new Entry(this.action, Map.copyOf(this.rules)));
             this.action = RuleAction.ALLOW;
             this.rules.clear();
             return this;

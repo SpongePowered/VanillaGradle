@@ -144,11 +144,10 @@ public final class ResolutionResult<V> {
             return true;
         }
 
-        if (!(other instanceof ResolutionResult<?>)) {
+        if (!(other instanceof ResolutionResult<?> that)) {
             return false;
         }
 
-        final ResolutionResult<?> that = (ResolutionResult<?>) other;
         return Objects.equals(this.result, that.result)
             && this.upToDate == that.upToDate;
     }

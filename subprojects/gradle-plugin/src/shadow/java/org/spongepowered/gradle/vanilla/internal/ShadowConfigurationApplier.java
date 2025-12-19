@@ -46,12 +46,9 @@ public final class ShadowConfigurationApplier {
         // classes referenced within the filter.
         // whoo!
         MinecraftExclusionFilter.class.getName(); // load class
-        tasks.withType(ShadowJar.class).configureEach(new Action<ShadowJar>() {
-            @Override
-            public void execute(final ShadowJar task) {
-                task.getInputs().property("minecraftNames", minecraftNames);
-                task.dependencies(filter -> filter.exclude(new MinecraftExclusionFilter(minecraftNames)));
-            }
+        tasks.withType(ShadowJar.class).configureEach(task -> {
+            task.getInputs().property("minecraftNames", minecraftNames);
+            task.dependencies(filter -> filter.exclude(new MinecraftExclusionFilter(minecraftNames)));
         });
     }
 

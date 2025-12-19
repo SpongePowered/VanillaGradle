@@ -60,7 +60,7 @@ final class ManifestDerivedArgumentProvider implements CommandLineArgumentProvid
     @Override
     public Iterable<String> asArguments() {
         final List<String> outputArgs = new ArrayList<>();
-        final StringBuffer builder = new StringBuffer();
+        final StringBuilder builder = new StringBuilder();
         for (final Argument arg : this.arguments.get()) {
             if (arg.rules().test(this.rules)) {
                 arg: for (final String argument : arg.value()) {
@@ -74,8 +74,8 @@ final class ManifestDerivedArgumentProvider implements CommandLineArgumentProvid
                         final String value = this.environmentTokens.get().get(matcher.group(1));
                         if (value == null) {
                             // If we are the value to a command line argument and we're not present, delete the previous argument.
-                            if (!outputArgs.isEmpty() && outputArgs.get(outputArgs.size() - 1).startsWith("-")) {
-                                outputArgs.remove(outputArgs.size() - 1);
+                            if (!outputArgs.isEmpty() && outputArgs.getLast().startsWith("-")) {
+                                outputArgs.removeLast();
                             }
                             // Either way, skip this whole argument
                             continue arg;

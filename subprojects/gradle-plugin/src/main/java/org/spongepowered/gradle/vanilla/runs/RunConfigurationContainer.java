@@ -42,13 +42,13 @@ import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.util.internal.ConfigureUtil;
 import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.internal.model.Argument;
 import org.spongepowered.gradle.vanilla.internal.model.Arguments;
 import org.spongepowered.gradle.vanilla.internal.model.JavaRuntimeVersion;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
-import org.spongepowered.gradle.vanilla.internal.util.GradleCompat;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -246,7 +246,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
     @Override
     @SuppressWarnings("rawtypes")
     public NamedDomainObjectContainer<RunConfiguration> configure(final Closure configureClosure) {
-        return GradleCompat.configureSelf(this, configureClosure);
+        return ConfigureUtil.configureSelf(configureClosure, this, new NamedDomainObjectContainerConfigureDelegate(configureClosure, this));
     }
 
     @Override

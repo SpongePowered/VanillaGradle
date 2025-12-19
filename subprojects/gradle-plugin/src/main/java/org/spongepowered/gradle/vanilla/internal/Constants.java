@@ -35,9 +35,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -160,22 +158,22 @@ public final class Constants {
     /**
      * Group IDs of dependencies that should not be added to a server-only environment
      */
-    public static final Set<String> CLIENT_ONLY_DEPENDENCY_GROUPS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+    public static final Set<String> CLIENT_ONLY_DEPENDENCY_GROUPS = Set.of(
             "oshi-project",
             "net.java.dev.jna",
             "com.ibm.icu",
             "net.java.jinput",
             "net.java.jutils",
             "org.lwjgl"
-    )));
+    );
 
     /**
      * Extra dependencies that are injected into the project.
      */
-    public static final Set<GroupArtifactVersion> INJECTED_DEPENDENCIES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+    public static final Set<GroupArtifactVersion> INJECTED_DEPENDENCIES = Set.of(
         GroupArtifactVersion.of("com.google.code.findbugs", "jsr305", "3.0.2"),
         GroupArtifactVersion.of("org.jetbrains", "annotations", "23.0.0") // 1.18+ only technically
-    )));
+    );
 
     private Constants() {
     }
