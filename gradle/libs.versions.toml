@@ -11,7 +11,7 @@ immutables = "2.10.1"
 indra = "4.0.0"
 junit = "5.14.1"
 mergeTool = "1.2.3"
-mammoth = "1.4.0"
+mammoth = "1.5.0"
 
 [libraries]
 # shared
