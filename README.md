@@ -1,7 +1,7 @@
 ![VanillaGradle Logo](docs/logo.png?raw=true)
 
-**VanillaGradle** is a toolchain for *Minecraft: Java Edition* that provides a workspace to interact with the game using official mappings provided 
-by Mojang Studios. This plugin requires at least Gradle 6.7 and Java 8 to run, though it is only actively tested against the latest release of every major Gradle series supported (currently 6.x and 7.x).
+**VanillaGradle** is a toolchain for *Minecraft: Java Edition* that provides a workspace to interact with the game using official unobfuscated jars provided 
+by Mojang Studios. This plugin requires at least Gradle 9.2.1 and Java 25 to run.
 
 **VANILLAGRADLE IS NOT DESIGNED AND IS NOT GENERALLY USEFUL FOR END-USER USE. IT IS FOR TOOLING AND PLATFORM DEVELOPERS WHO HAVE A SOLID WORKING KNOWLEDGE OF GRADLE ONLY!**
 
@@ -17,7 +17,7 @@ is as simple as creating a Gradle build based on this buildscript:
 ```gradle
 plugins {
     java
-    id("org.spongepowered.gradle.vanilla") version "0.2"
+    id("org.spongepowered.gradle.vanilla") version "0.3.0"
 }
 
 group = "org.example"
@@ -28,7 +28,7 @@ repositories {
 }
 
 minecraft {
-    version("1.16.5") // or: latestRelease() or latestSnapshot()
+    version("26.1") // or: latestRelease() or latestSnapshot()
     runs {
         server()
         client()
@@ -42,7 +42,7 @@ To have browsable sources in-IDE, run `./gradlew decompile`
 
 ### Building VanillaGradle
 **VanillaGradle** uses the [Gradle](http://gradle.org/) build automation system. To
-perform a build, use Gradle version 6.9 and execute
+perform a build, use Gradle version 9.2.1 and execute
 
     gradle build
 
@@ -64,6 +64,42 @@ and are subject to change at any time.
     </tr>
   </thead>
   <tbody>
+    <tr>
+      <td valign="top"><b>0.3.0</b></td>
+      <td valign="top">December 2025</td>
+      <td valign="top">
+        <ul>
+          <li>Require Java 25 and Gradle 9</li>
+          <li>Remove de-obfuscation</li>
+          <li>Bump minimum Minecraft version to 26.1-snapshot-1</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td valign="top"><b>0.2.2</b></td>
+      <td valign="top">November 2025</td>
+      <td valign="top">
+        <ul>
+          <li>Require Java 11</li>
+          <li>Improve IntelliJ IDEA project sync performance</li>
+          <li>Compatibility with shadow plugin 9.0.2</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td valign="top"><b>0.2.1</b></td>
+      <td valign="top">November 2025</td>
+      <td valign="top">
+        <ul>
+          <li>Use Forge's renamer for remapping rather than Atlas</li>
+          <li>Strip jar signature</li>
+          <li>Support Minecraft 1.19-pre1 client</li>
+          <li>Choose Vineflower as our default decompiler</li>
+          <li>Avoid running asset/native downloads when unnecessary</li>
+          <li>More run options (source set, environment variables)</li>
+        </ul>
+      </td>
+    </tr>
     <tr>
       <td valign="top"><b>0.2</b></td>
       <td valign="top">May 2021</td>
