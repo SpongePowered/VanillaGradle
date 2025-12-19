@@ -8,7 +8,7 @@ checker = "3.48.4"
 vineFlower = "1.11.2"
 ideaExt = "1.3"
 immutables = "2.10.1"
-indra = "3.2.0"
+indra = "4.0.0"
 junit = "5.14.1"
 mergeTool = "1.2.3"
 mammoth = "1.4.0"
@@ -41,7 +41,7 @@ mammoth = { module = "net.kyori:mammoth", version.ref = "mammoth" }
 [plugins]
 blossom = { id = "net.kyori.blossom", version = "2.2.0" }
 eclipseApt = { id = "com.diffplug.eclipse.apt", version = "4.4.1" }
-gradlePluginPublish = { id = "com.gradle.plugin-publish", version = "1.3.1" }
+gradlePluginPublish = { id = "com.gradle.plugin-publish", version = "2.0.0" }
 ideaExt = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "ideaExt" }
 indra = { id = "net.kyori.indra", version.ref = "indra" }
 indra-git = { id = "net.kyori.indra.git", version.ref = "indra" }
@@ -49,4 +49,4 @@ indra-licenserSpotless = { id = "net.kyori.indra.licenser.spotless", version.ref
 indra-publishing = { id = "net.kyori.indra.publishing", version.ref = "indra" }
 indra-publishing-gradlePlugin = { id = "net.kyori.indra.publishing.gradle-plugin", version.ref = "indra" }
 indra-publishing-sonatype = { id = "net.kyori.indra.publishing.sonatype", version.ref = "indra" }
-spotless = { id = "com.diffplug.spotless", version = "6.25.0" }
+spotless = { id = "com.diffplug.spotless", version = "8.1.0" }
