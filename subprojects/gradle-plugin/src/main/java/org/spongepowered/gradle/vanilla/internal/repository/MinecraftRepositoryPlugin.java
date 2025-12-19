@@ -32,7 +32,6 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.ProjectEvaluationListener;
 import org.gradle.api.ProjectState;
-import org.gradle.api.Task;
 import org.gradle.api.artifacts.ModuleVersionSelector;
 import org.gradle.api.artifacts.ResolutionStrategy;
 import org.gradle.api.artifacts.ResolvableDependencies;
@@ -96,14 +95,13 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
 
     @Override
     public void apply(final Object target) {
-        if (target instanceof Project) {
-            this.applyToProject((Project) target);
-        } else if (target instanceof Settings) {
-            this.applyToSettings((Settings) target);
-        } else if (target instanceof Gradle) {
-            // no-op marker left by our settings plugin
-        } else {
-            throw new IllegalArgumentException("Expected target to be a Project or Settings, but was a " + target.getClass());
+        switch (target) {
+            case Project project -> this.applyToProject(project);
+            case Settings settings -> this.applyToSettings(settings);
+            case Gradle _ -> {
+                // no-op marker left by our settings plugin
+            }
+            default -> throw new IllegalArgumentException("Expected target to be a Project or Settings, but was a " + target.getClass());
         }
     }
 
@@ -292,12 +290,9 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
             public void afterEvaluate(final Project project, final ProjectState state) {
                 if (state.getFailure() != null) return;
                 project.getTasks().configureEach(task -> {
-                    task.doLast(new Action<Task>() {
-                        @Override
-                        public void execute(final Task task) {
-                            task.getLogger().info("Dropping VG resolver state on thread '{}' (task doLast action)", Thread.currentThread().getName());
-                            service.get().dropState();
-                        }
+                    task.doLast(t -> {
+                        t.getLogger().info("Dropping VG resolver state on thread '{}' (task doLast action)", Thread.currentThread().getName());
+                        service.get().dropState();
                     });
                 });
             }

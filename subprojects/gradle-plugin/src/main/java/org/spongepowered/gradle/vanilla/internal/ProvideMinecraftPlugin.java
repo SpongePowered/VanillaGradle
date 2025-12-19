@@ -100,7 +100,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             .create(MinecraftExtension.class, "minecraft", MinecraftExtensionImpl.class, target, minecraftProvider);
 
         final NamedDomainObjectProvider<Configuration> minecraftConfig = target.getConfigurations().register(Constants.Configurations.MINECRAFT, config -> {
-            config.setVisible(false);
             config.setCanBeConsumed(false);
             config.setCanBeResolved(true);
 
@@ -249,7 +248,6 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
     private TaskProvider<DownloadAssetsTask> createAssetsDownload(final MinecraftExtensionImpl minecraft, final Provider<MinecraftProviderService> minecraftProvider, final TaskContainer tasks) {
 
         final NamedDomainObjectProvider<Configuration> natives = this.project.getConfigurations().register(Constants.Configurations.MINECRAFT_NATIVES, config -> {
-            config.setVisible(false);
             config.setCanBeResolved(true);
             config.setCanBeConsumed(false);
             config.setTransitive(false);

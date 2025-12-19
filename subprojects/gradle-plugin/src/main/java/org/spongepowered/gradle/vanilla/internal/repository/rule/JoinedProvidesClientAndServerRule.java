@@ -78,13 +78,10 @@ public class JoinedProvidesClientAndServerRule implements ComponentMetadataRule 
 
     private static void selectJoined(final CapabilityResolutionDetails details) {
         final List<ComponentVariantIdentifier> candidates = details.getCandidates();
-        for (int i = 0; i < candidates.size(); i++) {
-            final ComponentVariantIdentifier id = candidates.get(i);
+        for (final ComponentVariantIdentifier id : candidates) {
             // TODO: is this the right logic if the joined artifact is at a lower version than the single-sided artifact?
-            if (id.getId() instanceof ModuleComponentIdentifier
-             && ((ModuleComponentIdentifier) id.getId()).getModule().equals(MinecraftPlatform.JOINED.artifactId())) {
-                details.select(id).because("Selecting joined artifact version "
-                    + ((ModuleComponentIdentifier) id.getId()).getVersion() + " because it contains both client and server");
+            if (id.getId() instanceof ModuleComponentIdentifier moduleId && moduleId.getModule().equals(MinecraftPlatform.JOINED.artifactId())) {
+                details.select(id).because("Selecting joined artifact version " + moduleId.getVersion() + " because it contains both client and server");
             }
         }
     }

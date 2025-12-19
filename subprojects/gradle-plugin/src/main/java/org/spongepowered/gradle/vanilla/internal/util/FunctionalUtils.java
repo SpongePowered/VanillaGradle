@@ -34,9 +34,10 @@ public class FunctionalUtils {
 
     public static <T> Supplier<T> memoizeSupplier(final Supplier<T> in) {
         Objects.requireNonNull(in, "in");
-        return new Supplier<T>() {
+        return new Supplier<>() {
             private volatile boolean initialized;
             private T value;
+
             @Override
             public T get() {
                 if (!this.initialized) {
