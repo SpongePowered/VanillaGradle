@@ -26,7 +26,7 @@ asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
 asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
 vineFlower = { module = "org.vineflower:vineflower", version.ref = "vineFlower" }
-gson = { module = "com.google.code.gson:gson", version = "2.11.0" }
+gson = { module = "com.google.code.gson:gson", version = "2.13.2" }
 ideaExt = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version.ref = "ideaExt" }
 immutables-value = { module = "org.immutables:value", version.ref = "immutables" }
 immutables-gson = { module = "org.immutables:gson", version.ref = "immutables" }
