@@ -117,8 +117,7 @@ public class JdkHttpClientDownloader implements Downloader {
         return this.download(source, this.baseDirectory.resolve(relativePath), path -> {
             final HttpResponse.BodyHandler<String> reader = HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8);
             if (this.writeToDisk) {
-                final HttpResponse.BodyHandler<Path> downloader = HttpResponse.BodyHandlers.ofFile(path);
-                return info -> new TeeSubscriber<>(reader.apply(info), downloader.apply(info));
+                return JdkHttpClientDownloader.downloading(reader, path);
             } else {
                 return reader;
             }
@@ -132,8 +131,7 @@ public class JdkHttpClientDownloader implements Downloader {
         return this.downloadValidating(source, this.baseDirectory.resolve(relativePath), algorithm, hash, path -> {
             final HttpResponse.BodyHandler<String> reader = HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8);
             if (this.writeToDisk) {
-                final HttpResponse.BodyHandler<Path> downloader = HttpResponse.BodyHandlers.ofFile(path);
-                return info -> new TeeSubscriber<>(reader.apply(info), downloader.apply(info));
+                return JdkHttpClientDownloader.downloading(reader, path);
             } else {
                 return reader;
             }
@@ -149,8 +147,7 @@ public class JdkHttpClientDownloader implements Downloader {
         return this.download(source, this.baseDirectory.resolve(relativePath), path -> {
             final HttpResponse.BodyHandler<byte[]> reader = HttpResponse.BodyHandlers.ofByteArray();
             if (this.writeToDisk) {
-                final HttpResponse.BodyHandler<Path> downloader = HttpResponse.BodyHandlers.ofFile(path);
-                return info -> new TeeSubscriber<>(reader.apply(info), downloader.apply(info));
+                return JdkHttpClientDownloader.downloading(reader, path);
             } else {
                 return reader;
             }
@@ -164,8 +161,7 @@ public class JdkHttpClientDownloader implements Downloader {
         return this.downloadValidating(source, this.baseDirectory.resolve(relativePath), algorithm, hash, path -> {
             final HttpResponse.BodyHandler<byte[]> reader = HttpResponse.BodyHandlers.ofByteArray();
             if (this.writeToDisk) {
-                final HttpResponse.BodyHandler<Path> downloader = HttpResponse.BodyHandlers.ofFile(path);
-                return info -> new TeeSubscriber<>(reader.apply(info), downloader.apply(info));
+                return JdkHttpClientDownloader.downloading(reader, path);
             } else {
                 return reader;
             }
@@ -181,7 +177,7 @@ public class JdkHttpClientDownloader implements Downloader {
         return this.download(
             source,
             this.baseDirectory.resolve(destination),
-            HttpResponse.BodyHandlers::ofFile,
+            JdkHttpClientDownloader::downloading,
             CompletableFuture::completedFuture
         );
     }
@@ -195,7 +191,7 @@ public class JdkHttpClientDownloader implements Downloader {
             this.baseDirectory.resolve(destination),
             algorithm,
             hash,
-            HttpResponse.BodyHandlers::ofFile,
+            JdkHttpClientDownloader::downloading,
             CompletableFuture::completedFuture
         );
     }
@@ -314,11 +310,21 @@ public class JdkHttpClientDownloader implements Downloader {
 
     // body subscribers
     static <T> HttpResponse.BodyHandler<T> validating(final HttpResponse.BodyHandler<T> original, final HashAlgorithm algo, final String expectedHash) {
-        return info -> JdkHttpClientDownloader.validating(original.apply(info), algo, expectedHash);
+        return info -> new ValidatingBodySubscriber<>(algo, original.apply(info), expectedHash);
     }
 
-    static <T> HttpResponse.BodySubscriber<T> validating(final HttpResponse.BodySubscriber<T> original, final HashAlgorithm algo, final String expectedHash) {
-        return new ValidatingBodySubscriber<>(algo, original, expectedHash);
+    static HttpResponse.BodyHandler<Path> downloading(final Path path) {
+        try {
+            FileUtils.createDirectoriesSymlinkSafe(path.getParent());
+        } catch (final IOException ex) {
+            JdkHttpClientDownloader.LOGGER.log(System.Logger.Level.WARNING, "Failed to create directory {} before downloading", path.getParent(), ex);
+        }
+        return HttpResponse.BodyHandlers.ofFile(path);
+    }
+
+    static <T> HttpResponse.BodyHandler<T> downloading(final HttpResponse.BodyHandler<T> original, final Path path) {
+        final HttpResponse.BodyHandler<Path> downloader = JdkHttpClientDownloader.downloading(path);
+        return info -> new TeeSubscriber<>(original.apply(info), downloader.apply(info));
     }
 
 }
