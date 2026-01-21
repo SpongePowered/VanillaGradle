@@ -25,6 +25,8 @@
 package org.spongepowered.gradle.vanilla.resolver.jdk;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;
 import org.spongepowered.gradle.vanilla.internal.resolver.FileUtils;
 import org.spongepowered.gradle.vanilla.resolver.Downloader;
@@ -52,7 +54,7 @@ import java.util.function.Function;
 
 public class JdkHttpClientDownloader implements Downloader {
     public static final long CACHE_TIMEOUT_SECONDS = 24 /* hours */ * 60 /* minutes/hr */ * 60 /* seconds/min */; // todo: replace with ETag
-    private static final System.Logger LOGGER = System.getLogger(JdkHttpClientDownloader.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(JdkHttpClientDownloader.class);
 
     private final Executor asyncExecutor;
     private final Path baseDirectory;
@@ -253,15 +255,15 @@ public class JdkHttpClientDownloader implements Downloader {
                 if (algorithm.validate(expectedHash, path)) {
                     return existingHandler.apply(path).thenApply(result -> ResolutionResult.result(result, true));
                 } else {
-                    JdkHttpClientDownloader.LOGGER.log(System.Logger.Level.WARNING, "Found hash mismatch on file at {}, re-downloading", path);
+                    JdkHttpClientDownloader.LOGGER.warn("Found hash mismatch on file at {}, re-downloading", path);
                 }
             } catch (final IOException ex) {
-                JdkHttpClientDownloader.LOGGER.log(System.Logger.Level.WARNING, "Failed to test hash on file at {}, re-downloading", path);
+                JdkHttpClientDownloader.LOGGER.warn("Failed to test hash on file at {}, re-downloading", path);
             }
             try {
                 Files.deleteIfExists(path);
             } catch (final IOException ex) {
-                JdkHttpClientDownloader.LOGGER.log(System.Logger.Level.WARNING, "Failed to delete file at {}, will try to re-download anyways", path);
+                JdkHttpClientDownloader.LOGGER.warn("Failed to delete file at {}, will try to re-download anyways", path);
             }
         }
 
@@ -317,7 +319,7 @@ public class JdkHttpClientDownloader implements Downloader {
         try {
             FileUtils.createDirectoriesSymlinkSafe(path.getParent());
         } catch (final IOException ex) {
-            JdkHttpClientDownloader.LOGGER.log(System.Logger.Level.WARNING, "Failed to create directory {} before downloading", path.getParent(), ex);
+            JdkHttpClientDownloader.LOGGER.warn("Failed to create directory {} before downloading", path.getParent(), ex);
         }
         return HttpResponse.BodyHandlers.ofFile(path);
     }
