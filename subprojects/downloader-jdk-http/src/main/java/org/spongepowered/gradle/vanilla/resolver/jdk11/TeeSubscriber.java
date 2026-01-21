@@ -59,10 +59,29 @@ public class TeeSubscriber<V> implements HttpResponse.BodySubscriber<V> {
     @Override
     public void onNext(final List<ByteBuffer> item) {
         final var proxySub = this.subscription;
+
+        final int[] positions = new int[item.size()];
+        int i = 0;
+        for (ByteBuffer buf : item) {
+            positions[i++] = buf.position();
+        }
+
         this.first.onNext(item);
+
+        i = 0;
+        for (ByteBuffer buf : item) {
+            buf.position(positions[i++]);
+        }
+
         for (final var other : this.others) {
             other.onNext(item);
+
+            i = 0;
+            for (ByteBuffer buf : item) {
+                buf.position(positions[i++]);
+            }
         }
+
         proxySub.flush();
     }
 
