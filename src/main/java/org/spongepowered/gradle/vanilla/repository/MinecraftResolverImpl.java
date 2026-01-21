@@ -58,7 +58,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.SequencedSet;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -172,7 +173,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                         } else {
                             MinecraftResolverImpl.LOGGER.info("No bundler metadata found in jar {}", jar.get());
                         }
-                        final Supplier<Set<GroupArtifactVersion>> dependencies = () -> side.dependencies(descriptor, bundlerMeta);
+                        final Supplier<SequencedSet<GroupArtifactVersion>> dependencies = () -> side.dependencies(descriptor, bundlerMeta);
                         if (!this.forceRefresh && jar.upToDate() && outputExists) {
                             // Our inputs are up-to-date, and the output exists, so we can assume (for now) that the output is up-to-date
                             // Check meta here too, before returning
@@ -226,7 +227,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                     }
                     final VersionDescriptor.Full descriptor = potentialDescriptor.get();
                     final boolean outputExists = Files.isRegularFile(outputJar);
-                    final Supplier<Set<GroupArtifactVersion>> dependencies = () -> MinecraftResolverImpl.mergedDependencies(client.get(), server.get());
+                    final Supplier<SequencedSet<GroupArtifactVersion>> dependencies = () -> MinecraftResolverImpl.mergedDependencies(client.get(), server.get());
                     if (!this.forceRefresh && client.upToDate() && server.upToDate() && outputExists) {
                         // We're up-to-date, give meta a poke and then return without re-executing the jar merge
                         this.writeMetaIfNecessary(
@@ -256,11 +257,11 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         });
     }
 
-    private static Set<GroupArtifactVersion> mergedDependencies(final MinecraftEnvironment client, final MinecraftEnvironment server) {
-        final Set<GroupArtifactVersion> deps = new HashSet<>();
+    private static SequencedSet<GroupArtifactVersion> mergedDependencies(final MinecraftEnvironment client, final MinecraftEnvironment server) {
+        final SequencedSet<GroupArtifactVersion> deps = new LinkedHashSet<>();
         deps.addAll(client.dependencies());
         deps.addAll(server.dependencies());
-        return Collections.unmodifiableSet(deps);
+        return Collections.unmodifiableSequencedSet(deps);
     }
 
     /**
@@ -576,7 +577,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     private void writeMetaIfNecessary(
         final MinecraftPlatform platform,
         final ResolutionResult<VersionDescriptor.Full> version,
-        final Supplier<Set<GroupArtifactVersion>> dependencies,
+        final Supplier<SequencedSet<GroupArtifactVersion>> dependencies,
         final Path baseDir
     ) throws IOException, XMLStreamException {
         this.writeMetaIfNecessary(
@@ -592,7 +593,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         final MinecraftPlatform platform,
         final String artifactIdOverride,
         final ResolutionResult<VersionDescriptor.Full> version,
-        final Supplier<Set<GroupArtifactVersion>> dependencies,
+        final Supplier<SequencedSet<GroupArtifactVersion>> dependencies,
         final Path baseDir
     ) throws IOException, XMLStreamException {
         if (!version.isPresent()) {
@@ -624,10 +625,10 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
         private final String decoratedArtifactId;
         private final Path jar;
-        private final Supplier<Set<GroupArtifactVersion>> dependencies;
+        private final Supplier<SequencedSet<GroupArtifactVersion>> dependencies;
         private final VersionDescriptor.Full metadata;
 
-        MinecraftEnvironmentImpl(final String decoratedArtifactId, final Path jar, final Supplier<Set<GroupArtifactVersion>> dependencies, final VersionDescriptor.Full metadata) {
+        MinecraftEnvironmentImpl(final String decoratedArtifactId, final Path jar, final Supplier<SequencedSet<GroupArtifactVersion>> dependencies, final VersionDescriptor.Full metadata) {
             this.decoratedArtifactId = decoratedArtifactId;
             this.jar = jar;
             this.dependencies = FunctionalUtils.memoizeSupplier(dependencies);
@@ -645,7 +646,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         }
 
         @Override
-        public Set<GroupArtifactVersion> dependencies() {
+        public SequencedSet<GroupArtifactVersion> dependencies() {
             return this.dependencies.get();
         }
 

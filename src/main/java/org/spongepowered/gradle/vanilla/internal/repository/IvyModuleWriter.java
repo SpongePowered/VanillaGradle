@@ -38,8 +38,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.SequencedSet;
 import java.util.Set;
 
 import javax.xml.XMLConstants;
@@ -69,7 +70,7 @@ public final class IvyModuleWriter implements AutoCloseable {
     private final boolean managedOutput;
     private final Writer output;
     private final XMLStreamWriter writer;
-    private final Set<GroupArtifactVersion> dependencies = new HashSet<>();
+    private final SequencedSet<GroupArtifactVersion> dependencies = new LinkedHashSet<>();
     private @Nullable String artifactId;
 
     public IvyModuleWriter(final Writer output) throws XMLStreamException {

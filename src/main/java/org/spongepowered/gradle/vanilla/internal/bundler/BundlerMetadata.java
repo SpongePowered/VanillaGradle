@@ -31,12 +31,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -47,7 +46,7 @@ import java.util.stream.Stream;
  * @param server A bundle element describing the server itself.
  * @param mainClass The main class to execute.
  */
-public record BundlerMetadata(FormatVersion version, Set<BundleElement> libraries, BundleElement server, @Nullable String mainClass) {
+public record BundlerMetadata(FormatVersion version, List<BundleElement> libraries, BundleElement server, @Nullable String mainClass) {
 
     private static final String MAIN_CLASS = "META-INF/main-class";
 
@@ -99,9 +98,9 @@ public record BundlerMetadata(FormatVersion version, Set<BundleElement> librarie
         }
 
         // libraries list
-        final Set<BundleElement> libraries;
+        final List<BundleElement> libraries;
         try (final Stream<BundleElement> elements = BundlerMetadata.readIndex(file, "libraries")) {
-            libraries = elements.collect(Collectors.toUnmodifiableSet());
+            libraries = elements.toList();
         }
 
         // main class
