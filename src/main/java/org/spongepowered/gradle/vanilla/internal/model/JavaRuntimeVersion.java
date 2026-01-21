@@ -24,26 +24,9 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import org.immutables.gson.Gson;
-import org.immutables.value.Value;
-
-@Value.Immutable
-@Gson.TypeAdapters
-public interface JavaRuntimeVersion {
-
-    /**
-     * A component identifier for locating this JVM version in the launcher's
-     * manifest for java versions.
-     *
-     * @return a reference key into the JVM manifest
-     */
-    String component();
-
-    /**
-     * Get the major version of java to use.
-     *
-     * @return the Java major version
-     */
-    int majorVersion();
-
+/**
+ * @param component A component identifier for locating this JVM version in the launcher's manifest for java versions.
+ * @param majorVersion The major version of java to use.
+ */
+public record JavaRuntimeVersion(String component, int majorVersion) {
 }

@@ -171,8 +171,8 @@ public final class Constants {
      * Extra dependencies that are injected into the project.
      */
     public static final Set<GroupArtifactVersion> INJECTED_DEPENDENCIES = Set.of(
-        GroupArtifactVersion.of("com.google.code.findbugs", "jsr305", "3.0.2"),
-        GroupArtifactVersion.of("org.jetbrains", "annotations", "23.0.0") // 1.18+ only technically
+        new GroupArtifactVersion("com.google.code.findbugs", "jsr305", "3.0.2"),
+        new GroupArtifactVersion("org.jetbrains", "annotations", "23.0.0") // 1.18+ only technically
     );
 
     private Constants() {

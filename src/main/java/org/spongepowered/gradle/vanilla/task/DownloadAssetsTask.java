@@ -116,7 +116,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
             )
                 .thenApply(result -> result.mapIfPresent((upToDate, unused) -> asset.getValue()))
                 .exceptionally(err -> {
-                    failedAssets.add(Pair.of(Pair.of(asset), err));
+                    failedAssets.add(new Pair<>(Pair.fromEntry(asset), err));
                     return null;
                 }));
         }

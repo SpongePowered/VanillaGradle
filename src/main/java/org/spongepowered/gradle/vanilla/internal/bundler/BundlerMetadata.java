@@ -25,24 +25,28 @@
 package org.spongepowered.gradle.vanilla.internal.bundler;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.immutables.value.Value;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Value.Immutable
-public abstract class BundlerMetadata {
+/**
+ * The bundler metadata.
+ *
+ * @param version The bundler format used by this jar.
+ * @param libraries Libraries packed in the jar as dependencies for the server.
+ * @param server A bundle element describing the server itself.
+ * @param mainClass The main class to execute.
+ */
+public record BundlerMetadata(FormatVersion version, List<BundleElement> libraries, BundleElement server, @Nullable String mainClass) {
 
     private static final String MAIN_CLASS = "META-INF/main-class";
 
@@ -94,9 +98,9 @@ public abstract class BundlerMetadata {
         }
 
         // libraries list
-        final Set<BundleElement> libraries;
+        final List<BundleElement> libraries;
         try (final Stream<BundleElement> elements = BundlerMetadata.readIndex(file, "libraries")) {
-            libraries = Collections.unmodifiableSet(elements.collect(Collectors.toSet()));
+            libraries = elements.toList();
         }
 
         // main class
@@ -110,11 +114,7 @@ public abstract class BundlerMetadata {
             mainClass = read.readLine();
         }
 
-        return Optional.of(BundlerMetadata.of(parsed, libraries, serverJar, mainClass));
-    }
-
-    public static BundlerMetadata of(final FormatVersion version, final Set<BundleElement> libraries, final BundleElement server, final @Nullable String mainClass) {
-        return new BundlerMetadataImpl(version, libraries, server, mainClass);
+        return Optional.of(new BundlerMetadata(parsed, libraries, serverJar, mainClass));
     }
 
     private static Stream<BundleElement> readIndex(final JarFile jar, final String index) throws IOException {
@@ -126,7 +126,7 @@ public abstract class BundlerMetadata {
         final BufferedReader reader = new BufferedReader(new InputStreamReader(jar.getInputStream(entry), StandardCharsets.UTF_8));
         return reader.lines()
             .map(x -> x.split("\t"))
-            .map(line -> BundleElement.of(line[0], line[1], "META-INF/" + index + "/" + line[2]))
+            .map(line -> new BundleElement(line[0], line[1], "META-INF/" + index + "/" + line[2]))
             .onClose(() -> {
                 try {
                     reader.close();
@@ -135,40 +135,4 @@ public abstract class BundlerMetadata {
                 }
             });
     }
-
-    /**
-     * The bundler format used by this jar.
-     *
-     * <p>While VanillaGradle only knows about versions that existed at the time
-     * of its release, we will attempt to read future versions as well.</p>
-     *
-     * @return the format version
-     */
-    @Value.Parameter
-    public abstract FormatVersion version();
-
-    /**
-     * Libraries packed in the jar as dependencies for the server.
-     *
-     * @return the library elements
-     */
-    @Value.Parameter
-    public abstract Set<BundleElement> libraries();
-
-    /**
-     * Get a bundle element describing the server itself.
-     *
-     * @return an index entry describing the server
-     */
-    @Value.Parameter
-    public abstract BundleElement server();
-
-    /**
-     * The main class to execute.
-     *
-     * @return the main class
-     */
-    @Value.Parameter
-    public abstract @Nullable String mainClass();
-
 }

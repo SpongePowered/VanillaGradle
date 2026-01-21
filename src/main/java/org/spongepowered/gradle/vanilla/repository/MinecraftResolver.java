@@ -35,6 +35,7 @@ import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.net.URLClassLoader;
 import java.nio.file.Path;
+import java.util.SequencedSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -143,7 +144,7 @@ public interface MinecraftResolver {
          *
          * @return the dependencies
          */
-        Set<GroupArtifactVersion> dependencies();
+        SequencedSet<GroupArtifactVersion> dependencies();
 
         /**
          * The Mojang-provided metadata for a certain Minecraft environment.

@@ -23,9 +23,7 @@
  * THE SOFTWARE.
  */
 @DefaultQualifier(NonNull.class)
-@ImmutablesStyle
 package org.spongepowered.gradle.vanilla.internal.model;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.framework.qual.DefaultQualifier;
-import org.spongepowered.gradle.vanilla.internal.util.ImmutablesStyle;

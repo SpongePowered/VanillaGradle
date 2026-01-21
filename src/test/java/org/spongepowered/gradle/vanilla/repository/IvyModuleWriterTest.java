@@ -45,10 +45,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.SequencedSet;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -79,7 +78,7 @@ public class IvyModuleWriterTest {
 
         Assertions.assertLinesMatch(
             IvyModuleWriterTest.readLinesFromResource("expected-ivy-1.16.5.xml"),
-            IvyModuleWriterTest.NEWLINE.splitAsStream(writer.getBuffer()).collect(Collectors.toList())
+            IvyModuleWriterTest.NEWLINE.splitAsStream(writer.getBuffer()).toList()
         );
     }
 
@@ -94,20 +93,25 @@ public class IvyModuleWriterTest {
                 .dependencies(IvyModuleWriterTest.manifestLibraries(version, IvyModuleWriterTest.TEST_CONTEXT, lib -> !lib.isNatives()))
                 .write(version, MinecraftPlatform.JOINED);
         }
+
+        Assertions.assertLinesMatch(
+            IvyModuleWriterTest.readLinesFromResource("expected-ivy-21w15a.xml"),
+            IvyModuleWriterTest.NEWLINE.splitAsStream(writer.getBuffer()).toList()
+        );
     }
 
-    private static Set<GroupArtifactVersion> manifestLibraries(
+    private static SequencedSet<GroupArtifactVersion> manifestLibraries(
         final VersionDescriptor.Full manifest,
         final RuleContext rules,
         final Predicate<Library> filter
     ) {
-        final Set<GroupArtifactVersion> ret = new LinkedHashSet<>();
+        final SequencedSet<GroupArtifactVersion> ret = new LinkedHashSet<>();
         for (final Library library : manifest.libraries()) {
             if (library.rules().test(rules) && filter.test(library)) {
                 ret.add(library.name());
             }
         }
-        return Collections.unmodifiableSet(ret);
+        return Collections.unmodifiableSequencedSet(ret);
     }
 
     private static List<String> readLinesFromResource(final String resource) throws IOException {

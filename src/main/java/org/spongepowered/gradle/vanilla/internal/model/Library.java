@@ -24,32 +24,30 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import org.immutables.gson.Gson;
-import org.immutables.value.Value;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleDeclaration;
 
 import java.util.Collections;
 import java.util.Map;
 
-@Value.Immutable
-@Gson.TypeAdapters
-public interface Library {
+/**
+ * @param downloads
+ * @param name
+ * @param natives A map of OS name to classifier.
+ * <p>The value classifier may include the {@code ${arch}} token, which can
+ * be either {@code 32} or {@code 64}.</p>
+ * @param rules
+ */
+public record Library(LibraryDownloads downloads, GroupArtifactVersion name, Map<String, String> natives, RuleDeclaration rules) {
 
-    LibraryDownloads downloads();
-
-    GroupArtifactVersion name();
-
-    /**
-     * A map of OS name to classifier.
-     *
-     * <p>The value classifier may include the {@code ${arch}} token, which can
-     * be either {@code 32} or {@code 64}.</p>
-     *
-     * @return the natives this artifact may have
-     */
-    @Value.Default
-    default Map<String, String> natives() {
-        return Collections.emptyMap();
+    @SuppressWarnings("ConstantValue")
+    public Library {
+        // Gson may still pass nulls
+        if (natives == null) {
+            natives = Collections.emptyMap();
+        }
+        if (rules == null) {
+            rules = RuleDeclaration.empty();
+        }
     }
 
     /**
@@ -62,12 +60,7 @@ public interface Library {
      *
      * @return whether this is a natives dependency
      */
-    default boolean isNatives() {
+    public boolean isNatives() {
         return !this.natives().isEmpty();
-    }
-
-    @Value.Default
-    default RuleDeclaration rules() {
-        return RuleDeclaration.empty();
     }
 }

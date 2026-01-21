@@ -25,46 +25,16 @@
 package org.spongepowered.gradle.vanilla.internal.model;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.immutables.gson.Gson;
-import org.immutables.value.Value;
 
 import java.net.URL;
 
 /**
  * A single file download in the version manifest.
+ *
+ * @param path Path identifying the standard destination for this download. <p>Not always included.</p>
+ * @param sha1 Get the SHA-1 hash expected for the download.
+ * @param size Expected size of the download, in bytes.
+ * @param url The URL to download from.
  */
-@Value.Immutable
-@Gson.TypeAdapters
-public interface Download {
-
-    /**
-     * Path identifying the standard destination for this download.
-     *
-     * <p>Not always included.</p>
-     *
-     * @return the download path
-     */
-    @Nullable String path();
-
-    /**
-     * Get the SHA-1 hash expected for the download.
-     *
-     * @return the hash
-     */
-    String sha1();
-
-    /**
-     * Expected size of the download, in bytes.
-     *
-     * @return the file size
-     */
-    int size();
-
-    /**
-     * The URL to download from.
-     *
-     * @return file download URL
-     */
-    URL url();
-
+public record Download(@Nullable String path, String sha1, int size, URL url) {
 }

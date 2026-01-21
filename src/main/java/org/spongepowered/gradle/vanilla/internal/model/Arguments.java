@@ -24,26 +24,10 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import org.immutables.gson.Gson;
-import org.immutables.value.Value;
-
 import java.util.List;
 
 /**
  * Arguments for the game itself and the JVM it runs in.
  */
-@Value.Immutable
-@Gson.TypeAdapters
-public interface Arguments {
-
-    static Arguments arguments(final List<Argument> game, final List<Argument> jvm) {
-        return new ArgumentsImpl(game, jvm);
-    }
-
-    @Value.Parameter
-    List<Argument> game();
-
-    @Value.Parameter
-    List<Argument> jvm();
-
+public record Arguments(List<Argument> game, List<Argument> jvm) {
 }

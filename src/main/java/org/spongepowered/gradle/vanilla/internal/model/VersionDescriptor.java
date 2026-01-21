@@ -26,8 +26,6 @@ package org.spongepowered.gradle.vanilla.internal.model;
 
 import com.google.gson.JsonObject;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.immutables.gson.Gson;
-import org.immutables.value.Value;
 
 import java.net.URL;
 import java.time.ZonedDateTime;
@@ -35,10 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.OptionalInt;
 
-@Value.Enclosing
-@Gson.TypeAdapters
 public interface VersionDescriptor {
 
     /**
@@ -57,80 +52,44 @@ public interface VersionDescriptor {
 
     ZonedDateTime releaseTime();
 
-    OptionalInt complianceLevel();
+    int complianceLevel();
 
     /**
      * A reference to a full version.
+     *
+     * @param url A url where the {@link Full} version descriptor can be found.
      */
-    @Value.Immutable
-    interface Reference extends VersionDescriptor {
-
-        /**
-         * A url where the {@link Full} version descriptor can be found.
-         *
-         * @return a URL for the full descriptor
-         */
-        URL url();
-
-        String sha1();
-
+    record Reference(String id, VersionClassifier type, ZonedDateTime time, ZonedDateTime releaseTime, int complianceLevel,
+                     URL url, String sha1) implements VersionDescriptor {
     }
 
     /**
      * The full descriptor for a <em>Minecraft: Java Edition</em> version.
-     *
      * Most fields are common across versions.
+     *
+     * @param minecraftArguments Legacy arguments.
+     * @param javaVersion The Java version this Minecraft version is designed for.
      */
-    @Value.Immutable
-    interface Full extends VersionDescriptor {
+    record Full(String id, VersionClassifier type, ZonedDateTime time, ZonedDateTime releaseTime, int complianceLevel,
+                @Nullable Arguments arguments, @Nullable String minecraftArguments, AssetIndexReference assetIndex, String assets,
+                Map<DownloadClassifier, Download> downloads, List<Library> libraries, @Nullable JsonObject logging, String mainClass,
+                int minimumLauncherVersion, @Nullable JavaRuntimeVersion javaVersion) implements VersionDescriptor {
 
-        Optional<Arguments> arguments();
-
-        @Gson.Named("minecraftArguments")
-        Optional<String> legacyArguments();
-
-        @Value.Check
-        default void checkArguments() {
-            if (!this.arguments().isPresent() && !this.legacyArguments().isPresent()) {
+        public Full {
+            if (arguments == null && minecraftArguments == null) {
                 throw new IllegalStateException("Either legacy or modern arguments must be set");
-            } else if (this.arguments().isPresent() && this.legacyArguments().isPresent()) {
+            } else if (arguments != null && minecraftArguments != null) {
                 throw new IllegalStateException("Only one of legacy or modern arguments can be set");
             }
         }
 
-        AssetIndexReference assetIndex();
-
-        String assets();
-
-        Map<DownloadClassifier, Download> downloads();
-
-        List<Library> libraries();
-
-        Optional<JsonObject> logging();
-
-        String mainClass();
-
-        int minimumLauncherVersion();
-
-        /**
-         * Get the Java version this Minecraft version is designed for.
-         *
-         * <p>Older version manifests may not include this property. For those,
-         * Java 8 should be assumed.</p>
-         *
-         * @return the java version to use
-         */
-        @Nullable JavaRuntimeVersion javaVersion();
-
-        default Optional<Download> download(final DownloadClassifier classifier) {
+        public Optional<Download> download(final DownloadClassifier classifier) {
             Objects.requireNonNull(classifier, "classifier");
-
             return Optional.ofNullable(this.downloads().get(classifier));
         }
 
-        default Download requireDownload(final DownloadClassifier classifier) {
-            return this.download(classifier)
-                    .orElseThrow(() -> new RuntimeException("No " + classifier + " download information was within the manifest!"));
+        public Download requireDownload(final DownloadClassifier classifier) {
+            return this.download(classifier).orElseThrow(() -> new RuntimeException("No " + classifier + " download information was within the manifest!"));
         }
 
     }

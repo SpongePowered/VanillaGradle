@@ -24,51 +24,15 @@
  */
 package org.spongepowered.gradle.vanilla.internal.bundler;
 
-import org.immutables.value.Value;
-
 /**
  * A single entry in a bundle.
  *
  * <p>In bundle format version {@code 1.0}, these elements are declared as
  * rows of tab-separated values.</p>
+ *
+ * @param sha256 The expected SHA-265 hash of the file in the jar.
+ * @param id The maven coordinates corresponding to this artifact.
+ * @param path The path of the index entry in the jar.
  */
-@Value.Immutable
-public interface BundleElement {
-
-    /**
-     * Create a new bundle element.
-     *
-     * @param sha256 the sha-265 hash
-     * @param id the ID of the bundle element
-     * @param path the path in the jar
-     * @return a new element
-     */
-    static BundleElement of(final String sha256, final String id, final String path) {
-        return new BundleElementImpl(sha256, id, path);
-    }
-
-    /**
-     * The expected hash of the file in the jar.
-     *
-     * @return SHA-265 hash string
-     */
-    @Value.Parameter
-    String sha256();
-
-    /**
-     * The maven coordinates corresponding to this artifact.
-     *
-     * @return the maven coordinates
-     */
-    @Value.Parameter
-    String id();
-
-    /**
-     * The path of the index entry in the jar.
-     *
-     * @return the path relative to the jar
-     */
-    @Value.Parameter
-    String path();
-
+public record BundleElement(String sha256, String id, String path) {
 }

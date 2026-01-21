@@ -24,33 +24,17 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import org.immutables.gson.Gson;
-import org.immutables.value.Value;
-
 import java.util.Map;
 
-@Value.Immutable
-@Gson.TypeAdapters
-public interface AssetIndex {
+public record AssetIndex(Map<String, Asset> objects) {
 
-    Map<String, Asset> objects();
+    /**
+     * @param hash The SHA-1 hash of the asset.
+     * @param size The size of the asset.
+     */
+    public record Asset(String hash, int size) {
 
-    @Value.Immutable
-    @Gson.TypeAdapters
-    interface Asset {
-
-        /**
-         * The SHA-1 hash of an asset.
-         *
-         * @return the asset's hash as a string
-         */
-        @Value.Parameter
-        String hash();
-
-        @Value.Parameter
-        int size();
-
-        default String fileName() {
+        public String fileName() {
             return this.hash().substring(0, 2) + "/" + this.hash();
         }
     }

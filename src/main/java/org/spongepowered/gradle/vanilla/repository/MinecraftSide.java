@@ -38,7 +38,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.SequencedSet;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.jar.JarEntry;
@@ -48,7 +49,7 @@ import java.util.stream.Collectors;
 public enum MinecraftSide {
     CLIENT(DownloadClassifier.CLIENT) {
         @Override
-        public Set<GroupArtifactVersion> dependencies(
+        public SequencedSet<GroupArtifactVersion> dependencies(
             final VersionDescriptor.Full descriptor,
             final @Nullable BundlerMetadata bundleMetadata
         ) {
@@ -58,7 +59,7 @@ public enum MinecraftSide {
     },
     SERVER(DownloadClassifier.SERVER) {
         @Override
-        public Set<GroupArtifactVersion> dependencies(
+        public SequencedSet<GroupArtifactVersion> dependencies(
             final VersionDescriptor.Full descriptor,
             final @Nullable BundlerMetadata metadata
         ) {
@@ -73,9 +74,9 @@ public enum MinecraftSide {
                 );
             } else {
                 // 21w39+
-                return Collections.unmodifiableSet(metadata.libraries().stream()
+                return Collections.unmodifiableSequencedSet(metadata.libraries().stream()
                     .map(el -> GroupArtifactVersion.parse(el.id()))
-                    .collect(Collectors.toSet()));
+                    .collect(Collectors.<GroupArtifactVersion, SequencedSet<GroupArtifactVersion>>toCollection(LinkedHashSet::new)));
             }
         }
 
@@ -107,7 +108,7 @@ public enum MinecraftSide {
         return this.executableArtifact;
     }
 
-    public abstract Set<GroupArtifactVersion> dependencies(
+    public abstract SequencedSet<GroupArtifactVersion> dependencies(
         final VersionDescriptor.Full descriptor,
         final @Nullable BundlerMetadata bundleMetadata
     );
@@ -141,18 +142,18 @@ public enum MinecraftSide {
         return Collections.emptySet();
     }
 
-    private static Set<GroupArtifactVersion> manifestLibraries(
+    private static SequencedSet<GroupArtifactVersion> manifestLibraries(
         final VersionDescriptor.Full manifest,
         final RuleContext rules,
         final Predicate<Library> filter
     ) {
-        final Set<GroupArtifactVersion> ret = new HashSet<>();
+        final SequencedSet<GroupArtifactVersion> ret = new LinkedHashSet<>();
         for (final Library library : manifest.libraries()) {
             if (library.rules().test(rules) && filter.test(library)) {
                 ret.add(library.name());
             }
         }
-        return Collections.unmodifiableSet(ret);
+        return Collections.unmodifiableSequencedSet(ret);
     }
 
 }

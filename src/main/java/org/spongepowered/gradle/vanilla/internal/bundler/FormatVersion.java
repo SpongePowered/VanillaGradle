@@ -24,20 +24,20 @@
  */
 package org.spongepowered.gradle.vanilla.internal.bundler;
 
-import org.immutables.value.Value;
-
 /**
  * A version of the Minecraft bundler metadata format.
+ *
+ * @param major Major version. Indicates incompatible changes.
+ * @param minor Minor version. Indicates additions and other compatible changes.
  */
-@Value.Immutable(builder = false)
-public interface FormatVersion extends Comparable<FormatVersion> {
+public record FormatVersion(int major, int minor) implements Comparable<FormatVersion> {
 
     /**
      * An attribute in the manifest of bundler jars containing a format version.
      *
      * @see #parse(String)
      */
-    String MANIFEST_ATTRIBUTE = "Bundler-Format";
+    public static final String MANIFEST_ATTRIBUTE = "Bundler-Format";
 
     /**
      * Parse the manifest attribute version.
@@ -52,38 +52,11 @@ public interface FormatVersion extends Comparable<FormatVersion> {
         if (split.length < 2) {
             throw new IllegalArgumentException("Invalid version " + attribute);
         }
-        return FormatVersion.of(
+        return new FormatVersion(
             Integer.parseInt(split[0]),
             Integer.parseInt(split[1])
         );
     }
-
-    /**
-     * Create a format version directly.
-     *
-     * @param major the major version
-     * @param minor the minor version
-     * @return a new format version object
-     */
-    static FormatVersion of(final int major, final int minor) {
-        return new FormatVersionImpl(major, minor);
-    }
-
-    /**
-     * Major version. Indicates incompatible changes.
-     *
-     * @return the major version
-     */
-    @Value.Parameter
-    int major();
-
-    /**
-     * Minor version. Indicates additions and other compatible changes.
-     *
-     * @return the minor version
-     */
-    @Value.Parameter
-    int minor();
 
     /**
      * Whether a version of {@code other} can interpret data in this format version.
@@ -91,13 +64,13 @@ public interface FormatVersion extends Comparable<FormatVersion> {
      * @param other the compared version
      * @return whether other is compatible with this version's data
      */
-    default boolean compatibleWith(final FormatVersion other) {
+    public boolean compatibleWith(final FormatVersion other) {
         return other.major() == this.major()
             && other.minor() >= this.minor();
     }
 
     @Override
-    default int compareTo(final FormatVersion other) {
+    public int compareTo(final FormatVersion other) {
         if (this.major() != other.major()) {
             return Integer.compare(this.major(), other.major());
         } else {

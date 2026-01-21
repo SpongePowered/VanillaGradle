@@ -56,6 +56,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -142,13 +143,13 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
             final RuleContext context = RuleContext.create();
             config.getAllArgumentProviders().add(new ManifestDerivedArgumentProvider(
                     launcherTokens,
-                    this.extension.targetVersion().map(v -> v.arguments().map(Arguments::game)
-                        .orElseGet(() -> Collections.singletonList(Argument.of(Arrays.asList(v.legacyArguments().get().split(" ")))))),
+                    this.extension.targetVersion().map(v -> Optional.ofNullable(v.arguments()).map(Arguments::game)
+                        .orElseGet(() -> Collections.singletonList(new Argument(Arrays.asList(v.minecraftArguments().split(" ")))))),
                     context
             ));
             config.getAllJvmArgumentProviders().add(new ManifestDerivedArgumentProvider(
                     launcherTokens,
-                    this.extension.targetVersion().map(v -> v.arguments().map(Arguments::jvm).orElseGet(Collections::emptyList)),
+                    this.extension.targetVersion().map(v -> Optional.ofNullable(v.arguments()).map(Arguments::jvm).orElseGet(Collections::emptyList)),
                     context
             ));
             config.getTargetVersion().set(this.extension.targetVersion().map(version -> {
