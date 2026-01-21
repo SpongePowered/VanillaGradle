@@ -48,7 +48,7 @@ dependencies {
     api(libs.immutables.gson)
 
     implementation(project(":vanillagradle-resolver-core"))
-    implementation(project(":vanillagradle-downloader-apache-http"))
+    implementation(project(":vanillagradle-downloader-jdk-http"))
 
     // IDE support
     implementation(libs.ideaExt)

@@ -43,7 +43,7 @@ import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactMod
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolverImpl;
 import org.spongepowered.gradle.vanilla.resolver.Downloader;
-import org.spongepowered.gradle.vanilla.resolver.apache.ApacheHttpDownloader;
+import org.spongepowered.gradle.vanilla.resolver.jdk11.JdkHttpClientDownloader;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -122,7 +122,7 @@ public abstract class MinecraftProviderService implements
             synchronized (this) {
                 if (this.downloader == null) {
                     final Parameters params = this.getParameters();
-                    final ApacheHttpDownloader.ResolveMode mode;
+                    final Downloader.ResolveMode mode;
                     if (params.getOfflineMode().get()) {
                         mode = Downloader.ResolveMode.LOCAL_ONLY;
                     } else if (params.getRefreshDependencies().get()) {
@@ -130,7 +130,7 @@ public abstract class MinecraftProviderService implements
                     } else {
                         mode = Downloader.ResolveMode.LOCAL_THEN_REMOTE;
                     }
-                    this.downloader = downloader = new ApacheHttpDownloader(
+                    this.downloader = downloader = new JdkHttpClientDownloader(
                         this.executor,
                         this.getParameters().getSharedCache().get().getAsFile().toPath(),
                         mode

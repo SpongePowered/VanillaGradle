@@ -34,7 +34,7 @@ import org.spongepowered.gradle.vanilla.internal.model.rule.OperatingSystemRule;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleContext;
 import org.spongepowered.gradle.vanilla.resolver.Downloader;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
-import org.spongepowered.gradle.vanilla.resolver.apache.ApacheHttpDownloader;
+import org.spongepowered.gradle.vanilla.resolver.jdk11.JdkHttpClientDownloader;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -49,7 +49,7 @@ class VersionManifestRepositoryTest {
     @Test
     @Disabled("Makes network requests")
     void dependenciesFromManifest() throws IOException, ExecutionException, InterruptedException {
-        try (final Downloader downloader = ApacheHttpDownloader.uncached(ForkJoinPool.commonPool())) {
+        try (final Downloader downloader = JdkHttpClientDownloader.uncached(ForkJoinPool.commonPool())) {
             final VersionManifestRepository repo = VersionManifestRepository.fromDownloader(downloader);
 
             final String latestName =
@@ -70,7 +70,7 @@ class VersionManifestRepositoryTest {
     @Test
     @Disabled("Fairly resource-intensive, takes a while to download all uncached (~1 minute)")
     void testLoadAllManifests() throws IOException, ExecutionException, InterruptedException {
-        try (final Downloader downloader = new ApacheHttpDownloader(ForkJoinPool.commonPool(), Paths.get("test-cache"), Downloader.ResolveMode.LOCAL_THEN_REMOTE)) {
+        try (final Downloader downloader = new JdkHttpClientDownloader(ForkJoinPool.commonPool(), Paths.get("test-cache"), Downloader.ResolveMode.LOCAL_THEN_REMOTE)) {
             final VersionManifestRepository repo = VersionManifestRepository.fromDownloader(downloader);
 
             final Set<CompletableFuture<ResolutionResult<VersionDescriptor.Full>>> descriptors = new HashSet<>();
