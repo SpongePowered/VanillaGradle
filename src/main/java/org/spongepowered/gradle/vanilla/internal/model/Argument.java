@@ -32,7 +32,6 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
-import org.immutables.value.Value;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleDeclaration;
 
 import java.io.IOException;
@@ -42,32 +41,13 @@ import java.util.List;
 
 import javax.annotation.Nullable;
 
-@Value.Immutable
-public interface Argument {
+public record Argument(List<String> value, RuleDeclaration rules) {
 
-    static Argument of(final List<String> value) {
-        return new ArgumentImpl(value, RuleDeclaration.empty());
+    public Argument(final List<String> value) {
+        this(value, RuleDeclaration.empty());
     }
 
-    static Argument of(final List<String> value, final RuleDeclaration rules) {
-        return new ArgumentImpl(value, rules);
-    }
-
-    /**
-     * The argument value.
-     *
-     * @return the value of the argument
-     */
-    @Value.Parameter
-    List<String> value();
-
-    @Value.Default
-    @Value.Parameter
-    default RuleDeclaration rules() {
-        return RuleDeclaration.empty();
-    }
-
-    final class ArgumentTypeAdapter extends TypeAdapter<Argument> {
+    public static final class ArgumentTypeAdapter extends TypeAdapter<Argument> {
         private static final String VALUE = "value";
         private static final String RULES = "rules";
         private final TypeAdapter<RuleDeclaration> declaration;
@@ -85,7 +65,7 @@ public interface Argument {
         public Argument read(final JsonReader in) throws IOException {
             switch (in.peek()) {
                 case STRING: // literal argument
-                    return new ArgumentImpl(Collections.singletonList(in.nextString()), RuleDeclaration.empty());
+                    return new Argument(Collections.singletonList(in.nextString()));
                 case BEGIN_OBJECT: // argument with a rule
                     @Nullable List<String> value = null;
                     RuleDeclaration declaration = RuleDeclaration.empty();
@@ -116,7 +96,7 @@ public interface Argument {
                     if (value == null) {
                         throw new JsonSyntaxException("Exited argument declaration without finding argument values");
                     }
-                    return new ArgumentImpl(value, declaration);
+                    return new Argument(value, declaration);
                 default:
                     throw new JsonSyntaxException("Expected either a literal argument or a rule, but got " + in.peek() + " at " + in.getPath());
 

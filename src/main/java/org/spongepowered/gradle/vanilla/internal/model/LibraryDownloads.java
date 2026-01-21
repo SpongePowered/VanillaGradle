@@ -24,32 +24,21 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import org.immutables.gson.Gson;
-import org.immutables.value.Value;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 
-@Value.Immutable
-@Gson.TypeAdapters
-public abstract class LibraryDownloads {
+public record LibraryDownloads(@Nullable Download artifact, Map<String, Download> classifiers) {
 
-    LibraryDownloads() {
-    }
-
-    public abstract Optional<Download> artifact();
-
-    @Value.Default
-    public Map<String, Download> classifiers() {
-        return Collections.emptyMap();
-    }
-
-    @Value.Check
-    protected void eitherArtifactOrDownloads() {
-        if (!this.artifact().isPresent() && this.classifiers().isEmpty()) {
+    @SuppressWarnings("ConstantValue")
+    public LibraryDownloads {
+        // Gson may still pass nulls
+        if (classifiers == null) {
+            classifiers = Collections.emptyMap();
+        }
+        if (artifact == null && classifiers.isEmpty()) {
             throw new IllegalStateException("A download must have at least one of a primary artifact or some classifiers");
         }
     }
-
 }

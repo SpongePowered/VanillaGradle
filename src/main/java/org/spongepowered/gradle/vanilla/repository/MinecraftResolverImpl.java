@@ -25,7 +25,6 @@
 package org.spongepowered.gradle.vanilla.repository;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.internal.Constants;
@@ -145,7 +144,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
     // provide a single-sided jar
     CompletableFuture<ResolutionResult<MinecraftEnvironment>> provide(final MinecraftPlatform platform, final MinecraftSide side, final String version, final Path outputJar) {
-        return this.artifacts.computeIfAbsent(EnvironmentKey.of(platform, version, null), key -> {
+        return this.artifacts.computeIfAbsent(new EnvironmentKey(platform, version, null), key -> {
             final CompletableFuture<ResolutionResult<VersionDescriptor.Full>> descriptorFuture = this.manifests.fullVersion(key.versionId());
             return descriptorFuture.thenComposeAsync(potentialDescriptor -> {
                 if (!potentialDescriptor.isPresent()) {
@@ -213,7 +212,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         final String version,
         final Path outputJar
     ) {
-        return this.artifacts.computeIfAbsent(EnvironmentKey.of(MinecraftPlatform.JOINED, version, null), key -> {
+        return this.artifacts.computeIfAbsent(new EnvironmentKey(MinecraftPlatform.JOINED, version, null), key -> {
             // To use Gradle's dependency management, we MUST be on a Gradle thread.
             // For now, let's resolve everything ahead-of-time
             // Shouldn't really do this in a `computeIfAbsent`, but oh well... what gradle tells us, we must do
@@ -346,7 +345,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
         }
 
         final boolean finalRequiresLocalStorage = requiresLocalStorage;
-        return this.artifacts.computeIfAbsent(EnvironmentKey.of(side, version, decoratedArtifact), $ -> unmodified.thenCombineAsync(
+        return this.artifacts.computeIfAbsent(new EnvironmentKey(side, version, decoratedArtifact), $ -> unmodified.thenCombineAsync(
             CompletableFuture.allOf(populators),
             (input, popIgnored) -> {
                 try {
@@ -431,7 +430,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
         // there's nothing yet, it's our time to resolve
         return this.associatedArtifacts.computeIfAbsent(
-            EnvironmentKey.of(side, version, decoratedArtifact),
+            new EnvironmentKey(side, version, decoratedArtifact),
             key -> this.provide(side, version, modifiers).thenComposeAsync(
                 envResult -> {
                     if (!envResult.isPresent()) {
@@ -618,22 +617,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
      *
      * <p>This ensures that only one future exists for any given minecraft artifact within a certain runtime.</p>
      */
-    @Value.Immutable(builder = false)
-    interface EnvironmentKey {
-
-        static EnvironmentKey of(final MinecraftPlatform platform, final String versionId, final @Nullable String extra) {
-            return new EnvironmentKeyImpl(platform, versionId, extra);
-        }
-
-        @Value.Parameter
-        MinecraftPlatform platform();
-
-        @Value.Parameter
-        String versionId();
-
-        @Value.Parameter
-        @Nullable String extra();
-
+    record EnvironmentKey(MinecraftPlatform platform, String versionId, @Nullable String extra) {
     }
 
     static final class MinecraftEnvironmentImpl implements MinecraftEnvironment {
@@ -672,19 +656,11 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
     }
 
-    static final class CompleteEvaluation implements Runnable {
-
-        final CompletableFuture<?> completed;
-
-        CompleteEvaluation(final CompletableFuture<?> completed) {
-            this.completed = completed;
-        }
-
+    record CompleteEvaluation(CompletableFuture<?> completed) implements Runnable {
         @Override
         public void run() {
             // no-op
         }
-
     }
 
 }

@@ -26,9 +26,7 @@
  * Handling for creating an Ivy repository that will resolve Minecraft artifacts.
  */
 @DefaultQualifier(NonNull.class)
-@ImmutablesStyle
 package org.spongepowered.gradle.vanilla.repository;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.framework.qual.DefaultQualifier;
-import org.spongepowered.gradle.vanilla.internal.util.ImmutablesStyle;

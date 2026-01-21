@@ -12,7 +12,6 @@ plugins {
     alias(libs.plugins.gradlePluginPublish)
     alias(libs.plugins.indra.publishing.gradlePlugin)
     alias(libs.plugins.blossom)
-    alias(libs.plugins.eclipseApt)
 }
 
 group = "org.spongepowered"
@@ -55,9 +54,6 @@ dependencies {
     implementation(libs.gson)
 
     compileOnlyApi(libs.checkerQual)
-    annotationProcessor(libs.immutables.value)
-    compileOnlyApi(variantOf(libs.immutables.value) { classifier("annotations") })
-    api(libs.immutables.gson)
 
     // IDE support
     implementation(libs.ideaExt)

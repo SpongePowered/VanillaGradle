@@ -25,26 +25,11 @@
 package org.spongepowered.gradle.vanilla.internal.model;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.immutables.value.Value;
 
-@Value.Immutable(builder = false)
-public abstract class GroupArtifactVersion {
+public record GroupArtifactVersion(String group, String artifact, @Nullable String version, @Nullable String classifier) {
 
-    public static GroupArtifactVersion of(
-            final String group,
-            final String artifact,
-            final @Nullable String version
-    ) {
-        return new GroupArtifactVersionImpl(group, artifact, version, null);
-    }
-
-    public static GroupArtifactVersion of(
-            final String group,
-            final String artifact,
-            final @Nullable String version,
-            final @Nullable String classifier
-    ) {
-        return new GroupArtifactVersionImpl(group, artifact, version, classifier);
+    public GroupArtifactVersion(final String group, final String artifact, final @Nullable String version) {
+        this(group, artifact, version, null);
     }
 
     public static GroupArtifactVersion parse(final String notation) {
@@ -52,7 +37,7 @@ public abstract class GroupArtifactVersion {
         if (split.length > 4 || split.length < 2) {
             throw new IllegalArgumentException("Unsupported notation '" + notation + "', must be in the format of group:artifact[:version[:classifier]]");
         }
-        return GroupArtifactVersion.of(
+        return new GroupArtifactVersion(
                 split[0],
                 split[1],
                 split.length > 2 ? split[2] : null,
@@ -60,23 +45,8 @@ public abstract class GroupArtifactVersion {
         );
     }
 
-    GroupArtifactVersion() {
-    }
-
-    @Value.Parameter
-    public abstract String group();
-
-    @Value.Parameter
-    public abstract String artifact();
-
-    @Value.Parameter
-    public abstract @Nullable String version();
-
-    @Value.Parameter
-    public abstract @Nullable String classifier();
-
     @Override
-    public final String toString() {
+    public String toString() {
         final StringBuilder builder = new StringBuilder();
 
         builder.append(this.group()).append(':').append(this.artifact());

@@ -24,51 +24,17 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import org.immutables.gson.Gson;
-import org.immutables.value.Value;
-
 import java.net.URL;
 
 /**
  * A reference to a downloadable {@link AssetIndex}.
+ *
+ * @param id An id used to refer to this asset index.
+ * @param sha1 The sha1 hash of this asset index.
+ * @param size The size of the asset index file, in bytes.
+ * @param totalSize The total size of assets described by the index file, in bytes.
+ * @param url A url to download the asset index from.
  */
-@Value.Immutable
-@Gson.TypeAdapters
-public interface AssetIndexReference {
-
-    /**
-     * An id used to refer to this asset index.
-     *
-     * @return the id
-     */
-    String id();
-
-    /**
-     * The sha1 hash of this asset index.
-     *
-     * @return the asset index hash
-     */
-    String sha1();
-
-    /**
-     * The size of the asset index file, in bytes.
-     *
-     * @return the file size
-     */
-    int size();
-
-    /**
-     * The total size of assets described by the index file, in bytes.
-     *
-     * @return the total size
-     */
-    int totalSize();
-
-    /**
-     * A url to download the asset index from.
-     *
-     * @return the download URL
-     */
-    URL url();
+public record AssetIndexReference(String id, String sha1, int size, int totalSize, URL url) {
 
 }
