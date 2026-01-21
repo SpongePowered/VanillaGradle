@@ -22,8 +22,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-@DefaultQualifier(NonNull.class)
-package org.spongepowered.gradle.vanilla.resolver.jdk11;
+package org.spongepowered.gradle.vanilla.resolver.jdk;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.framework.qual.DefaultQualifier;
+final class HttpConstants {
+
+    public static final int STATUS_OK = 200;
+    public static final int STATUS_NOT_MODIFIED = 304;
+    public static final int STATUS_NOT_FOUND = 404;
+
+
+    public static final String HEADER_ETAG = "ETag";
+    public static final String HEADER_IF_NONE_MATCH = "If-None-Match";
+    public static final String HEADER_USER_AGENT = "User-Agent";
+
+    private HttpConstants() {
+    }
+
+}

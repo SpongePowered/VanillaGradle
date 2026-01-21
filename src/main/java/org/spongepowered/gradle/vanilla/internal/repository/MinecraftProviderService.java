@@ -43,7 +43,7 @@ import org.spongepowered.gradle.vanilla.internal.repository.modifier.ArtifactMod
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolverImpl;
 import org.spongepowered.gradle.vanilla.resolver.Downloader;
-import org.spongepowered.gradle.vanilla.resolver.jdk11.JdkHttpClientDownloader;
+import org.spongepowered.gradle.vanilla.resolver.jdk.JdkHttpClientDownloader;
 
 import java.io.IOException;
 import java.net.MalformedURLException;

@@ -22,7 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.resolver.jdk11;
+package org.spongepowered.gradle.vanilla.resolver.jdk;
 
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
