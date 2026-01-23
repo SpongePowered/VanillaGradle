@@ -34,8 +34,7 @@ import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,13 +61,7 @@ final class DownloaderBasedVersionManifestRepository implements VersionManifestR
     public CompletableFuture<VersionManifestV2> manifest() {
         CompletableFuture<VersionManifestV2> manifest = this.manifest;
         if (manifest == null) {
-            final URL url;
-            try {
-                url = new URL(Constants.Manifests.API_V2_ENDPOINT);
-            } catch (final MalformedURLException ex) {
-                throw new IllegalStateException("Constant API URL failed to parse", ex);
-            }
-            this.manifest = manifest = this.downloader.readString(url, "manifest.json") // it's fine if we download multiple times, the downloader ensures we do it safely
+            this.manifest = manifest = this.downloader.readString(URI.create(Constants.Manifests.API_V2_ENDPOINT), "manifest.json") // it's fine if we download multiple times, the downloader ensures we do it safely
                 .thenApply(res -> GsonUtils.GSON.fromJson(res.get(), VersionManifestV2.class)); // ensure it's present
         }
         return manifest;

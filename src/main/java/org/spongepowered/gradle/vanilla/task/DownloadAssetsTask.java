@@ -42,8 +42,8 @@ import org.spongepowered.gradle.vanilla.resolver.Downloader;
 import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
@@ -110,7 +110,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
         // Send out all the requests
         for (final Map.Entry<String, AssetIndex.Asset> asset : index.objects().entrySet()) {
             results.add(objectDownloader.downloadAndValidate(
-                this.assetUrl(asset.getValue()),
+                this.assetUri(asset.getValue()),
                 asset.getValue().fileName(),
                 HashAlgorithm.SHA1,
                 asset.getValue().hash()
@@ -160,11 +160,11 @@ public abstract class DownloadAssetsTask extends DefaultTask {
         );
     }
 
-    private URL assetUrl(final AssetIndex.Asset asset) {
+    private URI assetUri(final AssetIndex.Asset asset) {
         try {
-            return new URL("https", Constants.MINECRAFT_RESOURCES_HOST, '/' + asset.fileName());
-        } catch (final MalformedURLException ex) {
-            throw new IllegalArgumentException("Failed to parse asset URL for " + asset.hash(), ex);
+            return new URI("https", Constants.MINECRAFT_RESOURCES_HOST, '/' + asset.fileName());
+        } catch (final URISyntaxException ex) {
+            throw new IllegalArgumentException("Failed to parse asset URI for " + asset.hash(), ex);
         }
     }
 

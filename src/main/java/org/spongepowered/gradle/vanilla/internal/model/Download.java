@@ -26,7 +26,7 @@ package org.spongepowered.gradle.vanilla.internal.model;
 
 import org.jspecify.annotations.Nullable;
 
-import java.net.URL;
+import java.net.URI;
 
 /**
  * A single file download in the version manifest.
@@ -36,5 +36,5 @@ import java.net.URL;
  * @param size Expected size of the download, in bytes.
  * @param url The URL to download from.
  */
-public record Download(@Nullable String path, String sha1, int size, URL url) {
+public record Download(@Nullable String path, String sha1, int size, URI url) {
 }

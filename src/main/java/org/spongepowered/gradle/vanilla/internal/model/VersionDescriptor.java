@@ -27,7 +27,7 @@ package org.spongepowered.gradle.vanilla.internal.model;
 import com.google.gson.JsonObject;
 import org.jspecify.annotations.Nullable;
 
-import java.net.URL;
+import java.net.URI;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +60,7 @@ public interface VersionDescriptor {
      * @param url A url where the {@link Full} version descriptor can be found.
      */
     record Reference(String id, VersionClassifier type, ZonedDateTime time, ZonedDateTime releaseTime, int complianceLevel,
-                     URL url, String sha1) implements VersionDescriptor {
+                     URI url, String sha1) implements VersionDescriptor {
     }
 
     /**
