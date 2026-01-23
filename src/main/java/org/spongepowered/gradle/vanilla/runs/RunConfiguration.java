@@ -24,7 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla.runs;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.gradle.api.Action;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
@@ -42,6 +41,7 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.process.CommandLineArgumentProvider;
+import org.jspecify.annotations.NonNull;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 
 import java.io.File;
@@ -112,8 +112,8 @@ public class RunConfiguration implements Named {
         return this.displayName;
     }
 
-    public void displayName(final String displyName) {
-        this.displayName.set(displyName);
+    public void displayName(final String displayName) {
+        this.displayName.set(displayName);
     }
 
     /**

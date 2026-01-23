@@ -24,7 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Plugin;
@@ -71,7 +70,7 @@ public final class VanillaGradle implements Plugin<Object> {
     private static final AtomicBoolean VERSION_ANNOUNCED = new AtomicBoolean();
 
     @Override
-    public void apply(final @NonNull Object target) {
+    public void apply(final Object target) {
         if (target instanceof Settings) {
             ((Settings) target).getPlugins().apply(MinecraftRepositoryPlugin.class);
         } else if (target instanceof Project) {

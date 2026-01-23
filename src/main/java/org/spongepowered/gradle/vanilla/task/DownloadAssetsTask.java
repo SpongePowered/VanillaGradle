@@ -31,6 +31,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.model.AssetIndex;
 import org.spongepowered.gradle.vanilla.internal.model.AssetIndexReference;
@@ -103,7 +104,7 @@ public abstract class DownloadAssetsTask extends DefaultTask {
         final Downloader objectDownloader = downloader.withBaseDir(objectsDirectory);
         // For every asset in the index, resolve create a future providing the resolution result
         // The asset index will handle resolution
-        final Set<CompletableFuture<ResolutionResult<AssetIndex.Asset>>> results = new HashSet<>();
+        final Set<CompletableFuture<@Nullable ResolutionResult<AssetIndex.Asset>>> results = new HashSet<>();
         final Set<Pair<Pair<String, AssetIndex.Asset>, Throwable>> failedAssets = ConcurrentHashMap.newKeySet();
 
         // Send out all the requests

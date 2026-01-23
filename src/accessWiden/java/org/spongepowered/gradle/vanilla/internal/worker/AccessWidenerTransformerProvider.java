@@ -27,6 +27,7 @@ package org.spongepowered.gradle.vanilla.internal.worker;
 import net.fabricmc.accesswidener.AccessWidener;
 import net.fabricmc.accesswidener.AccessWidenerReader;
 import org.gradle.api.GradleException;
+import org.jspecify.annotations.NullMarked;
 import org.objectweb.asm.ClassVisitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
+@NullMarked
 public final class AccessWidenerTransformerProvider implements Function<Set<Path>, UnaryOperator<ClassVisitor>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AccessWidenerTransformerProvider.class);

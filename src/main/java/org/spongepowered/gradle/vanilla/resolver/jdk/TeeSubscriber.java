@@ -24,6 +24,8 @@
  */
 package org.spongepowered.gradle.vanilla.resolver.jdk;
 
+import org.jspecify.annotations.Nullable;
+
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -33,7 +35,7 @@ import java.util.concurrent.Flow;
 class TeeSubscriber<V> implements HttpResponse.BodySubscriber<V> {
     private final HttpResponse.BodySubscriber<V> first;
     private final HttpResponse.BodySubscriber<?>[] others;
-    private ProxySubscription subscription;
+    private @Nullable ProxySubscription subscription;
 
     public TeeSubscriber(final HttpResponse.BodySubscriber<V> first, final HttpResponse.BodySubscriber<?>... others) {
         this.first = first;
@@ -82,7 +84,9 @@ class TeeSubscriber<V> implements HttpResponse.BodySubscriber<V> {
             }
         }
 
-        proxySub.flush();
+        if (proxySub != null) {
+            proxySub.flush();
+        }
     }
 
     @Override

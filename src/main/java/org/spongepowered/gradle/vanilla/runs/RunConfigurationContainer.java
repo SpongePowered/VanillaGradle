@@ -25,7 +25,6 @@
 package org.spongepowered.gradle.vanilla.runs;
 
 import groovy.lang.Closure;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.Action;
 import org.gradle.api.DomainObjectCollection;
 import org.gradle.api.InvalidUserDataException;
@@ -43,6 +42,8 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.util.internal.ConfigureUtil;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
 import org.spongepowered.gradle.vanilla.internal.model.Argument;
 import org.spongepowered.gradle.vanilla.internal.model.Arguments;
@@ -63,6 +64,7 @@ import java.util.SortedSet;
 
 import javax.inject.Inject;
 
+@NullMarked
 public class RunConfigurationContainer implements NamedDomainObjectContainer<RunConfiguration> {
 
     private final NamedDomainObjectContainer<RunConfiguration> delegate;
@@ -153,7 +155,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
                     context
             ));
             config.getTargetVersion().set(this.extension.targetVersion().map(version -> {
-                final @Nullable JavaRuntimeVersion manifestRuntime = version.javaVersion();
+                final JavaRuntimeVersion manifestRuntime = version.javaVersion();
                 return JavaLanguageVersion.of(manifestRuntime == null ? JavaVersion.current().ordinal() + 1 : manifestRuntime.majorVersion());
             }));
         };
@@ -167,7 +169,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      * @return a provider for the configuration
      */
     public NamedDomainObjectProvider<RunConfiguration> server() {
-        return this.server((Action<? super RunConfiguration>) null);
+        return this.server(null);
     }
 
     /**
@@ -180,7 +182,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
      *     configuration
      * @return a provider for the configuration
      */
-    public NamedDomainObjectProvider<RunConfiguration> server(final Action<? super RunConfiguration> configureAction) {
+    public NamedDomainObjectProvider<RunConfiguration> server(final @Nullable Action<? super RunConfiguration> configureAction) {
         return this.server("runServer", configureAction);
     }
 
@@ -214,7 +216,7 @@ public class RunConfigurationContainer implements NamedDomainObjectContainer<Run
         return run -> {
             run.getMainClass().set("net.minecraft.server.Main"); // TODO: This does vary from version to version
             run.getTargetVersion().set(this.extension.targetVersion().map(version -> {
-                final @Nullable JavaRuntimeVersion manifestRuntime = version.javaVersion();
+                final JavaRuntimeVersion manifestRuntime = version.javaVersion();
                 return JavaLanguageVersion.of(manifestRuntime == null ? JavaVersion.current().ordinal() + 1 : manifestRuntime.majorVersion());
             }));
         };

@@ -25,7 +25,6 @@
 package org.spongepowered.gradle.vanilla.internal.repository;
 
 import net.kyori.mammoth.Properties;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.Action;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Plugin;
@@ -45,7 +44,7 @@ import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.build.event.BuildEventsListenerRegistry;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.MinecraftExtensionImpl;
@@ -106,7 +105,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
     }
 
     public Provider<MinecraftProviderService> service() {
-        final @Nullable Provider<MinecraftProviderService> service = this.service;
+        final Provider<MinecraftProviderService> service = this.service;
         if (service == null) {
             throw new IllegalStateException("No service is available on this plugin");
         }
@@ -186,10 +185,10 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                 // Stage 1: This is early enough that we can transform the artifact ID, and apply ArtifactModifiers
                 // For static versions, we test here -- for dynamic versions, we'll test in LauncherMetaMetadataSupplierAndArtifactProducer
                 // Gradle makes us work for this :(
-                final @Nullable MinecraftExtensionImpl extension = (MinecraftExtensionImpl) project.getExtensions().findByType(MinecraftExtension.class);
+                final MinecraftExtensionImpl extension = (MinecraftExtensionImpl) project.getExtensions().findByType(MinecraftExtension.class);
                 final MinecraftProviderService providerService = service.get();
                 // We need to bypass the metadata supplier, or else we will produce artifacts for every single version Gradle tests
-                final @Nullable String version = this.preProcessVersion(providerService, dep.getVersion());
+                final String version = this.preProcessVersion(providerService, dep.getVersion());
                 if (extension != null) {
                     dependency.useTarget(
                         MinecraftPlatform.GROUP
@@ -227,7 +226,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
 
         if (inputVersion.startsWith(MinecraftRepositoryPlugin.LATEST_PREFIX)) {
             final String status = inputVersion.substring(MinecraftRepositoryPlugin.LATEST_PREFIX.length());
-            final @Nullable VersionClassifier classifier = VersionClassifier.byId(status);
+            final VersionClassifier classifier = VersionClassifier.byId(status);
             if (classifier != null) {
                 try {
                     // TODO: this won't work for old_alpha, old_beta, or pending -- but most of those don't have official mappings anyways
@@ -284,7 +283,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
     private void registerPostTaskListener(final Provider<MinecraftProviderService> service, final Gradle gradle) {
         gradle.addProjectEvaluationListener(new ProjectEvaluationListener() {
             @Override
-            public void beforeEvaluate(final @NotNull Project project) {}
+            public void beforeEvaluate(final Project project) {}
 
             @Override
             public void afterEvaluate(final Project project, final ProjectState state) {

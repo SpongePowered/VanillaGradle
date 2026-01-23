@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.internal.Constants;
@@ -60,7 +60,7 @@ final class DownloaderBasedVersionManifestRepository implements VersionManifestR
 
     @Override
     public CompletableFuture<VersionManifestV2> manifest() {
-        @Nullable CompletableFuture<VersionManifestV2> manifest = this.manifest;
+        CompletableFuture<VersionManifestV2> manifest = this.manifest;
         if (manifest == null) {
             final URL url;
             try {
@@ -103,7 +103,7 @@ final class DownloaderBasedVersionManifestRepository implements VersionManifestR
     @Override
     public CompletableFuture<ResolutionResult<VersionDescriptor.Full>> fullVersion(final String versionId) {
         return this.resolvedVersions.computeIfAbsent(versionId, version -> this.manifest().thenCompose(manifest -> {
-            final VersionDescriptor.@Nullable Reference option = manifest.findDescriptor(version).orElse(null);
+            final VersionDescriptor.Reference option = manifest.findDescriptor(version).orElse(null);
             if (option == null) {
                 return CompletableFuture.completedFuture(ResolutionResult.notFound());
             }

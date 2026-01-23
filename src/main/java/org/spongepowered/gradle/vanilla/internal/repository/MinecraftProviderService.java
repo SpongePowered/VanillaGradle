@@ -24,8 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository;
 
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
@@ -35,6 +33,7 @@ import org.gradle.api.services.BuildService;
 import org.gradle.api.services.BuildServiceParameters;
 import org.gradle.tooling.events.FinishEvent;
 import org.gradle.tooling.events.OperationCompletionListener;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.internal.Constants;
@@ -105,7 +104,7 @@ public abstract class MinecraftProviderService implements
 
     public Set<ArtifactModifier> peekModifiers() {
         final ResolverState state = this.activeState.get();
-        final @Nullable Set<ArtifactModifier> modifiers = state.modifiers;
+        final Set<ArtifactModifier> modifiers = state.modifiers;
         if (modifiers == null) {
             throw new GradleException("No artifact modifiers were staged for resolution operation!");
         }
@@ -117,7 +116,7 @@ public abstract class MinecraftProviderService implements
     }
 
     public Downloader downloader() {
-        @Nullable Downloader downloader = this.downloader;
+        Downloader downloader = this.downloader;
         if (downloader == null) {
             synchronized (this) {
                 if (this.downloader == null) {
@@ -144,7 +143,7 @@ public abstract class MinecraftProviderService implements
     }
 
     public MinecraftResolver resolver() {
-        @Nullable MinecraftResolverImpl resolver = this.resolver;
+        MinecraftResolverImpl resolver = this.resolver;
         if (resolver == null) {
             synchronized (this) {
                 if (this.resolver == null) {
@@ -165,7 +164,7 @@ public abstract class MinecraftProviderService implements
     }
 
     private URL[] resolveTool(final ResolvableTool tool) {
-        final @Nullable ConfigurationContainer configurations = this.activeState.get().configurationSource;
+        final ConfigurationContainer configurations = this.activeState.get().configurationSource;
         if (configurations == null) {
             throw new IllegalArgumentException("Tried to perform a configuration resolution outside of a project-managed context!");
         }
@@ -181,7 +180,7 @@ public abstract class MinecraftProviderService implements
     }
 
     public VersionManifestRepository versions() {
-        @Nullable VersionManifestRepository versions = this.versions;
+        VersionManifestRepository versions = this.versions;
         if (versions == null) {
             synchronized (this) {
                 if (this.versions == null) {
@@ -212,7 +211,7 @@ public abstract class MinecraftProviderService implements
             this.executor.shutdownNow();
         }
 
-        final @Nullable Downloader downloader = this.downloader;
+        final Downloader downloader = this.downloader;
         this.downloader = null;
         if (downloader != null) {
             downloader.close();
@@ -221,7 +220,7 @@ public abstract class MinecraftProviderService implements
 
     static final class ResolverState {
 
-        @MonotonicNonNull ConfigurationContainer configurationSource;
+        @Nullable ConfigurationContainer configurationSource;
         @Nullable Set<ArtifactModifier> modifiers;
 
     }

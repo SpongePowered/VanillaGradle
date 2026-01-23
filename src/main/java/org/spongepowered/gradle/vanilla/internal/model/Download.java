@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.net.URL;
 

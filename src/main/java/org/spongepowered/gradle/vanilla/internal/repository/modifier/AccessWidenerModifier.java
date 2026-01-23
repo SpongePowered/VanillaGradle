@@ -24,8 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository.modifier;
 
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.ClassVisitor;
 import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
 import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;
@@ -53,7 +52,7 @@ public final class AccessWidenerModifier implements ArtifactModifier {
     private static final String KEY = "aw";
 
     private final Set<Path> wideners;
-    private volatile @MonotonicNonNull String stateKey;
+    private volatile @Nullable String stateKey;
 
     public AccessWidenerModifier(final Set<File> wideners) {
         this.wideners = wideners.stream()
@@ -68,7 +67,8 @@ public final class AccessWidenerModifier implements ArtifactModifier {
 
     @Override
     public String stateKey() {
-        if (this.stateKey == null) {
+        String stateKey = this.stateKey;
+        if (stateKey == null) {
             final MessageDigest digest = HashAlgorithm.SHA1.digest();
             for (final Path widenerFile : this.wideners) {
                 try (final InputStream is = Files.newInputStream(widenerFile)) {
@@ -81,9 +81,9 @@ public final class AccessWidenerModifier implements ArtifactModifier {
                     // ignore, will show up when we try to actually access-widen the jar
                 }
             }
-            return this.stateKey = HashAlgorithm.toHexString(digest.digest());
+            this.stateKey = stateKey = HashAlgorithm.toHexString(digest.digest());
         }
-        return this.stateKey;
+        return stateKey;
     }
 
     @Override

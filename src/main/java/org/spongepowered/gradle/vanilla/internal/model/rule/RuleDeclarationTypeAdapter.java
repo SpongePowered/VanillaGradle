@@ -32,6 +32,7 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -99,7 +100,7 @@ public class RuleDeclarationTypeAdapter extends TypeAdapter<RuleDeclaration> {
 
         @Override
         @SuppressWarnings("unchecked")
-        public <T> TypeAdapter<T> create(final Gson gson, final TypeToken<T> type) {
+        public <T> @Nullable TypeAdapter<T> create(final Gson gson, final TypeToken<T> type) {
             if (!type.getRawType().equals(RuleDeclaration.class)) {
                 return null;
             }

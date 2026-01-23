@@ -25,10 +25,11 @@
 package org.spongepowered.gradle.vanilla.internal.worker;
 
 import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
+import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 
+@NullMarked
 public final class SLF4JFernFlowerLogger extends IFernflowerLogger {
-
     private final Logger logger;
 
     public SLF4JFernFlowerLogger(final Logger logger) {

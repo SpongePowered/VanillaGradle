@@ -25,7 +25,7 @@
 package org.spongepowered.gradle.vanilla.internal.model;
 
 import com.google.gson.JsonObject;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.net.URL;
 import java.time.ZonedDateTime;

@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.internal.Constants;
@@ -128,11 +128,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
 
     @Override
     public Supplier<URLClassLoader> classLoaderWithTool(final ResolvableTool tool) {
-        final @Nullable Function<ResolvableTool, URL[]> toolResolver = this.toolResolver;
-        if (toolResolver == null) {
-            throw new IllegalStateException("No tool resolver has been configured to resolve " + tool);
-        }
-        final URL[] toolUrls = toolResolver.apply(tool);
+        final URL[] toolUrls = this.toolResolver.apply(tool);
 
         // Create a ClassLoader containing the resolved configuration, plus our own code source to be able to access our own classes
         final URL[] classPath = new URL[toolUrls.length + 1];

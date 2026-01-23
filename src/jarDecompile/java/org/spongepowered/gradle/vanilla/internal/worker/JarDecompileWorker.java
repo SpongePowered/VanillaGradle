@@ -31,6 +31,7 @@ import org.gradle.workers.WorkAction;
 import org.gradle.workers.WorkParameters;
 import org.jetbrains.java.decompiler.main.Fernflower;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
+import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +43,7 @@ import java.util.Map;
 /**
  * Decompile a Jar using MinecraftForge's fork of FernFlower "ForgeFlower"
  */
+@NullMarked
 public abstract class JarDecompileWorker implements WorkAction<JarDecompileWorker.Parameters> {
     private static final Logger LOGGER = LoggerFactory.getLogger(JarDecompileWorker.class);
 

@@ -24,8 +24,8 @@
  */
 package org.spongepowered.gradle.vanilla.internal.runs;
 
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.util.CheckedConsumer;
 import org.spongepowered.gradle.vanilla.internal.util.IndentingXmlStreamWriter;
@@ -54,7 +54,7 @@ public class EclipseRunConfigurationWriter implements AutoCloseable {
     private final boolean managedOutput;
     private final Writer output;
     private final XMLStreamWriter writer;
-    private @MonotonicNonNull String projectName;
+    private @Nullable String projectName;
 
     public EclipseRunConfigurationWriter(final Path target) throws IOException, XMLStreamException {
         this.managedOutput = true;
@@ -68,7 +68,8 @@ public class EclipseRunConfigurationWriter implements AutoCloseable {
     }
 
     public void write(final RunConfiguration run) throws XMLStreamException {
-        if (this.projectName == null) {
+        String projectName = this.projectName;
+        if (projectName == null) {
             throw new IllegalStateException("Project name must be set");
         }
 
@@ -112,9 +113,9 @@ public class EclipseRunConfigurationWriter implements AutoCloseable {
             this.launching("JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-" + EclipseRunConfigurationWriter.javaVersionName(run.getTargetVersion().get()))
         );
         this.stringAttribute(this.launching("MAIN_TYPE"), run.getMainClass().get());
-        this.stringAttribute(this.launching("MODULE_NAME"), this.projectName); // todo: can this be a JPMS module?
+        this.stringAttribute(this.launching("MODULE_NAME"), projectName); // todo: can this be a JPMS module?
         this.stringAttribute(this.launching("PROGRAM_ARGUMENTS"), StringUtils.join(run.getAllArgumentProviders(), true));
-        this.stringAttribute(this.launching("PROJECT_ATTR"), this.projectName);
+        this.stringAttribute(this.launching("PROJECT_ATTR"), projectName);
         this.stringAttribute(this.launching("VM_ARGUMENTS"), StringUtils.join(run.getAllJvmArgumentProviders(), true));
         this.stringAttribute(this.launching("WORKING_DIRECTORY"), run.getWorkingDirectory().get().getAsFile().getAbsolutePath());
 
