@@ -25,6 +25,7 @@
 package org.spongepowered.gradle.vanilla.resolver;
 
 import java.io.IOException;
+import java.io.Serial;
 import java.net.URI;
 import java.net.URL;
 
@@ -33,6 +34,7 @@ import java.net.URL;
  */
 public class HttpErrorResponseException extends IOException {
 
+    @Serial
     private static final long serialVersionUID = -1L;
 
     private final URI source;

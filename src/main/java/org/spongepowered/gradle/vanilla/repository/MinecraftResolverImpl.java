@@ -88,7 +88,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
     private final ConcurrentMap<EnvironmentKey, CompletableFuture<ResolutionResult<Path>>> associatedArtifacts = new ConcurrentHashMap<>();
     private final boolean forceRefresh;
     private final BlockingQueue<Runnable> syncTasks = new SynchronousQueue<>();
-    private final Executor syncExecutor = run -> this.syncTasks.add(run);
+    private final Executor syncExecutor = this.syncTasks::add;
 
     public MinecraftResolverImpl(
         final VersionManifestRepository manifests,
@@ -163,7 +163,7 @@ public class MinecraftResolverImpl implements MinecraftResolver, MinecraftResolv
                 return jarFuture.thenApplyAsync((jar) -> {
                     try {
                         final boolean outputExists = Files.exists(outputJar);
-                        final @Nullable BundlerMetadata bundlerMeta = BundlerMetadata.read(jar.get()).orElse(null);
+                        final BundlerMetadata bundlerMeta = BundlerMetadata.read(jar.get()).orElse(null);
                         if (bundlerMeta != null) {
                             MinecraftResolverImpl.LOGGER.info("Resolved bundler metadata {} from jar at '{}'", bundlerMeta, jar.get());
                         } else {

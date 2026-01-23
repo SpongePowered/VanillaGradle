@@ -204,7 +204,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
             });
         final Provider<ArtifactCollection> minecraftArtifacts = minecraftConfiguration.map(mc -> mc.getIncoming().getArtifacts());
         final Provider<MinecraftPlatform> platform = minecraftConfiguration.zip(extension.platform(), (mc, declared) -> {
-            final @Nullable Dependency dep = this.extractMinecraftDependency(mc.getAllDependencies());
+            final Dependency dep = this.extractMinecraftDependency(mc.getAllDependencies());
             if (dep == null) {
                 return declared;
             }
@@ -213,7 +213,7 @@ public class ProvideMinecraftPlugin implements Plugin<Project> {
                 .orElseThrow(() -> new InvalidUserDataException("Unknown minecraft platform + " + requested));
         });
         final Provider<String> version = minecraftConfiguration.zip(extension.version(), (mc, declared) -> {
-            final @Nullable Dependency dep = this.extractMinecraftDependency(mc.getAllDependencies());
+            final Dependency dep = this.extractMinecraftDependency(mc.getAllDependencies());
             if (dep == null) {
                 return declared;
             }

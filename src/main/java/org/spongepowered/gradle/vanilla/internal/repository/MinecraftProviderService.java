@@ -119,7 +119,8 @@ public abstract class MinecraftProviderService implements
         Downloader downloader = this.downloader;
         if (downloader == null) {
             synchronized (this) {
-                if (this.downloader == null) {
+                downloader = this.downloader;
+                if (downloader == null) {
                     final Parameters params = this.getParameters();
                     final Downloader.ResolveMode mode;
                     if (params.getOfflineMode().get()) {
@@ -134,8 +135,6 @@ public abstract class MinecraftProviderService implements
                         this.getParameters().getSharedCache().get().getAsFile().toPath(),
                         mode
                     );
-                } else {
-                    return this.downloader;
                 }
             }
         }
@@ -146,7 +145,8 @@ public abstract class MinecraftProviderService implements
         MinecraftResolverImpl resolver = this.resolver;
         if (resolver == null) {
             synchronized (this) {
-                if (this.resolver == null) {
+                resolver = this.resolver;
+                if (resolver == null) {
                     this.resolver = resolver = new MinecraftResolverImpl(
                         this.versions(),
                         this.downloader().withBaseDir(this.downloader().baseDir().resolve(Constants.Directories.JARS)),
@@ -155,8 +155,6 @@ public abstract class MinecraftProviderService implements
                         this::resolveTool,
                         this.getParameters().getRefreshDependencies().get()
                     );
-                } else {
-                    return this.resolver;
                 }
             }
         }
@@ -183,12 +181,11 @@ public abstract class MinecraftProviderService implements
         VersionManifestRepository versions = this.versions;
         if (versions == null) {
             synchronized (this) {
-                if (this.versions == null) {
+                versions = this.versions;
+                if (versions == null) {
                     // Create a version repository. Offline and --refresh-dependencies are handled by our overall Downloader
                     final Path cacheDir = this.getParameters().getSharedCache().get().getAsFile().toPath().resolve(Constants.Directories.MANIFESTS);
                     this.versions = versions = VersionManifestRepository.fromDownloader(this.downloader().withBaseDir(cacheDir));
-                } else {
-                    return this.versions;
                 }
             }
         }

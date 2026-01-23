@@ -178,7 +178,7 @@ public class MinecraftRepositoryPlugin implements Plugin<Object> {
                     return; // failed
                 }
                 final Optional<MinecraftPlatform> platform = MinecraftPlatform.byId(components[0]);
-                if (!platform.isPresent()) {
+                if (platform.isEmpty()) {
                     return;
                 }
 

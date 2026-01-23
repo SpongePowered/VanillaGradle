@@ -36,7 +36,6 @@ import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -220,15 +219,10 @@ public class JdkHttpClientDownloader implements Downloader {
             return CompletableFuture.completedFuture(ResolutionResult.notFound());
         }
 
-        final CompletableFuture<HttpResponse<T>> result;
-        try {
-            result = this.client.sendAsync(
-                this.makeRequest(source, null), // todo: etag
-                responseConsumer.apply(destination));
-        } catch (final URISyntaxException ex) {
-            return CompletableFuture.failedFuture(ex);
-        }
-        return result.thenApply(message -> {
+        return this.client.sendAsync(
+            this.makeRequest(source, null), // todo: etag
+            responseConsumer.apply(destination)
+        ).thenApply(message -> {
             switch (message.statusCode()) {
                 case 404:
                     return ResolutionResult.notFound();
@@ -272,17 +266,10 @@ public class JdkHttpClientDownloader implements Downloader {
             return CompletableFuture.completedFuture(ResolutionResult.notFound());
         }
 
-        final CompletableFuture<HttpResponse<T>> result;
-        try {
-            result = this.client.sendAsync(
-                this.makeRequest(source, null),
-                JdkHttpClientDownloader.validating(responseConsumer.apply(path), algorithm, expectedHash)
-            );
-        } catch (final URISyntaxException ex) {
-            return CompletableFuture.failedFuture(ex);
-        }
-
-        return result.thenApply(message -> {
+        return this.client.sendAsync(
+            this.makeRequest(source, null),
+            JdkHttpClientDownloader.validating(responseConsumer.apply(path), algorithm, expectedHash)
+        ).thenApply(message -> {
             switch (message.statusCode()) {
                 case HttpConstants.STATUS_NOT_FOUND:
                     return ResolutionResult.notFound();
@@ -294,7 +281,7 @@ public class JdkHttpClientDownloader implements Downloader {
         });
     }
 
-    private HttpRequest makeRequest(final URI uri, final @Nullable String etag) throws URISyntaxException {
+    private HttpRequest makeRequest(final URI uri, final @Nullable String etag) {
         final var requestBuilder = HttpRequest.newBuilder().GET().uri(uri);
         if (etag != null) {
             requestBuilder.header(HttpConstants.HEADER_IF_NONE_MATCH, etag);

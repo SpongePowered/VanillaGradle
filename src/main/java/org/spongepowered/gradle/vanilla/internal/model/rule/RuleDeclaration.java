@@ -50,14 +50,7 @@ public final class RuleDeclaration {
         return new Builder();
     }
 
-    static final class Entry {
-        final RuleAction action;
-        final Map<Rule<?>, Object> rules;
-
-        Entry(final RuleAction action, final Map<Rule<?>, Object> rules) {
-            this.action = action;
-            this.rules = rules;
-        }
+    record Entry(RuleAction action, Map<Rule<?>, Object> rules) {
     }
 
     @SuppressWarnings("unchecked")
@@ -87,7 +80,7 @@ public final class RuleDeclaration {
     public static final class Builder {
         private final List<Entry> entries = new ArrayList<>();
         private RuleAction action = RuleAction.ALLOW;
-        private Map<Rule<?>, Object> rules = new HashMap<>();
+        private final Map<Rule<?>, Object> rules = new HashMap<>();
 
         public Builder action(final RuleAction action) {
             this.action = action;
