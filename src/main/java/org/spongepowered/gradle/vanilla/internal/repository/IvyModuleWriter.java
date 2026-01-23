@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
 import org.spongepowered.gradle.vanilla.internal.model.JavaRuntimeVersion;
@@ -134,7 +134,7 @@ public final class IvyModuleWriter implements AutoCloseable {
         this.writer.writeCharacters(version.type().id());
         this.writer.writeEndElement();
 
-        final @Nullable JavaRuntimeVersion javaVersion = version.javaVersion();
+        final JavaRuntimeVersion javaVersion = version.javaVersion();
         if (javaVersion != null) {
             this.writer.writeStartElement(IvyModuleWriter.VANILLAGRADLE, IvyModuleWriter.PROPERTY_JAVA_VERSION);
             this.writer.writeCharacters(String.valueOf(javaVersion.majorVersion()));

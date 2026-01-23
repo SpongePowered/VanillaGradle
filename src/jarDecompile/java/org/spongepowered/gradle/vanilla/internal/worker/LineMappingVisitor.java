@@ -24,6 +24,8 @@
  */
 package org.spongepowered.gradle.vanilla.internal.worker;
 
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -33,6 +35,7 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
+@NullMarked
 public class LineMappingVisitor extends ClassVisitor {
     private final NavigableMap<Integer, Integer> lineMapping = new TreeMap<>();
 
@@ -45,14 +48,15 @@ public class LineMappingVisitor extends ClassVisitor {
 
     @Override
     public MethodVisitor visitMethod(
-        final int access, final String name, final String descriptor, final String signature, final String[] exceptions
+        final int access, final String name, final String descriptor, final String signature, final String @Nullable[] exceptions
     ) {
         return new MethodLineFixer(super.visitMethod(access, name, descriptor, signature, exceptions), this.lineMapping);
     }
 
     static class MethodLineFixer extends MethodVisitor {
         private final NavigableMap<Integer, Integer> lineMapping;
-        MethodLineFixer(final MethodVisitor parent, final NavigableMap<Integer, Integer> lineMapping) {
+
+        MethodLineFixer(final @Nullable MethodVisitor parent, final NavigableMap<Integer, Integer> lineMapping) {
             super(Opcodes.ASM9, parent);
             this.lineMapping = lineMapping;
         }

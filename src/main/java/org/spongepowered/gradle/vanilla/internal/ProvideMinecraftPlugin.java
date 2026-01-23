@@ -24,7 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla.internal;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.NamedDomainObjectProvider;
@@ -58,6 +57,7 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.ide.EclipseIntegration;
 import org.spongepowered.gradle.vanilla.internal.ide.IdeaIntegration;

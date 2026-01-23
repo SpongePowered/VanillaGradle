@@ -26,6 +26,7 @@ package org.spongepowered.gradle.vanilla.internal.worker;
 
 import net.minecraftforge.mergetool.AnnotationVersion;
 import net.minecraftforge.mergetool.Merger;
+import org.jspecify.annotations.NullMarked;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -35,6 +36,7 @@ import java.nio.file.Path;
  *
  * <p>This cannot use any VanillaGradle API.</p>
  */
+@NullMarked
 public final class JarMerger {
 
     public static void execute(final Path clientJar, final Path serverJar, final Path outputJar) {

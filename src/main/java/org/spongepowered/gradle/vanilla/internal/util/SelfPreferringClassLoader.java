@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.util;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.URL;
@@ -41,9 +41,9 @@ public class SelfPreferringClassLoader extends URLClassLoader {
         ClassLoader.registerAsParallelCapable();
     }
 
-    private final ClassLoader parent;
+    private final @Nullable ClassLoader parent;
 
-    public SelfPreferringClassLoader(final URL[] urls, final ClassLoader parent) {
+    public SelfPreferringClassLoader(final URL[] urls, final @Nullable ClassLoader parent) {
         super(urls, parent);
         this.parent = parent;
     }
@@ -73,7 +73,7 @@ public class SelfPreferringClassLoader extends URLClassLoader {
 
     @Override
     public @Nullable URL getResource(final String name) {
-        @Nullable URL result = this.findResource(name);
+        URL result = this.findResource(name);
         if (result == null) {
             result = super.getResource(name);
         }
@@ -101,13 +101,13 @@ public class SelfPreferringClassLoader extends URLClassLoader {
 
             @Override
             public boolean hasMoreElements() {
-                final @Nullable Enumeration<URL> component = this.nextComponent();
+                final Enumeration<URL> component = this.nextComponent();
                 return component != null && component.hasMoreElements();
             }
 
             @Override
             public URL nextElement() {
-                final @Nullable Enumeration<URL> component = this.nextComponent();
+                final Enumeration<URL> component = this.nextComponent();
                 if (component == null) {
                     throw new NoSuchElementException();
                 }

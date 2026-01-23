@@ -25,6 +25,8 @@
 package org.spongepowered.gradle.vanilla.internal.worker;
 
 import org.jetbrains.java.decompiler.main.decompiler.SingleFileSaver;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.slf4j.Logger;
@@ -33,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
+@NullMarked
 public class LineMappingResultSaver extends SingleFileSaver {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LineMappingResultSaver.class);
@@ -48,7 +51,7 @@ public class LineMappingResultSaver extends SingleFileSaver {
 
     @Override
     public void saveClassEntry(
-        final String path, final String archiveName, final String qualifiedName, final String entryName, final String content, final int[] mapping
+        final String path, final String archiveName, final String qualifiedName, final String entryName, final @Nullable String content, final int @Nullable[] mapping
     ) {
         super.saveClassEntry(path, archiveName, qualifiedName, entryName, content, mapping);
         if (mapping != null) {

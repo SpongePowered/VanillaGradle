@@ -24,7 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla.internal.repository.rule;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.gradle.api.artifacts.ComponentMetadataContext;
 import org.gradle.api.artifacts.ComponentMetadataDetails;
 import org.gradle.api.artifacts.ComponentMetadataRule;
@@ -50,13 +49,13 @@ public class MinecraftIvyModuleExtraDataApplierRule implements ComponentMetadata
 
     @Override
     public void execute(final ComponentMetadataContext context) {
-        final @Nullable IvyModuleDescriptor ivy = context.getDescriptor(IvyModuleDescriptor.class);
+        final IvyModuleDescriptor ivy = context.getDescriptor(IvyModuleDescriptor.class);
         final ComponentMetadataDetails details = context.getDetails();
         final ModuleVersionIdentifier id = details.getId();
         if (!MinecraftPlatform.GROUP.equals(id.getGroup())) {
             throw new IllegalArgumentException(MinecraftIvyModuleExtraDataApplierRule.class + " was asked to process non-Minecraft dependency " + id);
         }
-        final @Nullable MinecraftPlatform requestedPlatform = MinecraftPlatform.byId(id.getName()).orElse(null);
+        final MinecraftPlatform requestedPlatform = MinecraftPlatform.byId(id.getName()).orElse(null);
         if (requestedPlatform == null) { // unknown platform, let Gradle handle the resolution failure
             return;
         }
@@ -69,12 +68,12 @@ public class MinecraftIvyModuleExtraDataApplierRule implements ComponentMetadata
 
         // Set status scheme for MC version types
         details.setStatusScheme(VersionClassifier.ids());
-        final @Nullable String mojangStatus = ivy.getExtraInfo().get(IvyModuleWriter.PROPERTY_MOJANG_STATUS);
+        final String mojangStatus = ivy.getExtraInfo().get(IvyModuleWriter.PROPERTY_MOJANG_STATUS);
         if (mojangStatus != null) {
             details.setStatus(mojangStatus.trim());
         }
 
-        final @Nullable String rawVersion = ivy.getExtraInfo().get(IvyModuleWriter.PROPERTY_JAVA_VERSION);
+        final String rawVersion = ivy.getExtraInfo().get(IvyModuleWriter.PROPERTY_JAVA_VERSION);
         try {
             if (rawVersion != null) {
                 final int javaVersion = Integer.parseInt(rawVersion.trim());

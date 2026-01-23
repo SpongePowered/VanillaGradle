@@ -24,7 +24,6 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.spongepowered.gradle.vanilla.internal.model.GroupArtifactVersion;
@@ -45,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.SequencedSet;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -66,7 +66,7 @@ public class IvyModuleWriterTest {
 
     @Test
     void testWriteVersionWithoutJavaVersion() throws IOException, XMLStreamException {
-        final VersionDescriptor.Full version = GsonUtils.parseFromJson(this.getClass().getResource("manifest-1.16.5.json"), VersionDescriptor.Full.class);
+        final VersionDescriptor.Full version = GsonUtils.parseFromJson(Objects.requireNonNull(this.getClass().getResource("manifest-1.16.5.json")), VersionDescriptor.Full.class);
 
         final StringWriter writer = new StringWriter();
 
@@ -84,7 +84,7 @@ public class IvyModuleWriterTest {
 
     @Test
     void testWriteVersionWithJavaVersion() throws IOException, XMLStreamException {
-        final VersionDescriptor.Full version = GsonUtils.parseFromJson(this.getClass().getResource("manifest-21w15a.json"), VersionDescriptor.Full.class);
+        final VersionDescriptor.Full version = GsonUtils.parseFromJson(Objects.requireNonNull(this.getClass().getResource("manifest-21w15a.json")), VersionDescriptor.Full.class);
 
         final StringWriter writer = new StringWriter();
 
@@ -115,7 +115,7 @@ public class IvyModuleWriterTest {
     }
 
     private static List<String> readLinesFromResource(final String resource) throws IOException {
-        final @Nullable InputStream in = IvyModuleWriterTest.class.getResourceAsStream(resource);
+        final InputStream in = IvyModuleWriterTest.class.getResourceAsStream(resource);
         Assertions.assertNotNull(in, "No resource with name " + resource + " was found");
 
         final List<String> contents = new ArrayList<>();

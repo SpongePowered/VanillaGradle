@@ -25,8 +25,7 @@
 /**
  * Metadata rules used to configure resolution of artifact IDs.
  */
-@DefaultQualifier(NonNull.class)
+@NullMarked
 package org.spongepowered.gradle.vanilla.internal.repository.rule;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.framework.qual.DefaultQualifier;
+import org.jspecify.annotations.NullMarked;

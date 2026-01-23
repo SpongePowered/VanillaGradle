@@ -26,11 +26,13 @@ package org.spongepowered.gradle.vanilla.internal.worker;
 
 import net.fabricmc.accesswidener.AccessWidener;
 import net.fabricmc.accesswidener.AccessWidenerClassVisitor;
+import org.jspecify.annotations.NullMarked;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Opcodes;
 
 import java.util.function.UnaryOperator;
 
+@NullMarked
 final class AccessWidenerEntryTransformer implements UnaryOperator<ClassVisitor> {
     private final AccessWidener widener;
 

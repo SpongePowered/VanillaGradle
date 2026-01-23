@@ -36,6 +36,7 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.gradle.vanilla.MinecraftExtension;
 import org.spongepowered.gradle.vanilla.internal.model.VersionClassifier;
 import org.spongepowered.gradle.vanilla.internal.model.VersionDescriptor;
@@ -78,7 +79,7 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     // Internals
     private final Project project;
     private final RunConfigurationContainer runConfigurations;
-    private volatile Set<ArtifactModifier> lazyModifiers;
+    private volatile @Nullable Set<ArtifactModifier> lazyModifiers;
 
     private final Provider<Boolean> needsPrepareWorkspace;
 
@@ -232,15 +233,16 @@ public class MinecraftExtensionImpl implements MinecraftExtension {
     }
 
     public synchronized Set<ArtifactModifier> modifiers() {
-        if (this.lazyModifiers == null) {
+        Set<ArtifactModifier> modifiers = this.lazyModifiers;
+        if (modifiers == null) {
             this.accessWideners.disallowChanges();
-            final Set<ArtifactModifier> modifiers = new HashSet<>();
+            modifiers = new HashSet<>();
             if (!this.accessWideners.isEmpty()) {
                 modifiers.add(new AccessWidenerModifier(this.accessWideners.getFiles()));
             }
-            return this.lazyModifiers = Collections.unmodifiableSet(modifiers);
+            this.lazyModifiers = modifiers = Collections.unmodifiableSet(modifiers);
         }
-        return this.lazyModifiers;
+        return modifiers;
     }
 
     DirectoryProperty projectCache() {

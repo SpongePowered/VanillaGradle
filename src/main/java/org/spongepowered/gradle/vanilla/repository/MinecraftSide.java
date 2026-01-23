@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.repository;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.gradle.vanilla.internal.Constants;
 import org.spongepowered.gradle.vanilla.internal.bundler.BundlerMetadata;
 import org.spongepowered.gradle.vanilla.internal.model.DownloadClassifier;

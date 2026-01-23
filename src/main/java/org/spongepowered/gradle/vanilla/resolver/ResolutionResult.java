@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.resolver;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -119,7 +119,7 @@ public final class ResolutionResult<V> {
      *
      * @return the value
      */
-    public final boolean isPresent() {
+    public boolean isPresent() {
         return this.result != null;
     }
 

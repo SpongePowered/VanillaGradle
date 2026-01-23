@@ -53,8 +53,6 @@ dependencies {
     // Just main
     implementation(libs.gson)
 
-    compileOnlyApi(libs.checkerQual)
-
     // IDE support
     implementation(libs.ideaExt)
 

@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.bundler;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -78,7 +78,7 @@ public record BundlerMetadata(FormatVersion version, List<BundleElement> librari
      */
     public static Optional<BundlerMetadata> read(final JarFile file) throws IOException {
         final Manifest manifest = file.getManifest();
-        final @Nullable String formatVersion = manifest.getMainAttributes().getValue(FormatVersion.MANIFEST_ATTRIBUTE);
+        final String formatVersion = manifest.getMainAttributes().getValue(FormatVersion.MANIFEST_ATTRIBUTE);
         if (formatVersion == null) {
             return Optional.empty();
         }
@@ -118,7 +118,7 @@ public record BundlerMetadata(FormatVersion version, List<BundleElement> librari
     }
 
     private static Stream<BundleElement> readIndex(final JarFile jar, final String index) throws IOException {
-        final @Nullable JarEntry entry = jar.getJarEntry("META-INF/" + index + ".list");
+        final JarEntry entry = jar.getJarEntry("META-INF/" + index + ".list");
         if (entry == null) {
             return Stream.empty();
         }

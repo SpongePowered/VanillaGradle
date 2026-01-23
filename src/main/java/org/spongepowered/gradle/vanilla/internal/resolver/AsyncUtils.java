@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.resolver;
 
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -56,7 +56,7 @@ public final class AsyncUtils {
 
     public static <T> Supplier<T> memoizedSupplier(final Supplier<T> input) {
         return new Supplier<>() {
-            private volatile @MonotonicNonNull T value;
+            private volatile @Nullable T value;
 
             @Override
             public T get() {

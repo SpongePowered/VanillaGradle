@@ -25,7 +25,7 @@
 package org.spongepowered.gradle.vanilla.internal.model;
 
 import com.google.gson.annotations.SerializedName;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;

@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.resolver;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;

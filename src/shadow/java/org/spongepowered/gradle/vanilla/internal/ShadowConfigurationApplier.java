@@ -25,14 +25,15 @@
 package org.spongepowered.gradle.vanilla.internal;
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar;
-import org.gradle.api.Action;
 import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskContainer;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.Set;
 
+@NullMarked
 public final class ShadowConfigurationApplier {
 
     private ShadowConfigurationApplier() {

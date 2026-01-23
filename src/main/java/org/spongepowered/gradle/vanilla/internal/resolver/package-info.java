@@ -22,10 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-/**
- * Handling for creating an Ivy repository that will resolve Minecraft artifacts.
- */
 @NullMarked
-package org.spongepowered.gradle.vanilla.repository;
+package org.spongepowered.gradle.vanilla.internal.resolver;
 
 import org.jspecify.annotations.NullMarked;

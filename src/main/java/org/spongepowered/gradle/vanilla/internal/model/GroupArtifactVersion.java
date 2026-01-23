@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public record GroupArtifactVersion(String group, String artifact, @Nullable String version, @Nullable String classifier) {
 
@@ -51,12 +51,11 @@ public record GroupArtifactVersion(String group, String artifact, @Nullable Stri
 
         builder.append(this.group()).append(':').append(this.artifact());
 
-        final @Nullable String version = this.version();
+        final String version = this.version();
         if (version != null) {
             builder.append(':').append(version);
 
-            final @Nullable String classifier = this.classifier();
-
+            final String classifier = this.classifier();
             if (classifier != null) {
                 builder.append(':').append(classifier);
             }

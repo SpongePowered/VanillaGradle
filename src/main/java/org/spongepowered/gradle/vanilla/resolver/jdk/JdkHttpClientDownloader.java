@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.resolver.jdk;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;

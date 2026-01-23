@@ -24,6 +24,8 @@
  */
 package org.spongepowered.gradle.vanilla.internal.worker;
 
+import org.jspecify.annotations.NullMarked;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -37,6 +39,7 @@ import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+@NullMarked
 public final class Decompilation {
 
     public static VanillaGradleBytecodeProvider bytecodeFromJar() {

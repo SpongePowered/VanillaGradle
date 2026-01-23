@@ -44,7 +44,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
-import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.regex.Pattern;
 
@@ -69,7 +68,7 @@ public final class GsonUtils {
     }
 
     public static <T> T parseFromJson(final URL url, final Class<T> type) throws IOException {
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(url, "url").openStream(), StandardCharsets.UTF_8))) {
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8))) {
             return GsonUtils.GSON.fromJson(reader, type);
         }
     }
