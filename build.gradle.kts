@@ -15,7 +15,7 @@ plugins {
 }
 
 group = "org.spongepowered"
-version = "0.3.1-SNAPSHOT"
+version = "0.3.1"
 
 val commonDeps by configurations.creating {
 }
