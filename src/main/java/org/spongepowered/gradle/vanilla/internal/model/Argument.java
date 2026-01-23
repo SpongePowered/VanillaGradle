@@ -32,14 +32,13 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.gradle.vanilla.internal.model.rule.RuleDeclaration;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import javax.annotation.Nullable;
 
 public record Argument(List<String> value, RuleDeclaration rules) {
 
@@ -67,7 +66,7 @@ public record Argument(List<String> value, RuleDeclaration rules) {
                 case STRING: // literal argument
                     return new Argument(Collections.singletonList(in.nextString()));
                 case BEGIN_OBJECT: // argument with a rule
-                    @Nullable List<String> value = null;
+                    List<String> value = null;
                     RuleDeclaration declaration = RuleDeclaration.empty();
                     in.beginObject();
                     while (in.peek() != JsonToken.END_OBJECT) {
@@ -107,7 +106,7 @@ public record Argument(List<String> value, RuleDeclaration rules) {
 
             @Override
             @SuppressWarnings("unchecked")
-            public <T> TypeAdapter<T> create(final Gson gson, final TypeToken<T> type) {
+            public <T> @Nullable TypeAdapter<T> create(final Gson gson, final TypeToken<T> type) {
                 if (!type.getRawType().equals(Argument.class)) {
                     return null;
                 }

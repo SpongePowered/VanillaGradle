@@ -27,8 +27,8 @@ package org.spongepowered.gradle.vanilla.internal.repository.modifier;
 import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.ClassVisitor;
 import org.spongepowered.gradle.vanilla.internal.repository.ResolvableTool;
-import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;
 import org.spongepowered.gradle.vanilla.internal.transformer.ClassTransformerProvider;
+import org.spongepowered.gradle.vanilla.internal.util.AsyncUtils;
 import org.spongepowered.gradle.vanilla.repository.MinecraftResolver;
 import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 

@@ -27,16 +27,15 @@ package org.spongepowered.gradle.vanilla.resolver.jdk;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongepowered.gradle.vanilla.internal.resolver.AsyncUtils;
-import org.spongepowered.gradle.vanilla.internal.resolver.FileUtils;
+import org.spongepowered.gradle.vanilla.internal.util.AsyncUtils;
+import org.spongepowered.gradle.vanilla.internal.util.FileUtils;
 import org.spongepowered.gradle.vanilla.resolver.Downloader;
 import org.spongepowered.gradle.vanilla.resolver.HashAlgorithm;
 import org.spongepowered.gradle.vanilla.resolver.HttpErrorResponseException;
 import org.spongepowered.gradle.vanilla.resolver.ResolutionResult;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -115,7 +114,7 @@ public class JdkHttpClientDownloader implements Downloader {
     }
 
     @Override
-    public CompletableFuture<ResolutionResult<String>> readString(final URL source, final String relativePath) {
+    public CompletableFuture<ResolutionResult<String>> readString(final URI source, final String relativePath) {
         return this.download(source, this.baseDirectory.resolve(relativePath), path -> {
             final HttpResponse.BodyHandler<String> reader = HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8);
             if (this.writeToDisk) {
@@ -128,7 +127,7 @@ public class JdkHttpClientDownloader implements Downloader {
 
     @Override
     public CompletableFuture<ResolutionResult<String>> readStringAndValidate(
-        final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash
+        final URI source, final String relativePath, final HashAlgorithm algorithm, final String hash
     ) {
         return this.downloadValidating(source, this.baseDirectory.resolve(relativePath), algorithm, hash, path -> {
             final HttpResponse.BodyHandler<String> reader = HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8);
@@ -145,7 +144,7 @@ public class JdkHttpClientDownloader implements Downloader {
     }
 
     @Override
-    public CompletableFuture<ResolutionResult<byte[]>> readBytes(final URL source, final String relativePath) {
+    public CompletableFuture<ResolutionResult<byte[]>> readBytes(final URI source, final String relativePath) {
         return this.download(source, this.baseDirectory.resolve(relativePath), path -> {
             final HttpResponse.BodyHandler<byte[]> reader = HttpResponse.BodyHandlers.ofByteArray();
             if (this.writeToDisk) {
@@ -158,7 +157,7 @@ public class JdkHttpClientDownloader implements Downloader {
 
     @Override
     public CompletableFuture<ResolutionResult<byte[]>> readBytesAndValidate(
-        final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash
+        final URI source, final String relativePath, final HashAlgorithm algorithm, final String hash
     ) {
         return this.downloadValidating(source, this.baseDirectory.resolve(relativePath), algorithm, hash, path -> {
             final HttpResponse.BodyHandler<byte[]> reader = HttpResponse.BodyHandlers.ofByteArray();
@@ -175,7 +174,7 @@ public class JdkHttpClientDownloader implements Downloader {
     }
 
     @Override
-    public CompletableFuture<ResolutionResult<Path>> download(final URL source, final String destination) {
+    public CompletableFuture<ResolutionResult<Path>> download(final URI source, final String destination) {
         return this.download(
             source,
             this.baseDirectory.resolve(destination),
@@ -186,7 +185,7 @@ public class JdkHttpClientDownloader implements Downloader {
 
     @Override
     public CompletableFuture<ResolutionResult<Path>> downloadAndValidate(
-        final URL source, final String destination, final HashAlgorithm algorithm, final String hash
+        final URI source, final String destination, final HashAlgorithm algorithm, final String hash
     ) {
         return this.downloadValidating(
             source,
@@ -201,12 +200,12 @@ public class JdkHttpClientDownloader implements Downloader {
     // Shared logic
 
     private <T> CompletableFuture<ResolutionResult<T>> download(
-        final URL source,
+        final URI source,
         final Path destination,
         final Function<Path, HttpResponse.BodyHandler<T>> responseConsumer,
         final Function<Path, CompletableFuture<T>> existingHandler
     ) {
-        final @Nullable BasicFileAttributes destAttributes = FileUtils.fileAttributesIfExists(destination);
+        final BasicFileAttributes destAttributes = FileUtils.fileAttributesIfExists(destination);
         if (this.resolveMode != ResolveMode.REMOTE_ONLY && (destAttributes != null && destAttributes.isRegularFile())) { // TODO: check etag?
             // Check every 24 hours
             if (this.resolveMode == ResolveMode.LOCAL_ONLY
@@ -220,15 +219,10 @@ public class JdkHttpClientDownloader implements Downloader {
             return CompletableFuture.completedFuture(ResolutionResult.notFound());
         }
 
-        final CompletableFuture<HttpResponse<T>> result;
-        try {
-            result = this.client.sendAsync(
-                this.makeRequest(source, null), // todo: etag
-                responseConsumer.apply(destination));
-        } catch (final URISyntaxException ex) {
-            return CompletableFuture.failedFuture(ex);
-        }
-        return result.thenApply(message -> {
+        return this.client.sendAsync(
+            this.makeRequest(source, null), // todo: etag
+            responseConsumer.apply(destination)
+        ).thenApply(message -> {
             switch (message.statusCode()) {
                 case 404:
                     return ResolutionResult.notFound();
@@ -241,7 +235,7 @@ public class JdkHttpClientDownloader implements Downloader {
     }
 
     private <T> CompletableFuture<ResolutionResult<T>> downloadValidating(
-        final URL source,
+        final URI source,
         final Path destination,
         final HashAlgorithm algorithm,
         final String expectedHash,
@@ -272,17 +266,10 @@ public class JdkHttpClientDownloader implements Downloader {
             return CompletableFuture.completedFuture(ResolutionResult.notFound());
         }
 
-        final CompletableFuture<HttpResponse<T>> result;
-        try {
-            result = this.client.sendAsync(
-                this.makeRequest(source, null),
-                JdkHttpClientDownloader.validating(responseConsumer.apply(path), algorithm, expectedHash)
-            );
-        } catch (final URISyntaxException ex) {
-            return CompletableFuture.failedFuture(ex);
-        }
-
-        return result.thenApply(message -> {
+        return this.client.sendAsync(
+            this.makeRequest(source, null),
+            JdkHttpClientDownloader.validating(responseConsumer.apply(path), algorithm, expectedHash)
+        ).thenApply(message -> {
             switch (message.statusCode()) {
                 case HttpConstants.STATUS_NOT_FOUND:
                     return ResolutionResult.notFound();
@@ -294,11 +281,8 @@ public class JdkHttpClientDownloader implements Downloader {
         });
     }
 
-    private HttpRequest makeRequest(final URL url, final @Nullable String etag) throws URISyntaxException {
-        final var requestBuilder = HttpRequest.newBuilder()
-            .GET()
-            .uri(url.toURI());
-
+    private HttpRequest makeRequest(final URI uri, final @Nullable String etag) {
+        final var requestBuilder = HttpRequest.newBuilder().GET().uri(uri);
         if (etag != null) {
             requestBuilder.header(HttpConstants.HEADER_IF_NONE_MATCH, etag);
         }

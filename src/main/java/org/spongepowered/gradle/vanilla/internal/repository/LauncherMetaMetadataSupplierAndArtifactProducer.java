@@ -62,7 +62,7 @@ public class LauncherMetaMetadataSupplierAndArtifactProducer implements Componen
             return; // failed
         }
         final Optional<MinecraftPlatform> platform = MinecraftPlatform.byId(components[0]);
-        if (!platform.isPresent()) {
+        if (platform.isEmpty()) {
             return;
         }
 

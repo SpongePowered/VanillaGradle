@@ -64,7 +64,7 @@ final class ManifestDerivedArgumentProvider implements CommandLineArgumentProvid
         for (final Argument arg : this.arguments.get()) {
             if (arg.rules().test(this.rules)) {
                 arg: for (final String argument : arg.value()) {
-                    if (builder.length() > 0) {
+                    if (!builder.isEmpty()) {
                         builder.delete(0, builder.length());
                     }
 

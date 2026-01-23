@@ -24,7 +24,7 @@
  */
 package org.spongepowered.gradle.vanilla.internal.model;
 
-import java.net.URL;
+import java.net.URI;
 
 /**
  * A reference to a downloadable {@link AssetIndex}.
@@ -35,6 +35,6 @@ import java.net.URL;
  * @param totalSize The total size of assets described by the index file, in bytes.
  * @param url A url to download the asset index from.
  */
-public record AssetIndexReference(String id, String sha1, int size, int totalSize, URL url) {
+public record AssetIndexReference(String id, String sha1, int size, int totalSize, URI url) {
 
 }

@@ -22,7 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.gradle.vanilla.internal.resolver;
+package org.spongepowered.gradle.vanilla.internal.util;
 
 import org.jspecify.annotations.Nullable;
 
@@ -60,14 +60,16 @@ public final class AsyncUtils {
 
             @Override
             public T get() {
-                if (this.value == null) {
+                T value = this.value;
+                if (value == null) {
                     synchronized (this) {
-                        if (this.value == null) {
-                            return this.value = input.get();
+                        value = this.value;
+                        if (value == null) {
+                            this.value = value = input.get();
                         }
                     }
                 }
-                return this.value;
+                return value;
             }
         };
     }

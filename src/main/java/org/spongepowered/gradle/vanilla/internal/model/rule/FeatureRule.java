@@ -37,7 +37,7 @@ public final class FeatureRule implements Rule<Map<String, Boolean>> {
 
     public static final FeatureRule INSTANCE = new FeatureRule();
     private static final String CTX_FEATURES = "vanillagradle:features";
-    private static final TypeToken<Map<String, Boolean>> TYPE = new TypeToken<Map<String, Boolean>>() {};
+    private static final TypeToken<Map<String, Boolean>> TYPE = new TypeToken<>() {};
 
     /**
      * Known feature flags.

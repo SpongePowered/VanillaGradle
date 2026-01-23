@@ -25,7 +25,7 @@
 package org.spongepowered.gradle.vanilla.resolver;
 
 import java.io.IOException;
-import java.net.URL;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
@@ -63,11 +63,11 @@ public interface Downloader extends AutoCloseable {
      * <p>Encoding will be determined based on response headers, defaulting to
      * UTF-8.</p>
      *
-     * @param source the URL to download from
+     * @param source the URI to download from
      * @param relativePath the location to use as a cache key for the result
      * @return a future providing the completed result
      */
-    CompletableFuture<ResolutionResult<String>> readString(final URL source, final String relativePath);
+    CompletableFuture<ResolutionResult<String>> readString(final URI source, final String relativePath);
 
     /**
      * Read the contents of {@code source} as a {@link String}.
@@ -75,22 +75,22 @@ public interface Downloader extends AutoCloseable {
      * <p>The downloaded content and any cached information will be validated
      * against the provided hash.</p>
      *
-     * @param source the URL to download from
+     * @param source the URI to download from
      * @param relativePath the location to use as a cache key for the result
      * @param algorithm the hash algorithm to test with
      * @param hash the expected hash, as a string of hex digits
      * @return a future providing the resolved result
      */
-    CompletableFuture<ResolutionResult<String>> readStringAndValidate(final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash);
+    CompletableFuture<ResolutionResult<String>> readStringAndValidate(final URI source, final String relativePath, final HashAlgorithm algorithm, final String hash);
 
     /**
      * Read the contents of {@code source} as a {@code byte[]}.
      *
-     * @param source the URL to download from
+     * @param source the URI to download from
      * @param relativePath the location to use as a cache key for the result
      * @return a future providing the completed result
      */
-    CompletableFuture<ResolutionResult<byte[]>> readBytes(final URL source, final String relativePath);
+    CompletableFuture<ResolutionResult<byte[]>> readBytes(final URI source, final String relativePath);
 
     /**
      * Read the contents of {@code source} as a {@code byte[]}.
@@ -98,13 +98,13 @@ public interface Downloader extends AutoCloseable {
      * <p>The downloaded content and any cached information will be validated
      * against the provided hash.</p>
      *
-     * @param source the URL to download from
+     * @param source the URI to download from
      * @param relativePath the location to use as a cache key for the result
      * @param algorithm the hash algorithm to test with
      * @param hash the expected hash, as a string of hex digits
      * @return a future providing the resolved result
      */
-    CompletableFuture<ResolutionResult<byte[]>> readBytesAndValidate(final URL source, final String relativePath, final HashAlgorithm algorithm, final String hash);
+    CompletableFuture<ResolutionResult<byte[]>> readBytesAndValidate(final URI source, final String relativePath, final HashAlgorithm algorithm, final String hash);
 
     /**
      * Download a file to the provided relative location.
@@ -112,13 +112,13 @@ public interface Downloader extends AutoCloseable {
      * <p>If the file already exists, it may not be overwritten, depending on
      * the downloader's caching policy.</p>
      *
-     * @param source the URL to download from.
+     * @param source the URI to download from.
      * @param destination a relative path to download to
      * @return a future returning the downloaded patch once a download is complete
      */
-    CompletableFuture<ResolutionResult<Path>> download(final URL source, final String destination);
+    CompletableFuture<ResolutionResult<Path>> download(final URI source, final String destination);
 
-    CompletableFuture<ResolutionResult<Path>> downloadAndValidate(final URL source, final String destination, final HashAlgorithm algorithm, final String hash);
+    CompletableFuture<ResolutionResult<Path>> downloadAndValidate(final URI source, final String destination, final HashAlgorithm algorithm, final String hash);
 
     @Override
     void close() throws IOException;

@@ -176,7 +176,7 @@ extensions.configure(net.kyori.indra.licenser.spotless.IndraSpotlessLicenserExte
 spotless {
     fun FormatExtension.applyCommonSettings() {
         endWithNewline()
-        indentWithSpaces(4)
+        leadingTabsToSpaces(4)
         trimTrailingWhitespace()
         toggleOffOn("@formatter:off", "@formatter:on")
     }

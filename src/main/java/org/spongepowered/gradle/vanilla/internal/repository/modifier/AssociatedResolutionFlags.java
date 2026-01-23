@@ -31,7 +31,7 @@ public enum AssociatedResolutionFlags {
 
     /**
      * For associated artifact generators that need to transform the original
-     * input, this allows them do do so safely.
+     * input, this allows them to do so safely.
      */
     MODIFIES_ORIGINAL,
 

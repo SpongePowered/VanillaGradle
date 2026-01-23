@@ -28,6 +28,7 @@ import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;
@@ -40,7 +41,7 @@ import java.util.concurrent.Callable;
  */
 public class ResolveMinecraftLibNames implements Callable<Set<String>> {
     private final NamedDomainObjectProvider<Configuration> minecraftConfig;
-    private Set<String> result;
+    private @Nullable Set<String> result;
 
     public ResolveMinecraftLibNames(final NamedDomainObjectProvider<Configuration> minecraftConfig) {
         this.minecraftConfig = minecraftConfig;

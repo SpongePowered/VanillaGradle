@@ -86,7 +86,7 @@ public final class Decompilation {
                             return FileSystems.getFileSystem(uri);
                         } catch (final FileSystemNotFoundException ex) {
                             try {
-                                return FileSystems.newFileSystem(uri, Collections.emptyMap(), (ClassLoader) null);
+                                return FileSystems.newFileSystem(uri, Collections.emptyMap(), null);
                             } catch (final IOException ex2) {
                                 throw new RuntimeException(ex2);
                             }
