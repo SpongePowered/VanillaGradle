@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
-public class TeeSubscriber<V> implements HttpResponse.BodySubscriber<V> {
+class TeeSubscriber<V> implements HttpResponse.BodySubscriber<V> {
     private final HttpResponse.BodySubscriber<V> first;
     private final HttpResponse.BodySubscriber<?>[] others;
     private ProxySubscription subscription;
