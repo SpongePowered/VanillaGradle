@@ -47,17 +47,13 @@ import java.util.regex.Pattern;
 
 public final class GsonUtils {
 
-    public static final Gson GSON;
-
-    static {
-        GSON = new GsonBuilder()
+    public static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(ZonedDateTime.class, GsonSerializers.ZDT)
             .registerTypeAdapter(GroupArtifactVersion.class, GsonSerializers.GAV)
             .registerTypeAdapter(Pattern.class, GsonSerializers.PATTERN)
             .registerTypeAdapterFactory(new RuleDeclarationTypeAdapter.Factory(FeatureRule.INSTANCE, OperatingSystemRule.INSTANCE))
             .registerTypeAdapterFactory(new Argument.ArgumentTypeAdapter.Factory())
             .create();
-    }
 
     public static <T> T parseFromJson(final URL url, final Class<T> type) throws IOException {
         try (final BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8))) {
