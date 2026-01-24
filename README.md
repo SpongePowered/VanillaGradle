@@ -17,7 +17,7 @@ is as simple as creating a Gradle build based on this buildscript:
 ```gradle
 plugins {
     java
-    id("org.spongepowered.gradle.vanilla") version "0.3.0"
+    id("org.spongepowered.gradle.vanilla") version "0.3.1"
 }
 
 group = "org.example"
@@ -64,6 +64,18 @@ and are subject to change at any time.
     </tr>
   </thead>
   <tbody>
+    <tr>
+      <td valign="top"><b>0.3.1</b></td>
+      <td valign="top">January 2026</td>
+      <td valign="top">
+        <ul>
+          <li>Replace Apache HTTP client with the JDK one</li>
+          <li>Replace org:immutables with JDK records</li>
+          <li>Migrate nullable annotations to JSpecify</li>
+          <li>No longer require Sponge maven repository</li>
+        </ul>
+      </td>
+    </tr>
     <tr>
       <td valign="top"><b>0.3.0</b></td>
       <td valign="top">December 2025</td>
