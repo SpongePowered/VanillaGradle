@@ -47,7 +47,7 @@ public final class Constants {
     public static final String NAME = "VanillaGradle";
     public static final String VERSION = Constants.version();
     public static final String USER_AGENT = String.format("%s/%s Gradle/%s", Constants.NAME, Constants.VERSION, GradleVersion.current().getVersion());
-    public static final String MINECRAFT_RESOURCES_HOST = "resources.download.minecraft.net";
+    public static final String MINECRAFT_RESOURCES_BASE = "https://resources.download.minecraft.net/";
     public static final String TASK_GROUP = "vanilla gradle";
     public static final int ASM_VERSION = Opcodes.ASM9;
     public static final Instant MIN_MC_VERSION_TIMESTAMP = Instant.from(DateTimeFormatter.ISO_DATE_TIME.parse("2025-12-16T12:42:29+00:00"));

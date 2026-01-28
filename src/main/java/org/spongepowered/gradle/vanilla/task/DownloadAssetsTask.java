@@ -109,9 +109,10 @@ public abstract class DownloadAssetsTask extends DefaultTask {
 
         // Send out all the requests
         for (final Map.Entry<String, AssetIndex.Asset> asset : index.objects().entrySet()) {
+            final String fileName = asset.getValue().fileName();
             results.add(objectDownloader.downloadAndValidate(
-                this.assetUri(asset.getValue()),
-                asset.getValue().fileName(),
+                URI.create(Constants.MINECRAFT_RESOURCES_BASE + fileName),
+                fileName,
                 HashAlgorithm.SHA1,
                 asset.getValue().hash()
             )
@@ -159,13 +160,4 @@ public abstract class DownloadAssetsTask extends DefaultTask {
             stats.upToDate()
         );
     }
-
-    private URI assetUri(final AssetIndex.Asset asset) {
-        try {
-            return new URI("https", Constants.MINECRAFT_RESOURCES_HOST, '/' + asset.fileName());
-        } catch (final URISyntaxException ex) {
-            throw new IllegalArgumentException("Failed to parse asset URI for " + asset.hash(), ex);
-        }
-    }
-
 }
