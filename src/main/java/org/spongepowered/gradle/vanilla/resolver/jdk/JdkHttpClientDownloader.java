@@ -62,6 +62,14 @@ public class JdkHttpClientDownloader implements Downloader {
     private final boolean writeToDisk;
 
     /**
+     * We limit the number of parallel requests otherwise:
+     * - The JDK throws an error when we reach HTTP/2 max_concurrent_streams (usually around 100).
+     * - Mojang servers randomly return error pages (200 HTTP code with HTML message "The request is blocked.").
+     * The maximum of 8 parallel requests has been determined purely empirically by trying several powers of two.
+     */
+    private final TaskQueue queue = new TaskQueue(8); // TODO configurable max, per host?
+
+    /**
      * Create a downloader that does not cache.
      *
      * <p>The downloader's {@code resolveMode} is always {@link ResolveMode#REMOTE_ONLY}.</p>
@@ -235,21 +243,23 @@ public class JdkHttpClientDownloader implements Downloader {
         if (etag != null) {
             requestBuilder.header(HttpConstants.HEADER_IF_NONE_MATCH, etag);
         }
-        return this.client.sendAsync(requestBuilder.build(), bodyHandler).thenApply(message -> {
-            switch (message.statusCode()) {
-                case HttpConstants.STATUS_NOT_FOUND:
-                    return ResolutionResult.notFound();
-                case HttpConstants.STATUS_OK:
-                    return ResolutionResult.result(message.body(), false); // Known invalid, hash does not match expected.
-                default:
-                    throw new CompletionException(new HttpErrorResponseException(uri, message.statusCode(), message.toString()));
-            }
-        });
+        final HttpRequest request = requestBuilder.build();
+        return this.queue.run(() -> this.client.sendAsync(request, bodyHandler))
+            .thenApply(message -> {
+                switch (message.statusCode()) {
+                    case HttpConstants.STATUS_NOT_FOUND:
+                        return ResolutionResult.notFound();
+                    case HttpConstants.STATUS_OK:
+                        return ResolutionResult.result(message.body(), false); // Known invalid, hash does not match expected.
+                    default:
+                        throw new CompletionException(new HttpErrorResponseException(uri, message.statusCode(), message.toString()));
+                }
+            });
     }
 
     @Override
     public void close() throws IOException {
-        // nothing needed, the client just relies on the executor
+        this.queue.close(); // abort pending requests
     }
 
     // body subscribers
