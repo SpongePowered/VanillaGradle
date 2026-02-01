@@ -17,7 +17,7 @@ is as simple as creating a Gradle build based on this buildscript:
 ```gradle
 plugins {
     java
-    id("org.spongepowered.gradle.vanilla") version "0.3.1"
+    id("org.spongepowered.gradle.vanilla") version "0.3.2"
 }
 
 group = "org.example"
@@ -64,6 +64,15 @@ and are subject to change at any time.
     </tr>
   </thead>
   <tbody>
+    <tr>
+      <td valign="top"><b>0.3.2</b></td>
+      <td valign="top">February 2026</td>
+      <td valign="top">
+        <ul>
+          <li>Fix assets download errors</li>
+        </ul>
+      </td>
+    </tr>
     <tr>
       <td valign="top"><b>0.3.1</b></td>
       <td valign="top">January 2026</td>
